@@ -1,0 +1,2 @@
+-- Tablas de Supabase, todas con `updated_at` para la resolución de conflictos.
+-- Se escriben en la Fase 2 (ROADMAP.md) y se ejecutan a mano en el SQL Editor (SETUP.md §3).

@@ -1,0 +1,10 @@
+@import 'tailwindcss';
+@import './styles/tokens.css';
+
+@layer base {
+  body {
+    @apply bg-paper text-ink antialiased;
+    /* La app se usa con el pulgar: fuera el destello azul de iOS al tocar */
+    -webkit-tap-highlight-color: transparent;
+  }
+}

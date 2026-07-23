@@ -1,0 +1,2 @@
+-- Políticas RLS por `user_id`. Se escriben en la Fase 2 (ROADMAP.md)
+-- y se ejecutan a mano en el SQL Editor de Supabase (SETUP.md §3).

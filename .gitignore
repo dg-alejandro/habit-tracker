@@ -1,0 +1,20 @@
+# Dependencias
+node_modules/
+
+# Build
+dist/
+
+# Entorno — las claves nunca se suben al repo
+.env
+.env.*
+!.env.example
+
+# Configuración local de Claude Code (por máquina, no del proyecto)
+.claude/settings.local.json
+
+# Varios
+*.local
+*.log
+coverage/
+.DS_Store
+.vscode/

@@ -1,0 +1,28 @@
+/*
+ * Tokens de color — única fuente de verdad cromática de la app (CLAUDE.md §6).
+ * Ningún componente escribe un color a mano: siempre clases de Tailwind
+ * generadas desde estos tokens (bg-paper, text-ink, text-streak-orange…).
+ *
+ * `--color-*: initial` desactiva la paleta por defecto de Tailwind: una clase
+ * como `text-red-500` no existe en este proyecto y no compila a nada.
+ */
+
+@theme {
+  --color-*: initial;
+
+  /* Neutros — toda la interfaz es blanco y negro, tipo Notion */
+  --color-paper: #ffffff;      /* fondo */
+  --color-surface: #f6f6f6;    /* fondos de tarjeta y hover */
+  --color-line: #e6e6e6;       /* bordes sutiles */
+  --color-ink: #121212;        /* texto principal */
+  --color-ink-soft: #6e6e6e;   /* texto secundario */
+  --color-ink-faint: #a8a8a8;  /* texto terciario y deshabilitados */
+
+  /* Chillones — SOLO para rachas y datos estadísticos */
+  --color-streak-orange: #ff5f00;
+  --color-streak-lime: #9bee00;
+  --color-streak-magenta: #f5008b;
+
+  /* Rojo de ruptura de racha — debe doler, no se suaviza */
+  --color-streak-red: #ff2b2b;
+}
