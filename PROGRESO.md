@@ -34,7 +34,9 @@ Una fase solo pasa a *Cerrada* cuando yo he probado su criterio de aceptación y
 
 Si hace falta una acción manual mía, anótala aquí y para.
 
-- **Fase 0 — esperando acción manual:** (1) crear el repositorio privado en GitHub, en la cuenta personal, y pasar la URL (SETUP.md §1) → entonces Claude hace `git remote add` y el push; (2) importar el repositorio en Vercel con la configuración por defecto de Vite (SETUP.md §4). El código está commiteado en local, listo para el push.
+- **Fase 0 — esperando acción manual:** importar el repositorio en Vercel con la configuración por defecto de Vite (SETUP.md §4) y abrir la URL en el iPhone para navegar las cinco secciones (criterio de aceptación). El repositorio de GitHub ya existe (`dg-alejandro/habit-tracker`) y está todo subido hasta el cierre de la Fase 1 (2026-07-23).
+- **Fase 1 — esperando al propietario:** la prueba de aceptación de tres noches seguidas.
+- **Antes de la Fase 2 (se puede preparar ya):** crear el proyecto de Supabase y pasar las claves para el `.env` (SETUP.md §2). El SQL de §3 llega DURANTE la Fase 2, cuando exista el esquema. La Fase 2 se ejecuta en una sesión nueva de Claude Code (§8: una instancia por fase).
 
 ---
 
