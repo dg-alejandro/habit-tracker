@@ -8,3 +8,38 @@
     -webkit-tap-highlight-color: transparent;
   }
 }
+
+/*
+ * Micro-animación al marcar un hábito (CLAUDE.md §5.1: debe dar gusto pulsar).
+ * Solo CSS: la caja se hunde al pulsar y el tick se dibuja al marcarse.
+ * Con transiciones y no keyframes: así no se anima nada al cargar la página.
+ */
+@layer components {
+  .check-tick {
+    visibility: hidden;
+  }
+  .check-tick.is-checked {
+    visibility: visible;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .check-box {
+    transition:
+      background-color 140ms ease-out,
+      border-color 140ms ease-out,
+      transform 120ms ease-out;
+  }
+  button:active .check-box {
+    transform: scale(0.88);
+  }
+  .check-tick {
+    visibility: visible;
+    stroke-dasharray: 16;
+    stroke-dashoffset: 16;
+    transition: stroke-dashoffset 200ms ease-out 40ms;
+  }
+  .check-tick.is-checked {
+    stroke-dashoffset: 0;
+  }
+}
