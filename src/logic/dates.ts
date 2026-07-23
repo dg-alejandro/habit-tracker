@@ -129,6 +129,19 @@ export function formatDateEs(date: IsoDate): string {
   return spanishFormatter.format(noon)
 }
 
+const spanishShortFormatter = new Intl.DateTimeFormat('es-ES', {
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+})
+
+/** '10 jul 2026' — para listas compactas, como los rangos congelados. */
+export function formatDateShortEs(date: IsoDate): string {
+  const noon = toLocalDate(date)
+  noon.setHours(12)
+  return spanishShortFormatter.format(noon)
+}
+
 function pad2(value: number): string {
   return String(value).padStart(2, '0')
 }
