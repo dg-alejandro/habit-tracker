@@ -1,8 +1,15 @@
+import { useEffect } from 'react'
 import { BrowserRouter } from 'react-router'
 import { AppRoutes } from './routes'
 import { NavBar } from './components/ui/NavBar'
+import { ensureSeeded } from './data/seed'
 
 export function App() {
+  // Siembra los 14 hábitos la primera vez; useLiveQuery re-emite cuando aterrizan.
+  useEffect(() => {
+    void ensureSeeded()
+  }, [])
+
   return (
     <BrowserRouter>
       <div className="min-h-dvh md:flex">
