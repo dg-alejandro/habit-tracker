@@ -44,7 +44,7 @@ export function CounterControls({ habit, entry, date, disabled }: CounterControl
           onKeyDown={(event) => {
             if (event.key === 'Enter') event.currentTarget.blur()
           }}
-          className="h-9 w-20 rounded-lg border border-line bg-paper px-2 text-sm tabular-nums text-ink"
+          className="h-11 w-20 rounded-lg border border-line bg-paper px-2 text-sm tabular-nums text-ink"
         />
       ) : (
         <button
@@ -52,7 +52,7 @@ export function CounterControls({ habit, entry, date, disabled }: CounterControl
           disabled={disabled}
           onClick={() => setEditing(true)}
           title="Corregir los minutos del día"
-          className="h-9 rounded-lg px-1 text-sm font-medium tabular-nums text-ink-soft transition-colors hover:bg-surface"
+          className="h-11 rounded-lg px-1 text-sm font-medium tabular-nums text-ink-soft transition-colors hover:bg-surface"
         >
           {minutes}/{target} min
         </button>
@@ -63,7 +63,7 @@ export function CounterControls({ habit, entry, date, disabled }: CounterControl
           type="button"
           disabled={disabled}
           onClick={() => void addMinutes(habit.id, date, quantity, target)}
-          className="h-9 min-w-12 rounded-lg border border-line px-2 text-sm font-medium text-ink transition-colors hover:bg-surface active:bg-surface"
+          className="h-11 min-w-13 rounded-lg border border-line px-2 text-sm font-medium text-ink transition-colors hover:bg-surface active:bg-surface"
         >
           +{quantity}
         </button>

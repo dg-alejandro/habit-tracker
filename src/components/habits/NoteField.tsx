@@ -32,7 +32,7 @@ export function NoteField({ habit, entry, date, disabled }: NoteFieldProps) {
       onKeyDown={(event) => {
         if (event.key === 'Enter') event.currentTarget.blur()
       }}
-      className="mt-2 w-full rounded-lg border border-line bg-paper px-3 py-2 text-sm text-ink placeholder:text-ink-faint"
+      className="mt-2 h-11 w-full rounded-lg border border-line bg-paper px-3 text-sm text-ink placeholder:text-ink-faint"
     />
   )
 }

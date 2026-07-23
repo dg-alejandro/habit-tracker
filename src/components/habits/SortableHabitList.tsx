@@ -122,7 +122,7 @@ function SortableHabitItem({ habit, editing, onStartEdit, onStopEdit }: Sortable
             aria-label={`Reordenar ${habit.name}`}
             {...attributes}
             {...listeners}
-            className="flex h-11 w-9 shrink-0 cursor-grab touch-none items-center justify-center text-ink-faint active:cursor-grabbing"
+            className="flex h-11 w-11 shrink-0 cursor-grab touch-none items-center justify-center text-ink-faint active:cursor-grabbing"
           >
             <GripIcon />
           </button>

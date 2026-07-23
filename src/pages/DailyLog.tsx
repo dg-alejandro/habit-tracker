@@ -63,7 +63,7 @@ export function DailyLog() {
           <button
             type="button"
             onClick={() => void freezeDay(viewDate)}
-            className="text-sm text-ink-faint underline-offset-2 transition-colors hover:text-ink-soft hover:underline"
+            className="inline-flex h-11 items-center text-sm text-ink-faint underline-offset-2 transition-colors hover:text-ink-soft hover:underline"
           >
             Congelar este día
           </button>

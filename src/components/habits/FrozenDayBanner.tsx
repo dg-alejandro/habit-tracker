@@ -20,14 +20,14 @@ export function FrozenDayBanner({ date, canQuickUnfreeze }: FrozenDayBannerProps
         <button
           type="button"
           onClick={() => void unfreezeExactDay(date)}
-          className="mt-2 text-sm font-medium text-ink underline underline-offset-2"
+          className="mt-1 inline-flex h-11 items-center text-sm font-medium text-ink underline underline-offset-2"
         >
           Descongelar este día
         </button>
       ) : (
         <NavLink
           to="/habitos"
-          className="mt-2 inline-block text-sm font-medium text-ink underline underline-offset-2"
+          className="mt-1 inline-flex h-11 items-center text-sm font-medium text-ink underline underline-offset-2"
         >
           Pertenece a un rango congelado: gestionarlo en Hábitos
         </NavLink>
