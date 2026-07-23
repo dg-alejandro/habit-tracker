@@ -4,7 +4,7 @@
  * días transcurridos: 20, 21, 22 y 23 (cuatro).
  */
 import { describe, expect, it } from 'vitest'
-import { computeWeeklyPercentage } from './stats'
+import { computeWeeklyPercentage, isCounterFulfilled } from './stats'
 import type { DayEntry, FrozenRange, Habit, IsoDate } from '../data/types'
 
 const TODAY: IsoDate = '2026-07-23'
@@ -43,6 +43,19 @@ function pct(input: {
     today: input.today ?? TODAY,
   })
 }
+
+describe('isCounterFulfilled', () => {
+  it('cumple exactamente al alcanzar el objetivo, no antes', () => {
+    expect(isCounterFulfilled(29, 30)).toBe(false)
+    expect(isCounterFulfilled(30, 30)).toBe(true)
+    expect(isCounterFulfilled(45, 30)).toBe(true)
+    expect(isCounterFulfilled(0, 30)).toBe(false)
+  })
+
+  it('sin objetivo válido nunca se cumple solo', () => {
+    expect(isCounterFulfilled(120, 0)).toBe(false)
+  })
+})
 
 describe('computeWeeklyPercentage', () => {
   it('sin hábitos no hay celdas: null (la UI muestra "—")', () => {

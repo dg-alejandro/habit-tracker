@@ -4,6 +4,7 @@
  */
 import { db } from '../db'
 import type { IsoDate } from '../../logic/dates'
+import { isCounterFulfilled } from '../../logic/stats'
 import type { DayEntry } from '../types'
 
 export function getEntriesForDate(date: IsoDate): Promise<DayEntry[]> {
@@ -41,7 +42,7 @@ export function addMinutes(
     return {
       ...preserved(current, { skipMinutes: true }),
       minutes,
-      done: targetMinutes > 0 && minutes >= targetMinutes,
+      done: isCounterFulfilled(minutes, targetMinutes),
     }
   })
 }
@@ -58,7 +59,7 @@ export function setMinutes(
     return {
       ...preserved(current, { skipMinutes: true }),
       minutes,
-      done: targetMinutes > 0 && minutes >= targetMinutes,
+      done: isCounterFulfilled(minutes, targetMinutes),
     }
   })
 }

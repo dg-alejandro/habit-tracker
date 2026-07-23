@@ -33,6 +33,10 @@ export async function listActiveHabits(): Promise<Habit[]> {
 }
 
 export function createHabit(input: CreateHabitInput): Promise<Habit> {
+  // La UI ya lo impide; el repo lo garantiza también para el import JSON futuro.
+  if (input.type !== 'check' && (input.targetMinutes === undefined || input.targetMinutes <= 0)) {
+    throw new Error('Un contador necesita un objetivo en minutos mayor que cero')
+  }
   return db.transaction('rw', db.habits, async () => {
     const habit: Habit = {
       id: crypto.randomUUID(),

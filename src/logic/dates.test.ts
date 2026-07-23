@@ -105,9 +105,15 @@ describe('addDaysIso', () => {
     expect(addDaysIso(addDaysIso('2026-07-23', 7), -7)).toBe('2026-07-23')
   })
 
-  it('la aritmética de calendario es inmune a los días de 23 horas (DST)', () => {
+  it('la aritmética de calendario es inmune a los días de 23 horas (DST de Madrid)', () => {
     expect(addDaysIso('2026-03-28', 2)).toBe('2026-03-30')
     expect(addDaysIso('2026-10-24', 2)).toBe('2026-10-26')
+  })
+
+  it('también es inmune al DST de la zona del DISPOSITIVO (la suite corre en America/New_York)', () => {
+    // NY salta el 8-mar-2026 (día local de 23 h) y retrocede el 1-nov-2026 (25 h).
+    expect(addDaysIso('2026-03-07', 2)).toBe('2026-03-09')
+    expect(addDaysIso('2026-10-31', 2)).toBe('2026-11-02')
   })
 })
 
@@ -181,6 +187,18 @@ describe('isoWeekDaysOf', () => {
       '2026-01-04',
     ])
   })
+
+  it('una semana con cambio de hora LOCAL (NY, 8-mar-2026) sigue teniendo 7 días correctos', () => {
+    expect(isoWeekDaysOf('2026-03-04')).toEqual([
+      '2026-03-02',
+      '2026-03-03',
+      '2026-03-04',
+      '2026-03-05',
+      '2026-03-06',
+      '2026-03-07',
+      '2026-03-08',
+    ])
+  })
 })
 
 describe('isDateFrozen', () => {
@@ -213,6 +231,14 @@ describe('isDateFrozen', () => {
   it('sin rangos no hay días congelados', () => {
     expect(isDateFrozen('2026-07-23', [])).toBe(false)
   })
+
+  it('un rango que cruza el cambio de mes congela ambos lados', () => {
+    const crossing = { startDate: '2026-07-30', endDate: '2026-08-02' }
+    expect(isDateFrozen('2026-07-31', [crossing])).toBe(true)
+    expect(isDateFrozen('2026-08-01', [crossing])).toBe(true)
+    expect(isDateFrozen('2026-07-29', [crossing])).toBe(false)
+    expect(isDateFrozen('2026-08-03', [crossing])).toBe(false)
+  })
 })
 
 describe('relativeDayLabel', () => {
@@ -225,6 +251,13 @@ describe('relativeDayLabel', () => {
 
   it('funciona cruzando el límite de mes', () => {
     expect(relativeDayLabel('2026-07-31', '2026-08-01')).toBe('ayer')
+  })
+})
+
+describe('canario de zona horaria', () => {
+  it('la suite corre de verdad bajo TZ=America/New_York (si falla, la inyección de vite.config.ts quedó inerte)', () => {
+    expect(new Date(2026, 0, 15).getTimezoneOffset()).toBe(300) // EST, UTC-5
+    expect(new Date(2026, 6, 15).getTimezoneOffset()).toBe(240) // EDT, UTC-4
   })
 })
 

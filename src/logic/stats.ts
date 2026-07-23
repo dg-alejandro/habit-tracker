@@ -6,6 +6,15 @@
 import { isDateFrozen, isoWeekDaysOf, type IsoDate } from './dates'
 import type { DayEntry, FrozenRange, Habit } from '../data/types'
 
+/**
+ * Un contador queda cumplido al alcanzar el objetivo VIGENTE en el momento de
+ * escribir (editar el objetivo después no reescribe el historial). Sin objetivo
+ * válido (> 0) nunca se cumple solo. La usan los repositorios al fijar `done`.
+ */
+export function isCounterFulfilled(minutes: number, targetMinutes: number): boolean {
+  return targetMinutes > 0 && minutes >= targetMinutes
+}
+
 export interface WeeklyPercentageInput {
   /** Puede incluir archivados: se filtran aquí dentro (defensivo). */
   habits: readonly Habit[]
