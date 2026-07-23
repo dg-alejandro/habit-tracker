@@ -10,13 +10,15 @@
 @theme {
   --color-*: initial;
 
-  /* Neutros — toda la interfaz es blanco y negro, tipo Notion */
-  --color-paper: #ffffff;      /* fondo */
-  --color-surface: #f6f6f6;    /* fondos de tarjeta y hover */
-  --color-line: #e6e6e6;       /* bordes sutiles */
-  --color-ink: #121212;        /* texto principal */
-  --color-ink-soft: #6e6e6e;   /* texto secundario */
-  --color-ink-faint: #a8a8a8;  /* texto terciario y deshabilitados */
+  /* Neutros — toda la interfaz es negro y blanco, tipo Notion en oscuro.
+     Fondo negro (2026-07-23, decisión del propietario): la app se usa de noche.
+     El texto principal no es blanco puro para no deslumbrar a oscuras. */
+  --color-paper: #0f0f0f;      /* fondo */
+  --color-surface: #1c1c1c;    /* fondos de tarjeta y hover */
+  --color-line: #2b2b2b;       /* bordes sutiles */
+  --color-ink: #f0f0f0;        /* texto principal */
+  --color-ink-soft: #9a9a9a;   /* texto secundario */
+  --color-ink-faint: #5f5f5f;  /* texto terciario y deshabilitados */
 
   /* Chillones — SOLO para rachas y datos estadísticos */
   --color-streak-orange: #ff5f00;

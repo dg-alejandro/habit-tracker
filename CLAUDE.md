@@ -194,7 +194,7 @@ Según §4. Incluye pantalla de gestión de plantillas.
 
 ## 6. Diseño
 
-**Base: blanco y negro, minimalista, tipo Notion.** Mucho espacio en blanco, tipografía limpia, bordes sutiles, cero adornos, cero sombras decorativas. Registro diario, gestión de hábitos y planificador son estrictamente monocromos.
+**Base: negro y blanco —fondo negro—, minimalista, tipo Notion en oscuro.** Mucho espacio vacío, tipografía limpia, bordes sutiles, cero adornos, cero sombras decorativas. Registro diario, gestión de hábitos y planificador son estrictamente monocromos. (Hasta el 2026-07-23 el fondo era blanco; se invirtió a petición del propietario: la app se usa de noche.)
 
 **Excepción deliberada:** las **rachas y todos los datos estadísticos** van en colores chillones y saturados — naranja, verde ácido, magenta. Deben destacar violentamente sobre el fondo neutro. Son el único color de la app, y por eso funcionan.
 

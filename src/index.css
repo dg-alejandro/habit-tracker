@@ -6,6 +6,8 @@
     @apply bg-paper text-ink antialiased;
     /* La app se usa con el pulgar: fuera el destello azul de iOS al tocar */
     -webkit-tap-highlight-color: transparent;
+    /* Fondo negro: que los controles nativos (fechas, números) rendericen oscuros */
+    color-scheme: dark;
   }
 }
 
