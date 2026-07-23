@@ -7,8 +7,8 @@ Es lo que permite que una instancia nueva sepa dónde estamos sin releer todo el
 
 ## Estado actual
 
-**Fase en curso:** Fase 1 — Registro diario en local (construida, con tests en verde y verificada en navegador; pendiente de la prueba de aceptación de tres noches). La Fase 0 sigue esperando sus pasos manuales (GitHub y Vercel).
-**Última fase cerrada:** ninguna
+**Fase en curso:** ninguna — Fases 0 y 1 cerradas. La siguiente es la Fase 2 (Supabase y sincronización), que arranca en una sesión nueva (§8: una instancia por fase).
+**Última fase cerrada:** Fase 1 — Registro diario en local (2026-07-23)
 **Última actualización:** 2026-07-23
 
 ---
@@ -17,8 +17,8 @@ Es lo que permite que una instancia nueva sepa dónde estamos sin releer todo el
 
 | Fase | Estado | Cerrada el | Notas |
 |---|---|---|---|
-| 0 — Esqueleto y despliegue | En curso | | Código listo y commiteado; falta repo GitHub + Vercel (SETUP §1 y §4) |
-| 1 — Registro diario en local | En curso | | Construida y verificada en local; falta la prueba de tres noches (criterio de aceptación) |
+| 0 — Esqueleto y despliegue | **Cerrada** | 2026-07-23 | Repo `dg-alejandro/habit-tracker` + Vercel; el propietario confirma que la URL navega en el iPhone |
+| 1 — Registro diario en local | **Cerrada** | 2026-07-23 | Probada y dada por buena por el propietario el mismo día de su construcción (decisión suya, sin esperar las tres noches) |
 | 2 — Supabase y sincronización | Pendiente | | |
 | 3 — Rachas y estadísticas | Pendiente | | |
 | 4 — Planificador semanal | Pendiente | | |
@@ -34,9 +34,7 @@ Una fase solo pasa a *Cerrada* cuando yo he probado su criterio de aceptación y
 
 Si hace falta una acción manual mía, anótala aquí y para.
 
-- **Fase 0 — esperando acción manual:** importar el repositorio en Vercel con la configuración por defecto de Vite (SETUP.md §4) y abrir la URL en el iPhone para navegar las cinco secciones (criterio de aceptación). El repositorio de GitHub ya existe (`dg-alejandro/habit-tracker`) y está todo subido hasta el cierre de la Fase 1 (2026-07-23).
-- **Fase 1 — esperando al propietario:** la prueba de aceptación de tres noches seguidas.
-- **Antes de la Fase 2 (se puede preparar ya):** crear el proyecto de Supabase y pasar las claves para el `.env` (SETUP.md §2). El SQL de §3 llega DURANTE la Fase 2, cuando exista el esquema. La Fase 2 se ejecuta en una sesión nueva de Claude Code (§8: una instancia por fase).
+- **Antes de la Fase 2 (acción manual del propietario):** crear el proyecto de Supabase y pasar las claves para el `.env` (SETUP.md §2). El SQL de §3 se ejecuta DURANTE la Fase 2, cuando exista el esquema, y las variables se pegan en Vercel (§4) al final. La Fase 2 se ejecuta en una sesión nueva de Claude Code (§8: una instancia por fase).
 
 ---
 
@@ -96,6 +94,10 @@ Lo que se ha dejado a medias a propósito, para no olvidarlo.
 ## Registro de sesiones
 
 Una entrada por sesión: fecha, fase, qué se hizo, qué quedó pendiente.
+
+### 2026-07-23 — Cierre de las Fases 0 y 1
+- El propietario confirma ambos criterios de aceptación: la URL de Vercel abre y navega en el iPhone (Fase 0) y el registro diario está probado y dado por bueno (Fase 1, cerrada el mismo día de su construcción por decisión suya, sin esperar las tres noches; cualquier fallo posterior se tratará como incidencia). Todo subido a GitHub.
+- Siguiente paso: Fase 2 — Supabase y sincronización, en sesión nueva. Requiere antes SETUP.md §2 (proyecto de Supabase y claves para el `.env`).
 
 ### 2026-07-23 — Fase 1
 - Registro diario en local completo: `logic/dates.ts` (día lógico con corte a las 4:00 vía Intl con `hourCycle h23`, semana ISO, Europe/Madrid) y `logic/stats.ts` (% semanal) con 51 tests bajo TZ hostil; modelo de datos completo en `data/types.ts` (hábitos, registros, congelados, planificador, ajustes); Dexie `version(1)` con las 6 tablas e índice único `[habitId+date]`; repositorios de hábitos, registros y congelados; semilla de los 14 hábitos.
