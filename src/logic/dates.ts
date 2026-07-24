@@ -142,6 +142,51 @@ export function formatDateShortEs(date: IsoDate): string {
   return spanishShortFormatter.format(noon)
 }
 
+/**
+ * Identificador de mes natural 'YYYY-MM'.
+ * Como IsoDate, se compara como string: el orden lexicográfico es el cronológico.
+ */
+export type MonthId = string
+
+/** Todos los días de start a end, ambos inclusive; [] si start > end. */
+export function eachDayIso(start: IsoDate, end: IsoDate): IsoDate[] {
+  const days: IsoDate[] = []
+  for (let day = start; day <= end; day = addDaysIso(day, 1)) {
+    days.push(day)
+  }
+  return days
+}
+
+/** Mes natural al que pertenece la fecha: '2026-07'. */
+export function monthIdOf(date: IsoDate): MonthId {
+  return date.slice(0, 7)
+}
+
+/** Suma (o resta) meses de calendario a un MonthId. */
+export function addMonthsToMonthId(id: MonthId, delta: number): MonthId {
+  const [year, month] = id.split('-').map(Number)
+  if (year === undefined || Number.isNaN(year) || month === undefined || Number.isNaN(month)) {
+    throw new Error(`Mes inválido: '${id}'`)
+  }
+  const total = year * 12 + (month - 1) + delta
+  return `${Math.floor(total / 12)}-${pad2((total % 12) + 1)}`
+}
+
+/** Los días del mes natural, del 1 al 28–31 (años bisiestos incluidos). */
+export function daysOfMonth(id: MonthId): IsoDate[] {
+  const lastDay = addDaysIso(`${addMonthsToMonthId(id, 1)}-01`, -1)
+  return eachDayIso(`${id}-01`, lastDay)
+}
+
+const spanishMonthFormatter = new Intl.DateTimeFormat('es-ES', { month: 'short' })
+
+/** 'jul' — etiqueta corta de mes para los ejes de las gráficas. */
+export function formatMonthShortEs(id: MonthId): string {
+  const noon = toLocalDate(`${id}-15`)
+  noon.setHours(12)
+  return spanishMonthFormatter.format(noon)
+}
+
 function pad2(value: number): string {
   return String(value).padStart(2, '0')
 }

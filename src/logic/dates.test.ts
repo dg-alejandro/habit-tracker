@@ -9,12 +9,17 @@
 import { describe, expect, it } from 'vitest'
 import {
   addDaysIso,
+  addMonthsToMonthId,
+  daysOfMonth,
+  eachDayIso,
   formatDateEs,
+  formatMonthShortEs,
   isDateFrozen,
   isoWeekDaysOf,
   isoWeekIdOf,
   logicalDateOf,
   madridWallClock,
+  monthIdOf,
   relativeDayLabel,
 } from './dates'
 
@@ -258,6 +263,83 @@ describe('canario de zona horaria', () => {
   it('la suite corre de verdad bajo TZ=America/New_York (si falla, la inyección de vite.config.ts quedó inerte)', () => {
     expect(new Date(2026, 0, 15).getTimezoneOffset()).toBe(300) // EST, UTC-5
     expect(new Date(2026, 6, 15).getTimezoneOffset()).toBe(240) // EDT, UTC-4
+  })
+})
+
+describe('eachDayIso', () => {
+  it('es inclusivo en ambos bordes', () => {
+    expect(eachDayIso('2026-07-21', '2026-07-23')).toEqual(['2026-07-21', '2026-07-22', '2026-07-23'])
+  })
+
+  it('start === end devuelve un único día', () => {
+    expect(eachDayIso('2026-07-23', '2026-07-23')).toEqual(['2026-07-23'])
+  })
+
+  it('start > end devuelve vacío', () => {
+    expect(eachDayIso('2026-07-24', '2026-07-23')).toEqual([])
+  })
+
+  it('cruza límites de mes y de año', () => {
+    expect(eachDayIso('2026-07-30', '2026-08-02')).toEqual([
+      '2026-07-30',
+      '2026-07-31',
+      '2026-08-01',
+      '2026-08-02',
+    ])
+    expect(eachDayIso('2025-12-30', '2026-01-02')).toEqual([
+      '2025-12-30',
+      '2025-12-31',
+      '2026-01-01',
+      '2026-01-02',
+    ])
+  })
+
+  it('los dos DST de Madrid no acortan ni alargan el rango', () => {
+    expect(eachDayIso('2026-03-26', '2026-03-31')).toHaveLength(6)
+    expect(eachDayIso('2026-10-23', '2026-10-27')).toHaveLength(5)
+  })
+
+  it('un año natural completo tiene 365 días (366 en bisiesto)', () => {
+    expect(eachDayIso('2026-01-01', '2026-12-31')).toHaveLength(365)
+    expect(eachDayIso('2028-01-01', '2028-12-31')).toHaveLength(366)
+  })
+})
+
+describe('monthIdOf y addMonthsToMonthId', () => {
+  it('extrae el mes natural de una fecha', () => {
+    expect(monthIdOf('2026-07-23')).toBe('2026-07')
+  })
+
+  it('suma y resta meses cruzando el año', () => {
+    expect(addMonthsToMonthId('2026-01', -1)).toBe('2025-12')
+    expect(addMonthsToMonthId('2025-12', 1)).toBe('2026-01')
+    expect(addMonthsToMonthId('2026-07', -11)).toBe('2025-08')
+  })
+
+  it('ida y vuelta es identidad', () => {
+    expect(addMonthsToMonthId(addMonthsToMonthId('2026-07', 5), -5)).toBe('2026-07')
+  })
+})
+
+describe('daysOfMonth', () => {
+  it('meses de 31, 30 y 28 días', () => {
+    expect(daysOfMonth('2026-07')).toHaveLength(31)
+    expect(daysOfMonth('2026-06')).toHaveLength(30)
+    expect(daysOfMonth('2026-02')).toHaveLength(28)
+  })
+
+  it('febrero bisiesto tiene 29', () => {
+    const days = daysOfMonth('2028-02')
+    expect(days).toHaveLength(29)
+    expect(days[0]).toBe('2028-02-01')
+    expect(days[28]).toBe('2028-02-29')
+  })
+})
+
+describe('formatMonthShortEs', () => {
+  it('etiqueta corta en español', () => {
+    expect(formatMonthShortEs('2026-07')).toContain('jul')
+    expect(formatMonthShortEs('2026-01')).toContain('ene')
   })
 })
 
