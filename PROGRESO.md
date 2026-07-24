@@ -7,7 +7,7 @@ Es lo que permite que una instancia nueva sepa dónde estamos sin releer todo el
 
 ## Estado actual
 
-**Fase en curso:** Fase 2 — Supabase y sincronización (plan aprobado el 2026-07-24; en construcción).
+**Fase en curso:** Fase 2 — Supabase y sincronización. Construida al completo (98 tests en verde, build limpio, revisor de estética pasado y sus hallazgos aplicados). Pendiente: verificación autenticada contra el Supabase real (necesita que el propietario teclee su contraseña en el navegador), variables en Vercel (SETUP §4) y prueba de aceptación PC ↔ iPhone.
 **Última fase cerrada:** Fase 1 — Registro diario en local (2026-07-23)
 **Última actualización:** 2026-07-24
 
@@ -34,7 +34,8 @@ Una fase solo pasa a *Cerrada* cuando yo he probado su criterio de aceptación y
 
 Si hace falta una acción manual mía, anótala aquí y para.
 
-- **Antes de la Fase 2 (acción manual del propietario):** crear el proyecto de Supabase y pasar las claves para el `.env` (SETUP.md §2). El SQL de §3 se ejecuta DURANTE la Fase 2, cuando exista el esquema, y las variables se pegan en Vercel (§4) al final. La Fase 2 se ejecuta en una sesión nueva de Claude Code (§8: una instancia por fase).
+- **Cierre de la Fase 2 (acciones del propietario):** (1) iniciar sesión en el navegador de verificación para la prueba autenticada; (2) limpiar la cuenta con un `truncate` de las 6 tablas antes de adoptar el dispositivo fuente (el navegador de pruebas habrá subido datos de relleno); (3) pegar las dos variables en Vercel y redesplegar (SETUP.md §4); (4) coreografía de adopción: el dispositivo cuyos datos de la Fase 1 se conservan sincroniza primero; el otro borra antes sus datos de sitio; (5) prueba de aceptación PC ↔ iPhone con modo avión.
+- ~~Antes de la Fase 2: proyecto de Supabase y claves (SETUP.md §2)~~ — hecho el 2026-07-24: proyecto creado, claves en el `.env` local y SQL de §3 ejecutado por el propietario.
 
 ---
 
@@ -78,6 +79,21 @@ Toda decisión no especificada en `CLAUDE.md` se anota aquí con una línea de j
 - **Desarchivar no perdona los días archivados** — el modelo guarda un `archivedAt` puntual, sin histórico de intervalos; si se desarchiva a mitad de semana, los días intermedios cuentan como no cumplidos en el % (rellenables a posteriori, como cualquier día pasado). Lo simple, anotado a raíz de la revisión.
 - **La regla de cumplido de contadores vive en `isCounterFulfilled` (`logic/stats.ts`)** — estaba duplicada en el repositorio de registros; el revisor de lógica la señaló y ahora es una función pura con tests que el repositorio consume.
 - **`createHabit` valida el objetivo de los contadores** — la UI ya lo impedía; el repositorio también lo garantiza pensando en el import JSON de la Fase 5.
+- **`@supabase/supabase-js` y `fake-indexeddb` (dev) añadidos** (Fase 2) — el cliente oficial del stack, y la única forma de correr Dexie REAL bajo Node en los tests de sincronización que el ROADMAP exige.
+- **Espejo remoto en snake_case con PK `(user_id, id)` e `id text`** — el singleton `'settings'` no es un uuid. **Excepción: `entries` tiene PK `(user_id, habit_id, date)`** (su clave lógica) y su `id` queda como columna informativa: dos dispositivos creando la misma celda sin conexión convergen sin duplicados ni baile de ids. `order` viaja como `sort_order` (palabra reservada).
+- **LWW por `updated_at` del cliente + trigger `lww_guard` + read-back** — el servidor descarta escrituras más antiguas (y estampa `synced_at`); tras cada subida se releen las filas y el perdedor se corrige a sí mismo. Cierra la divergencia por desfase de relojes en los dos sentidos.
+- **`synced_at` del servidor como cursor de bajada** — keyset `(synced_at, id)` en páginas de 1000 con el cursor persistido por página en la MISMA transacción que su aplicación (un corte reanuda). El cursor solo avanza durante el pull, nunca en push ni read-back.
+- **Outbox transaccional con coalescencia al flush** — cada escritura de repositorio encola en su misma transacción; el flush trabaja sobre un snapshot de seqs (una edición en vuelo re-encola con seq mayor y sobrevive). **La migración Dexie v2 encola todo lo existente**: el historial de la Fase 1 sube en el primer sync.
+- **Borrados = soft-delete remoto (`deleted_at`), borrado local duro** — los upserts viajan con `deleted_at: null` (resurrección solo si la escritura viva es más nueva que el borrado). El mecanismo lo heredará el planificador de la Fase 4.
+- **Siembra pospuesta cuando hay claves** — con Supabase configurado, `ensureSeeded` espera al primer pull completo con sesión y solo siembra si no bajó ningún hábito (evita 28 hábitos en un dispositivo nuevo). Sin claves, siembra inmediata como en la Fase 1. Con claves y sin sesión, pantalla vacía hasta el login.
+- **La bajada escribe directo a Dexie, nunca re-encola** — regla única de aplicación: gana el `updated_at` más nuevo; en empate manda el servidor; el eco idéntico del propio push ni escribe ni re-renderiza (`sameRow`). Los registros se aplican por su clave lógica conservando el id local.
+- **Import = reemplazo total con `updatedAt` bumpeado** — la copia restaurada gana por LWW en todas partes; se re-encola íntegro y los cursores vuelven a cero (cuenta y marca de primera bajada se conservan). Limitación consciente: una fila que exista en remoto pero no en la copia no se borra — la re-fusión LWW la trae de vuelta.
+- **Motor tras un puerto `SyncBackend`** — el adaptador de supabase-js queda fino y sin tests propios (se verifica en navegador); los tests de integración inyectan un backend falso que modela el contrato del servidor (guardia LWW y `synced_at` monótono con grupos idénticos).
+- **Sin realtime; multi-pestaña asumido** — el pull en arranque/visibilidad cumple el criterio de aceptación; un doble flush es idempotente. Riesgos anotados: el reloj del cliente es la autoridad LWW (dos dispositivos con hora de red); un reorden simultáneo en dos dispositivos puede dejar `order` duplicados (la UI ordena estable y el siguiente arrastre lo sana).
+- **Carpeta nueva `components/settings/`** (§7) — secciones de la pantalla de Ajustes y el aviso de exportación (dominio, no primitiva). Los módulos de servicio `data/sync.ts` y `data/backup.ts` se consumen desde componentes como fachadas equiparables a repositorios — la regla de §2 apunta a Dexie/supabase-js crudos; la auth de la UI pasa por el hook `useAuth` (hallazgo del revisor de estética, corregido).
+- **Indicador monocromo en dos variantes** — texto al pie del aside en escritorio; en móvil, insignia tipográfica (`·`/`!`) posicionada en absoluto en la esquina de la pestaña Ajustes para no mover la etiqueta al aparecer (hallazgo del revisor). El detalle de un error muestra el mensaje técnico como segunda línea atenuada: el único usuario es el propietario-desarrollador y le sirve para diagnosticar.
+- **Aviso de exportación** — salta pasados 30 días lógicos desde `lastExportAt` o, si nunca se exportó, desde el `createdOn` más antiguo; vive al final del registro diario con el molde sobrio de FrozenDayBanner.
+- **`.env` creado por el agente con marcadores** — la protección de `settings.json` deniega leer `.env*`, así que se escribió a ciegas y el propietario pegó los valores; `getSupabaseClient` exige que la URL empiece por `https://` para que los marcadores no rompan la app (modo solo-local limpio).
 
 ---
 
@@ -88,12 +104,24 @@ Lo que se ha dejado a medias a propósito, para no olvidarlo.
 - `public/favicon.svg` es provisional; los iconos y el manifest definitivos llegan con la PWA en la Fase 5.
 - El gesto táctil del drag & drop no se pudo simular en el navegador de verificación (los eventos sintéticos no disparan los sensores de @dnd-kit); la persistencia del reorden sí está verificada de extremo a extremo. El gesto queda cubierto por la prueba manual del propietario en iPhone y PC.
 - ~~`src/logic/smoke.test.ts` es un test de humo provisional~~ — saldada en la Fase 1: sustituido por `logic/dates.test.ts` y `logic/stats.test.ts` (51 tests).
+- (Fase 2) La insignia móvil del indicador lleva `aria-hidden` y el aside no existe en móvil: el estado de sincronización es invisible para lectores de pantalla en iPhone. Asumido (usuario único vidente); revisar en la Fase 5 si el repaso de accesibilidad lo pide.
+- (Fase 2) El bundle pasa de 500 KB minificados por supabase-js (~190 KB gzip en total). Sin partir por ahora; si el arranque en el iPhone se nota, se trocea en la Fase 5.
+- (Fase 2) El modo avión no se pudo simular en el navegador de verificación (sin control del DevTools de red); la retención y el reintento están cubiertos por los tests de integración y el criterio de aceptación lo prueba el propietario en el iPhone.
+- (Fase 2) La adopción inicial multi-dispositivo (dos dispositivos sembrados de forma independiente en la Fase 1) no tiene tooling en la app: se resuelve una sola vez a mano — `truncate` de las tablas, el dispositivo fuente sincroniza primero y el otro borra antes sus datos de sitio. Fuera del alcance de la fase; si algún día hiciera falta de nuevo, el export/import JSON cubre el caso.
 
 ---
 
 ## Registro de sesiones
 
 Una entrada por sesión: fecha, fase, qué se hizo, qué quedó pendiente.
+
+### 2026-07-24 — Fase 2 (construcción completa)
+- Plan de la fase diseñado con exploración previa y agente arquitecto; dos agujeros de convergencia detectados en el diseño y cerrados: trigger `lww_guard` en el servidor (un dispositivo rezagado no pisa filas más nuevas) y read-back tras cada push (el perdedor de la guardia se corrige a sí mismo).
+- `supabase/schema.sql` y `policies.sql`: 6 tablas espejo con `updated_at` (ms del cliente), `deleted_at`, `synced_at` estampado por trigger, índices keyset y RLS por `user_id`. El propietario creó el proyecto, ejecutó el SQL y pegó las claves en el `.env` durante la propia sesión.
+- Capa local: Dexie `version(2)` (outbox + syncMeta) cuya migración encola todo el historial de la Fase 1; repositorios y semilla encolan en la misma transacción de cada escritura; `settingsRepo` nuevo.
+- `logic/sync.ts` y `logic/backup.ts` (funciones puras con 22 tests) y `data/sync.ts`: motor single-flight con coalescencia por snapshot, push por lotes con read-back, pull keyset paginado con cursor transaccional, siembra pospuesta, guardia de cambio de cuenta, debounce/online/visibilidad/backoff. 19 tests de integración sobre fake-indexeddb con un backend falso que modela la guardia del servidor. Suite total: 98 en verde; build limpio.
+- UI: página de Ajustes real (login de usuario único sin registro, estado detallado con reintento, exportar/importar JSON con confirmación en línea de dos pasos), indicador monocromo (aside + insignia en la pestaña móvil), aviso de exportación a los 30 días en el registro diario. Revisor de estética pasado: color impecable; su bloqueante (componente hablando con supabase-js) y 3 menores corregidos en el momento.
+- Verificado en navegador: modo sin claves («Solo local», siembra inmediata, export con estampado) y modo con claves sin sesión («Sin sesión», formulario). Pendiente: verificación autenticada (el propietario debe teclear su contraseña), limpieza de la cuenta, Vercel §4 y aceptación PC ↔ iPhone con la coreografía de adopción anotada en *Bloqueos*.
 
 ### 2026-07-23 — Cierre de las Fases 0 y 1
 - El propietario confirma ambos criterios de aceptación: la URL de Vercel abre y navega en el iPhone (Fase 0) y el registro diario está probado y dado por bueno (Fase 1, cerrada el mismo día de su construcción por decisión suya, sin esperar las tres noches; cualquier fallo posterior se tratará como incidencia). Todo subido a GitHub.
