@@ -7,7 +7,7 @@ Es lo que permite que una instancia nueva sepa dónde estamos sin releer todo el
 
 ## Estado actual
 
-**Fase en curso:** Fase 2 — Supabase y sincronización. Construida al completo (98 tests en verde, build limpio, revisor de estética pasado y sus hallazgos aplicados). Pendiente: verificación autenticada contra el Supabase real (necesita que el propietario teclee su contraseña en el navegador), variables en Vercel (SETUP §4) y prueba de aceptación PC ↔ iPhone.
+**Fase en curso:** ninguna en esta sesión. La Fase 2 está **construida al completo** (98 tests en verde, build limpio, revisor de estética pasado y aplicado, código en GitHub) pero **bloqueada en su cierre** por las acciones manuales del propietario listadas en *Bloqueos*. **Por decisión del propietario (2026-07-24), la Fase 3 arranca en sesión nueva sin esperar ese cierre** — excepción consciente a la regla del ROADMAP («no se empieza una fase sin cerrar la anterior»), con los riesgos anotados en *Bloqueos*.
 **Última fase cerrada:** Fase 1 — Registro diario en local (2026-07-23)
 **Última actualización:** 2026-07-24
 
@@ -19,7 +19,7 @@ Es lo que permite que una instancia nueva sepa dónde estamos sin releer todo el
 |---|---|---|---|
 | 0 — Esqueleto y despliegue | **Cerrada** | 2026-07-23 | Repo `dg-alejandro/habit-tracker` + Vercel; el propietario confirma que la URL navega en el iPhone |
 | 1 — Registro diario en local | **Cerrada** | 2026-07-23 | Probada y dada por buena por el propietario el mismo día de su construcción (decisión suya, sin esperar las tres noches) |
-| 2 — Supabase y sincronización | En curso | | |
+| 2 — Supabase y sincronización | **Bloqueada** (construida; cierre pendiente del propietario) | | Código completo y en GitHub; ver *Bloqueos* |
 | 3 — Rachas y estadísticas | Pendiente | | |
 | 4 — Planificador semanal | Pendiente | | |
 | 5 — Pulido y PWA | Pendiente | | |
@@ -34,7 +34,7 @@ Una fase solo pasa a *Cerrada* cuando yo he probado su criterio de aceptación y
 
 Si hace falta una acción manual mía, anótala aquí y para.
 
-- **Cierre de la Fase 2 (acciones del propietario):** (1) iniciar sesión en el navegador de verificación para la prueba autenticada; (2) limpiar la cuenta con un `truncate` de las 6 tablas antes de adoptar el dispositivo fuente (el navegador de pruebas habrá subido datos de relleno); (3) pegar las dos variables en Vercel y redesplegar (SETUP.md §4); (4) coreografía de adopción: el dispositivo cuyos datos de la Fase 1 se conservan sincroniza primero; el otro borra antes sus datos de sitio; (5) prueba de aceptación PC ↔ iPhone con modo avión.
+- **Cierre de la Fase 2 (acciones del propietario, aplazadas por decisión suya el 2026-07-24):** (1) iniciar sesión con su contraseña en un navegador con la app para la verificación autenticada — **el adaptador real de Supabase (`supabaseBackend`) es la única pieza sin red de tests y sigue sin ejercitarse contra el servidor real**; (2) limpiar la cuenta con `truncate table public.habits, public.entries, public.frozen_ranges, public.planner_tasks, public.task_templates, public.settings;` si algún navegador de pruebas subió datos de relleno; (3) pegar `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` en Vercel y redesplegar (SETUP.md §4); (4) coreografía de adopción única: el dispositivo cuyos datos de la Fase 1 se conservan sincroniza PRIMERO; el otro borra antes sus datos de sitio (iPhone: Ajustes → Apps → Safari → Avanzado → Datos de sitios web → eliminar `vercel.app`) — sin esto habrá hábitos duplicados; (5) prueba de aceptación PC ↔ iPhone con modo avión (ROADMAP Fase 2). Riesgo asumido al aplazar: si la verificación destapa un fallo del adaptador, se corregirá con la Fase 3 ya construida encima; cuanto más historial se acumule antes de la adopción, más engorrosa será.
 - ~~Antes de la Fase 2: proyecto de Supabase y claves (SETUP.md §2)~~ — hecho el 2026-07-24: proyecto creado, claves en el `.env` local y SQL de §3 ejecutado por el propietario.
 
 ---
@@ -122,6 +122,7 @@ Una entrada por sesión: fecha, fase, qué se hizo, qué quedó pendiente.
 - `logic/sync.ts` y `logic/backup.ts` (funciones puras con 22 tests) y `data/sync.ts`: motor single-flight con coalescencia por snapshot, push por lotes con read-back, pull keyset paginado con cursor transaccional, siembra pospuesta, guardia de cambio de cuenta, debounce/online/visibilidad/backoff. 19 tests de integración sobre fake-indexeddb con un backend falso que modela la guardia del servidor. Suite total: 98 en verde; build limpio.
 - UI: página de Ajustes real (login de usuario único sin registro, estado detallado con reintento, exportar/importar JSON con confirmación en línea de dos pasos), indicador monocromo (aside + insignia en la pestaña móvil), aviso de exportación a los 30 días en el registro diario. Revisor de estética pasado: color impecable; su bloqueante (componente hablando con supabase-js) y 3 menores corregidos en el momento.
 - Verificado en navegador: modo sin claves («Solo local», siembra inmediata, export con estampado) y modo con claves sin sesión («Sin sesión», formulario). Pendiente: verificación autenticada (el propietario debe teclear su contraseña), limpieza de la cuenta, Vercel §4 y aceptación PC ↔ iPhone con la coreografía de adopción anotada en *Bloqueos*.
+- Al final de la sesión, el propietario decide **aplazar el cierre de la Fase 2 y arrancar la Fase 3 en sesión nueva** sin esperar la verificación autenticada ni la aceptación. Fase 2 → *Bloqueada*; excepción a la regla del ROADMAP y riesgos anotados en *Bloqueos*. Los pasos aplazados quedan escritos ahí y en SETUP.md §4.
 
 ### 2026-07-23 — Cierre de las Fases 0 y 1
 - El propietario confirma ambos criterios de aceptación: la URL de Vercel abre y navega en el iPhone (Fase 0) y el registro diario está probado y dado por bueno (Fase 1, cerrada el mismo día de su construcción por decisión suya, sin esperar las tres noches; cualquier fallo posterior se tratará como incidencia). Todo subido a GitHub.
