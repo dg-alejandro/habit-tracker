@@ -281,6 +281,17 @@ describe('computeWeeklySeries', () => {
     expect(points[11]?.percentage).toBe(50)
   })
 
+  it('la ventana de 12 semanas cruza el año con ids correctos', () => {
+    const points = computeWeeklySeries({
+      habits: [habit({ id: 'a' })],
+      entries: [],
+      frozenRanges: [],
+      today: '2026-01-15',
+    })
+    expect(points[0]?.id).toBe('2025-W44')
+    expect(points[11]?.id).toBe('2026-W03')
+  })
+
   it('una semana totalmente congelada o anterior a la creación vale null', () => {
     const points = computeWeeklySeries({
       ...base,
@@ -308,6 +319,17 @@ describe('computeMonthlySeries', () => {
     expect(points[11]?.id).toBe('2026-07')
     expect(points[11]?.percentage).toBe(100) // 23 de 23 días transcurridos
     expect(points[10]?.percentage).toBe(0) // junio completo sin registros
+  })
+
+  it('un mes entero congelado vale null en la serie mensual', () => {
+    const points = computeMonthlySeries({
+      habits: [habit({ id: 'a' })],
+      entries: [],
+      frozenRanges: [range('2026-06-01', '2026-06-30')],
+      today: TODAY,
+    })
+    expect(points[10]?.id).toBe('2026-06')
+    expect(points[10]?.percentage).toBeNull()
   })
 
   it('los meses anteriores a la creación del hábito valen null', () => {

@@ -160,11 +160,15 @@ export function computeGlobalStreak(input: GlobalStreakInput): StreakResult {
   const start = createdOns[0]
   if (start === undefined || start > input.today) return emptyStreak()
 
-  const activeIds = new Set(active.map((habit) => habit.id))
+  // El numerador exige que el registro pertenezca a un activo Y sea posterior a
+  // SU alta: un done anterior al createdOn de su hábito no puede inflar un día
+  // en el que ese hábito ni siquiera está en el denominador (hallazgo del revisor).
+  const createdById = new Map(active.map((habit) => [habit.id, habit.createdOn]))
   const doneByDay = new Map<IsoDate, Set<string>>()
   for (const entry of input.entries) {
-    if (!entry.done || !activeIds.has(entry.habitId)) continue
-    if (entry.date < start || entry.date > input.today) continue
+    if (!entry.done) continue
+    const created = createdById.get(entry.habitId)
+    if (created === undefined || entry.date < created || entry.date > input.today) continue
     const set = doneByDay.get(entry.date)
     if (set === undefined) doneByDay.set(entry.date, new Set([entry.habitId]))
     else set.add(entry.habitId)

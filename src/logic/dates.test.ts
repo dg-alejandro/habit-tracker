@@ -334,6 +334,12 @@ describe('daysOfMonth', () => {
     expect(days[0]).toBe('2028-02-01')
     expect(days[28]).toBe('2028-02-29')
   })
+
+  it('diciembre cruza al año siguiente sin perder días', () => {
+    const days = daysOfMonth('2026-12')
+    expect(days).toHaveLength(31)
+    expect(days[30]).toBe('2026-12-31')
+  })
 })
 
 describe('formatMonthShortEs', () => {

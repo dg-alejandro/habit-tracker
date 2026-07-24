@@ -202,7 +202,11 @@ export interface GlobalHeatmapInput {
   year: number
 }
 
-/** Se evalúa umbral antes que los tramos fijos: ningún umbral crea rangos vacíos. */
+/**
+ * El umbral se evalúa antes que los tramos fijos: el nivel 4 (día logrado)
+ * nunca queda vacío. Con umbrales < 0.5 algún tramo intermedio puede quedar
+ * sin uso; irrelevante en la práctica (la UI limita el ajuste a 50–100 %).
+ */
 function heatLevel(ratio: number, threshold: number): HeatLevel {
   if (ratio === 0) return 0
   if (ratio >= threshold) return 4
@@ -215,11 +219,15 @@ function heatLevel(ratio: number, threshold: number): HeatLevel {
 export function computeGlobalHeatmap(input: GlobalHeatmapInput): GlobalHeatmapDay[] {
   const active = input.habits.filter((habit) => habit.archivedAt === null)
   const createdOns = active.map((habit) => habit.createdOn).sort()
-  const activeIds = new Set(active.map((habit) => habit.id))
 
+  // Igual que en computeGlobalStreak: un done anterior al alta de su hábito
+  // no entra al numerador (ese hábito no está en el denominador de ese día).
+  const createdById = new Map(active.map((habit) => [habit.id, habit.createdOn]))
   const doneByDay = new Map<IsoDate, Set<string>>()
   for (const entry of input.entries) {
-    if (!entry.done || !activeIds.has(entry.habitId)) continue
+    if (!entry.done) continue
+    const created = createdById.get(entry.habitId)
+    if (created === undefined || entry.date < created) continue
     const set = doneByDay.get(entry.date)
     if (set === undefined) doneByDay.set(entry.date, new Set([entry.habitId]))
     else set.add(entry.habitId)

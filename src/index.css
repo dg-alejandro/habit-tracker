@@ -25,6 +25,30 @@
   }
 }
 
+/*
+ * Caída del número al romperse una racha (CLAUDE.md §6: debe doler).
+ * El 0 rojo cae con un pequeño rebote al entrar en pantalla.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes streak-fall {
+    from {
+      transform: translateY(-0.4em);
+      opacity: 0;
+    }
+    60% {
+      transform: translateY(0.06em);
+      opacity: 1;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+  .streak-fall {
+    animation: streak-fall 500ms cubic-bezier(0.34, 0.1, 0.64, 1.4) both;
+  }
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .check-box {
     transition:

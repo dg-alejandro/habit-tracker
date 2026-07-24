@@ -162,6 +162,15 @@ describe('computeHabitStreak — racha diaria estricta', () => {
     expect(result.isRecord).toBe(false)
   })
 
+  it('congelar retroactivamente sobre la mejor racha la encoge (récord recalculado, asumido)', () => {
+    // Decisión anotada en PROGRESO: los récords se recalculan del historial,
+    // y un día congelado se salta aunque estuviera cumplido.
+    const entries = doneOn('a', ['2026-06-01', '2026-06-02', '2026-06-03', '2026-06-04', '2026-06-05'])
+    expect(habitStreak({ entries }).record).toBe(5)
+    const shrunk = habitStreak({ entries, frozenRanges: [range('2026-06-03', '2026-06-04')] })
+    expect(shrunk.record).toBe(3) // 01, 02 y 05 encadenan a través del rango
+  })
+
   it('superar el récord histórico lo actualiza y marca isRecord', () => {
     const june = ['2026-06-01', '2026-06-02', '2026-06-03', '2026-06-04', '2026-06-05']
     const july = ['2026-07-18', '2026-07-19', '2026-07-20', '2026-07-21', '2026-07-22', TODAY]
@@ -392,6 +401,28 @@ describe('computeGlobalStreak — racha global por umbral', () => {
     expect(result.current).toBe(0)
     expect(result.record).toBe(5)
     expect(result.recentlyBroken).toEqual({ length: 5, brokenOn: '2026-07-20' })
+  })
+
+  it('un registro anterior al alta de su hábito no infla el numerador global', () => {
+    // El 20, b aún no existe: su done fantasma no puede "lograr" ese día.
+    const result = globalStreak({
+      habits: [habit({ id: 'a' }), habit({ id: 'b', createdOn: '2026-07-22' })],
+      entries: [...doneOn('b', ['2026-07-20']), ...doneOn('a', ['2026-07-21'])],
+    })
+    // 20: 0/1 fallo · 21: 1/1 pasa · 22: 0/2 fallo · hoy pendiente.
+    expect(result.record).toBe(1)
+    expect(result.current).toBe(0)
+  })
+
+  it('un hábito dado de alta en pleno rango congelado entra al denominador al descongelar', () => {
+    // b nace el 21, dentro del rango 20-22; el puntero de elegibles se pone
+    // al día en el siguiente día abierto (23) sin perder a b.
+    const result = globalStreak({
+      habits: [habit({ id: 'a' }), habit({ id: 'b', createdOn: '2026-07-21' })],
+      entries: [...doneOn('a', ['2026-07-19', TODAY]), ...doneOn('b', [TODAY])],
+      frozenRanges: [range('2026-07-20', '2026-07-22')],
+    })
+    expect(result.current).toBe(2) // 19 (1/1) y 23 (2/2), cruzando el rango
   })
 
   it('la racha global cruza el cambio de mes y de año', () => {

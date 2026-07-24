@@ -11,6 +11,26 @@ export function getSettings(): Promise<Settings | undefined> {
   return db.settings.get('settings')
 }
 
+/** Fija el umbral de la racha global (0–1), conservando el resto de la fila. */
+export async function setGlobalThreshold(value: number): Promise<void> {
+  if (!Number.isFinite(value) || value <= 0 || value > 1) {
+    throw new Error(`Umbral de racha global inválido: ${value}`)
+  }
+  const now = Date.now()
+  await db.transaction('rw', db.settings, db.outbox, async () => {
+    const current = await db.settings.get('settings')
+    const next: Settings = {
+      id: 'settings',
+      globalThreshold: value,
+      notificationTime: current?.notificationTime ?? null,
+      lastExportAt: current?.lastExportAt ?? null,
+      updatedAt: now,
+    }
+    await db.settings.put(next)
+    await enqueueUpsert('settings', 'settings')
+  })
+}
+
 /** Estampa la última exportación a JSON (el aviso de los 30 días se apaga). */
 export async function markExportedNow(): Promise<void> {
   const now = Date.now()

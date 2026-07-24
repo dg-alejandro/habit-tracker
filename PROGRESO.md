@@ -7,9 +7,9 @@ Es lo que permite que una instancia nueva sepa dónde estamos sin releer todo el
 
 ## Estado actual
 
-**Fase en curso:** Fase 3 — Rachas y estadísticas (en construcción en esta sesión).
+**Fase en curso:** Fase 3 — Rachas y estadísticas: **construida al completo** (179 tests en verde, build limpio, verificada en navegador, ambos revisores pasados y sus hallazgos aplicados). Pendiente solo de la **prueba de aceptación del propietario** (ROADMAP: los tests cubren los casos raros y las cifras cuadran con su historial real).
 **Última fase cerrada:** Fase 2 — Supabase y sincronización (2026-07-24)
-**Última actualización:** 2026-07-24
+**Última actualización:** 2026-07-25
 
 **Fase 4 en paralelo (decisión del propietario, 2026-07-24):** el propietario puede estar construyendo la Fase 4 en una sesión aparte, en un worktree con la rama `fase-4` (segunda excepción a «una fase tras otra»). Esa rama NO se fusiona hasta que la Fase 3 esté en `main`; conflictos previstos al fusionar: este archivo (seguro), `src/logic/dates.ts` + test y `src/routes.tsx` (posibles), `package-lock.json` (improbable).
 
@@ -22,7 +22,7 @@ Es lo que permite que una instancia nueva sepa dónde estamos sin releer todo el
 | 0 — Esqueleto y despliegue | **Cerrada** | 2026-07-23 | Repo `dg-alejandro/habit-tracker` + Vercel; el propietario confirma que la URL navega en el iPhone |
 | 1 — Registro diario en local | **Cerrada** | 2026-07-23 | Probada y dada por buena por el propietario el mismo día de su construcción (decisión suya, sin esperar las tres noches) |
 | 2 — Supabase y sincronización | **Cerrada** | 2026-07-24 | El propietario confirma completado su checklist de *Bloqueos* («mi parte está hecha»): verificación autenticada, Vercel y prueba PC ↔ iPhone |
-| 3 — Rachas y estadísticas | En curso | | |
+| 3 — Rachas y estadísticas | En curso (construida; aceptación pendiente) | | Código completo y en GitHub; falta que el propietario compruebe sus cifras reales |
 | 4 — Planificador semanal | Pendiente | | |
 | 5 — Pulido y PWA | Pendiente | | |
 | 6 — Notificación (opcional) | Pendiente | | |
@@ -96,6 +96,20 @@ Toda decisión no especificada en `CLAUDE.md` se anota aquí con una línea de j
 - **Indicador monocromo en dos variantes** — texto al pie del aside en escritorio; en móvil, insignia tipográfica (`·`/`!`) posicionada en absoluto en la esquina de la pestaña Ajustes para no mover la etiqueta al aparecer (hallazgo del revisor). El detalle de un error muestra el mensaje técnico como segunda línea atenuada: el único usuario es el propietario-desarrollador y le sirve para diagnosticar.
 - **Aviso de exportación** — salta pasados 30 días lógicos desde `lastExportAt` o, si nunca se exportó, desde el `createdOn` más antiguo; vive al final del registro diario con el molde sobrio de FrozenDayBanner.
 - **`.env` creado por el agente con marcadores** — la protección de `settings.json` deniega leer `.env*`, así que se escribió a ciegas y el propietario pegó los valores; `getSupabaseClient` exige que la URL empiece por `https://` para que los marcadores no rompan la app (modo solo-local limpio).
+- **(Fase 3) Hoy pendiente no rompe** — toda racha se evalúa estricta hasta ayer; hoy suma si ya cumple y sin marcar queda pendiente (el día no cierra hasta las 4:00). En la racha semanal, la semana en curso es tri-estado: `achieved` suma, `pending` (aún alcanzable) ni suma ni rompe, `lost` cae a 0 en cuanto es matemáticamente imposible — sin esperar al domingo («que duela»); rellenar días pasados la resucita al recalcular.
+- **(Fase 3) Récords recalculados, nunca persistidos** — récord = máximo del historial completo (racha actual incluida). Determinista entre dispositivos con LWW y relleno retroactivo. Contrapartida asumida y pinneada con test: congelar retroactivamente sobre la mejor racha, editar el pasado o cambiar el umbral puede REDUCIR un récord.
+- **(Fase 3) Racha global con el estado ACTUAL de archivado, retroactivo** — elegibles de un día = activos hoy con `createdOn <= día` (no hay historial de archivado en el esquema; coherente con el % semanal de la Fase 1). Archivar puede resucitar la racha global pasada; desarchivar reintroduce el hueco como fallos. Los archivados conservan sus rachas en su vista propia.
+- **(Fase 3) Objetivo semanal efectivo `min(weeklyTarget, días elegibles)`** — elegible = no congelado y `>= createdOn`. Semana con 0 elegibles se salta ANTES de comparar (sin el guard, `min(t,0)=0` marcaría lograda una semana entera congelada). En semanas muy congeladas endurece la proporción (2 elegibles → 2/2); la alternativa proporcional se descartó por complejidad.
+- **(Fase 3) Día global sin hábitos elegibles = saltado** — como un congelado: ni suma, ni rompe, ni consume la ventana del aviso.
+- **(Fase 3) Aviso de ruptura solo en rachas diarias** — `recentlyBroken` con racha perdida mínima de 2 días y ventana de 7 días ABIERTOS (los congelados no la consumen: volver de vacaciones aún avisa e invita a rellenar). La semanal comunica con el estado `lost` de la semana en curso. Empatar el récord también marca `isRecord`.
+- **(Fase 3) Empate exacto con el umbral cuenta (`>=` sobre división IEEE)** — y `requiredForThreshold` deriva el «X de N» de Ajustes de la misma comparación (un `ceil(umbral·n)` ingenuo falla con flotantes: `ceil(0.8·15) = 13`, cuando 12/15 ya pasa).
+- **(Fase 3) El numerador global filtra registros anteriores al alta de su hábito** (hallazgo del revisor de rachas) — un `done` fechado antes del `createdOn` de su hábito no infla días en los que ese hábito no está en el denominador (solo alcanzable con datos anómalos: import JSON o carreras de LWW).
+- **(Fase 3) Nivel máximo del heatmap ligado al umbral configurable** — nivel 4 ⟺ día logrado (mismo criterio que la racha global); cambiar el umbral repinta el año entero. Escala: surface → naranja /30 /55 /80 → lime pleno; congelado gris tenue; futuro y pre-historial invisibles.
+- **(Fase 3) Política de capas con archivados** — las funciones solo-globales (`computeGlobalStreak`, `computeGlobalHeatmap`, `computeWeeklyPercentage`) filtran archivados DENTRO; las compartidas (`countCompletionCells`, series) reciben los hábitos ya filtrados por el caller, y así sirven también a la vista por hábito de un archivado («archivar conserva estadísticas»).
+- **(Fase 3) Vista por hábito con estado local** (`selectedHabitId`), sin ruta nueva — lo simple; la lista de la vista global es la puerta de entrada.
+- **(Fase 3) `Stats` con `React.lazy`** — Recharts (94 KB gzip) queda en un chunk aparte que no pesa en el arranque del registro diario nocturno.
+- **(Fase 3) Recharts instalado** — ya estaba elegido en el stack de CLAUDE.md §2; no es dependencia nueva.
+- **(Fase 3) Reparto de los chillones** — racha global en `streak-lime`, récords en `streak-magenta`, % semanal, series y rachas por hábito en `streak-orange`, y `streak-red` SOLO para ruptura (número 0 cayendo con `streak-fall`, banner con borde rojo y semana `lost`).
 
 ---
 
@@ -110,6 +124,9 @@ Lo que se ha dejado a medias a propósito, para no olvidarlo.
 - (Fase 2) El bundle pasa de 500 KB minificados por supabase-js (~190 KB gzip en total). Sin partir por ahora; si el arranque en el iPhone se nota, se trocea en la Fase 5.
 - (Fase 2) El modo avión no se pudo simular en el navegador de verificación (sin control del DevTools de red); la retención y el reintento están cubiertos por los tests de integración y el criterio de aceptación lo prueba el propietario en el iPhone.
 - (Fase 2) La adopción inicial multi-dispositivo (dos dispositivos sembrados de forma independiente en la Fase 1) no tiene tooling en la app: se resuelve una sola vez a mano — `truncate` de las tablas, el dispositivo fuente sincroniza primero y el otro borra antes sus datos de sitio. Fuera del alcance de la fase; si algún día hiciera falta de nuevo, el export/import JSON cubre el caso.
+- (Fase 3) La animación `streak-fall` (el 0 cayendo) no se pudo ver en el navegador de verificación: reporta `prefers-reduced-motion: reduce` y la animación se desactiva a propósito, como las micro-animaciones de la Fase 1. Queda comprobada por CSS computado y pendiente de verse en el iPhone.
+- (Fase 3) Los tooltips de las celdas del heatmap usan `title` + `aria-label` — en iOS no hay hover, así que al toque no se consultan. El color ya cuenta la historia; revisar en la Fase 5 solo si molesta.
+- (Fase 3) Con umbral < 50 % algún tramo intermedio del heatmap quedaría sin uso; irrelevante porque el select de Ajustes limita a 50–100 %.
 
 ---
 
@@ -117,10 +134,14 @@ Lo que se ha dejado a medias a propósito, para no olvidarlo.
 
 Una entrada por sesión: fecha, fase, qué se hizo, qué quedó pendiente.
 
-### 2026-07-24 — Cierre de la Fase 2 · Fase 3 en curso (esta sesión)
+### 2026-07-24/25 — Cierre de la Fase 2 · Fase 3 construida (esta sesión)
 - El propietario confirma completado su checklist de *Bloqueos* de la Fase 2 («mi parte está hecha»): Fase 2 → **Cerrada** sobre esa confirmación, sin re-verificación autenticada del agente (no maneja su contraseña). Push a `origin/main`.
 - Decide además construir la **Fase 4 en paralelo** en otra sesión (worktree, rama `fase-4`, sin push); guía entregada. La fusión, después de que la Fase 3 llegue a `main`.
-- Arranca la construcción de la Fase 3 — rachas y estadísticas. (Esta entrada se completará al cerrar la sesión.)
+- **Fase 3 construida al completo.** Lógica pura con contratos diseñados por agente arquitecto: `logic/streaks.ts` (racha por hábito estricta, global por umbral con barrido de elegibles por `createdOn`, semanal tri-estado, récords recalculados, aviso `recentlyBroken` con ventana de días abiertos), `logic/stats.ts` (núcleo único de celdas que también alimenta el % semanal de la Fase 1 sin cambiar su firma, series semana/mes/año, heatmaps global y por hábito) y helpers nuevos de calendario en `logic/dates.ts`. **179 tests en verde** (81 nuevos) bajo TZ hostil.
+- UI: pantalla de estadísticas completa (vista global y por hábito con estado local, `StreakHero` a `text-8xl`, aviso rojo de ruptura con animación de caída, gráficas Recharts con tokens vía `var(--color-*)`, heatmap anual CSS puro con scroll horizontal y selector de año, historial de notas de aprendizaje agrupado por mes), sección de umbral en Ajustes (monocroma, con «X de N» consistente con la comparación real) y `Stats` en `React.lazy` (Recharts fuera del bundle de arranque).
+- Verificado en navegador (móvil 375 y escritorio) con historial sembrado en IndexedDB y `.env.local` de marcadores para no tocar la cuenta real (borrado al terminar): racha global 21 en lime con récord magenta, heatmap con niveles/congelados/futuro y auto-scroll, series con cruce de año, vista de Aprendizaje con notas, rotura de racha real (0 rojo + «Llevabas 35/19 días») por hábito y global, y el umbral 80→90 % repintando racha y heatmap en vivo.
+- Revisores pasados: estética **0 infracciones**; rachas **sin hallazgos graves** — sus 4 hallazgos menores aplicados en el momento (filtro del numerador global contra registros anteriores al alta, selector de años del heatmap solo con activos, comentario honesto de `heatLevel`, `flex-wrap` en `StreakHero`) más 6 tests nuevos que pinnean esquinas (récord encogido por congelación retroactiva, alta dentro de rango congelado, serie semanal cruzando año…).
+- Pendiente para cerrar la fase: la prueba de aceptación del propietario con su historial real.
 
 ### 2026-07-24 — Fase 2 (construcción completa)
 - Plan de la fase diseñado con exploración previa y agente arquitecto; dos agujeros de convergencia detectados en el diseño y cerrados: trigger `lww_guard` en el servidor (un dispositivo rezagado no pisa filas más nuevas) y read-back tras cada push (el perdedor de la guardia se corrige a sí mismo).
