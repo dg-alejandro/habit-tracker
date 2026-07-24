@@ -7,9 +7,9 @@ Es lo que permite que una instancia nueva sepa dónde estamos sin releer todo el
 
 ## Estado actual
 
-**Fase en curso:** ninguna — Fases 0 y 1 cerradas. La siguiente es la Fase 2 (Supabase y sincronización), que arranca en una sesión nueva (§8: una instancia por fase).
+**Fase en curso:** Fase 2 — Supabase y sincronización (plan aprobado el 2026-07-24; en construcción).
 **Última fase cerrada:** Fase 1 — Registro diario en local (2026-07-23)
-**Última actualización:** 2026-07-23
+**Última actualización:** 2026-07-24
 
 ---
 
@@ -19,7 +19,7 @@ Es lo que permite que una instancia nueva sepa dónde estamos sin releer todo el
 |---|---|---|---|
 | 0 — Esqueleto y despliegue | **Cerrada** | 2026-07-23 | Repo `dg-alejandro/habit-tracker` + Vercel; el propietario confirma que la URL navega en el iPhone |
 | 1 — Registro diario en local | **Cerrada** | 2026-07-23 | Probada y dada por buena por el propietario el mismo día de su construcción (decisión suya, sin esperar las tres noches) |
-| 2 — Supabase y sincronización | Pendiente | | |
+| 2 — Supabase y sincronización | En curso | | |
 | 3 — Rachas y estadísticas | Pendiente | | |
 | 4 — Planificador semanal | Pendiente | | |
 | 5 — Pulido y PWA | Pendiente | | |
