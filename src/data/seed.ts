@@ -2,7 +2,7 @@
  * Semilla inicial: los 14 hábitos precargados de CLAUDE.md §3, en su orden.
  * Su historial empieza el día lógico de la siembra, como cualquier hábito nuevo.
  */
-import { db } from './db'
+import { db as defaultDb, type HabitDb } from './db'
 import { logicalDateOf } from '../logic/dates'
 import { DEFAULT_WEEKLY_TARGET, type Habit, type HabitType } from './types'
 
@@ -31,10 +31,11 @@ const SEED_HABITS: readonly SeedHabit[] = [
 
 /**
  * Siembra los hábitos solo si la tabla está vacía. Idempotente: la transacción
- * serializa el doble disparo del efecto en StrictMode y la segunda pasada no hace nada.
+ * serializa el doble disparo del efecto en StrictMode y la segunda pasada no
+ * hace nada. La base es inyectable solo para los tests de sincronización.
  */
-export async function ensureSeeded(): Promise<void> {
-  await db.transaction('rw', db.habits, async () => {
+export async function ensureSeeded(db: HabitDb = defaultDb): Promise<void> {
+  await db.transaction('rw', db.habits, db.outbox, async () => {
     if ((await db.habits.count()) > 0) return
     const now = Date.now()
     const createdOn = logicalDateOf(new Date())
@@ -53,5 +54,8 @@ export async function ensureSeeded(): Promise<void> {
       return habit
     })
     await db.habits.bulkAdd(habits)
+    await db.outbox.bulkAdd(
+      habits.map((habit) => ({ table: 'habits' as const, rowId: habit.id, op: 'upsert' as const })),
+    )
   })
 }

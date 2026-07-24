@@ -113,3 +113,45 @@ export interface Settings {
   lastExportAt: EpochMs | null
   updatedAt: EpochMs
 }
+
+/* ── Sincronización (Fase 2) ─────────────────────────────────────────────── */
+
+/**
+ * Tablas que sincronizan, en el ORDEN de aplicación de la bajada
+ * (los hábitos aterrizan antes que sus registros).
+ */
+export const SYNC_TABLES = [
+  'habits',
+  'settings',
+  'frozenRanges',
+  'entries',
+  'plannerTasks',
+  'taskTemplates',
+] as const
+
+export type SyncTable = (typeof SYNC_TABLES)[number]
+
+export type OutboxOp = 'upsert' | 'delete'
+
+/**
+ * Cambio local pendiente de subir. Se encola en la MISMA transacción Dexie que
+ * la escritura de la fila; la subida lee la fila viva en el momento del envío.
+ */
+export interface OutboxEntry {
+  /** Autoincremental de Dexie; ausente hasta insertarse. */
+  seq?: number
+  table: SyncTable
+  rowId: string
+  op: OutboxOp
+  /** Solo op='delete': instante del borrado, conservado para reintentos tardíos. */
+  deletedAt?: EpochMs
+}
+
+/** Estado persistente del motor de sincronización (tabla `syncMeta`, clave `id`). */
+export type SyncMetaRow =
+  /** Cursor keyset de bajada por tabla: última fila remota aplicada. */
+  | { id: `cursor:${SyncTable}`; syncedAt: string; rowId: string }
+  /** Usuario con el que se sincronizó por última vez (guardia de cambio de cuenta). */
+  | { id: 'account'; userId: string }
+  /** Marca de la primera bajada completa con sesión (habilita la siembra pospuesta). */
+  | { id: 'firstPull'; at: EpochMs }

@@ -3,6 +3,7 @@
  * sobre el índice único [habitId+date]: una fila por hábito y día, siempre.
  */
 import { db } from '../db'
+import { enqueueUpsert } from '../outbox'
 import type { IsoDate } from '../../logic/dates'
 import { isCounterFulfilled } from '../../logic/stats'
 import type { DayEntry } from '../types'
@@ -83,7 +84,7 @@ async function upsertEntry(
   date: IsoDate,
   mutate: (current: DayEntry | undefined) => EntryFields,
 ): Promise<void> {
-  await db.transaction('rw', db.entries, async () => {
+  await db.transaction('rw', db.entries, db.outbox, async () => {
     const current = await db.entries.where('[habitId+date]').equals([habitId, date]).first()
     const next: DayEntry = {
       id: current?.id ?? crypto.randomUUID(),
@@ -93,6 +94,7 @@ async function upsertEntry(
       updatedAt: Date.now(),
     }
     await db.entries.put(next)
+    await enqueueUpsert('entries', next.id)
   })
 }
 

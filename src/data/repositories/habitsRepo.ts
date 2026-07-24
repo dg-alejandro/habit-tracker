@@ -3,6 +3,7 @@
  * ellos mismos: la regla de inyección de tiempo solo ata a `src/logic/`.
  */
 import { db } from '../db'
+import { enqueueUpsert } from '../outbox'
 import { logicalDateOf } from '../../logic/dates'
 import { DEFAULT_WEEKLY_TARGET, type Habit, type HabitType } from '../types'
 
@@ -37,7 +38,7 @@ export function createHabit(input: CreateHabitInput): Promise<Habit> {
   if (input.type !== 'check' && (input.targetMinutes === undefined || input.targetMinutes <= 0)) {
     throw new Error('Un contador necesita un objetivo en minutos mayor que cero')
   }
-  return db.transaction('rw', db.habits, async () => {
+  return db.transaction('rw', db.habits, db.outbox, async () => {
     const habit: Habit = {
       id: crypto.randomUUID(),
       name: input.name.trim(),
@@ -52,6 +53,7 @@ export function createHabit(input: CreateHabitInput): Promise<Habit> {
       habit.targetMinutes = input.targetMinutes
     }
     await db.habits.add(habit)
+    await enqueueUpsert('habits', habit.id)
     return habit
   })
 }
@@ -61,28 +63,36 @@ export async function updateHabit(id: string, patch: UpdateHabitPatch): Promise<
   if (patch.name !== undefined) changes.name = patch.name.trim()
   if (patch.targetMinutes !== undefined) changes.targetMinutes = patch.targetMinutes
   if (patch.weeklyTarget !== undefined) changes.weeklyTarget = patch.weeklyTarget
-  await db.habits.update(id, changes)
+  await db.transaction('rw', db.habits, db.outbox, async () => {
+    await db.habits.update(id, changes)
+    await enqueueUpsert('habits', id)
+  })
 }
 
 export async function archiveHabit(id: string): Promise<void> {
   const now = Date.now()
-  await db.habits.update(id, { archivedAt: now, updatedAt: now })
+  await db.transaction('rw', db.habits, db.outbox, async () => {
+    await db.habits.update(id, { archivedAt: now, updatedAt: now })
+    await enqueueUpsert('habits', id)
+  })
 }
 
 /** Desarchivar reincorpora el hábito al final de la lista. */
 export async function unarchiveHabit(id: string): Promise<void> {
-  await db.transaction('rw', db.habits, async () => {
+  await db.transaction('rw', db.habits, db.outbox, async () => {
     await db.habits.update(id, { archivedAt: null, order: await nextOrder(), updatedAt: Date.now() })
+    await enqueueUpsert('habits', id)
   })
 }
 
 /** Fija el orden 0..n-1 según la lista recibida (solo activos; los archivados conservan el suyo). */
 export async function reorderHabits(orderedActiveIds: readonly string[]): Promise<void> {
   const now = Date.now()
-  await db.transaction('rw', db.habits, async () => {
+  await db.transaction('rw', db.habits, db.outbox, async () => {
     await Promise.all(
       orderedActiveIds.map((id, index) => db.habits.update(id, { order: index, updatedAt: now })),
     )
+    await Promise.all(orderedActiveIds.map((id) => enqueueUpsert('habits', id)))
   })
 }
 

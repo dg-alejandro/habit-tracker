@@ -3,6 +3,7 @@
  * cae dentro de ALGÚN rango (la comprobación pura vive en logic/dates.ts).
  */
 import { db } from '../db'
+import { enqueueDelete, enqueueUpsert } from '../outbox'
 import type { IsoDate } from '../../logic/dates'
 import type { FrozenRange } from '../types'
 
@@ -27,12 +28,18 @@ export async function createFrozenRange(
   }
   const trimmed = note?.trim()
   if (trimmed !== undefined && trimmed !== '') range.note = trimmed
-  await db.frozenRanges.add(range)
+  await db.transaction('rw', db.frozenRanges, db.outbox, async () => {
+    await db.frozenRanges.add(range)
+    await enqueueUpsert('frozenRanges', range.id)
+  })
   return range
 }
 
 export async function deleteFrozenRange(id: string): Promise<void> {
-  await db.frozenRanges.delete(id)
+  await db.transaction('rw', db.frozenRanges, db.outbox, async () => {
+    await db.frozenRanges.delete(id)
+    await enqueueDelete('frozenRanges', id, Date.now())
+  })
 }
 
 /** Congelar un día suelto = rango de un solo día. */
@@ -45,7 +52,7 @@ export function freezeDay(date: IsoDate): Promise<FrozenRange> {
  * si no había ninguno: si el día lo cubre un rango mayor, se gestiona desde /habitos.
  */
 export function unfreezeExactDay(date: IsoDate): Promise<boolean> {
-  return db.transaction('rw', db.frozenRanges, async () => {
+  return db.transaction('rw', db.frozenRanges, db.outbox, async () => {
     const exact = await db.frozenRanges
       .where('startDate')
       .equals(date)
@@ -53,6 +60,8 @@ export function unfreezeExactDay(date: IsoDate): Promise<boolean> {
       .toArray()
     if (exact.length === 0) return false
     await db.frozenRanges.bulkDelete(exact.map((range) => range.id))
+    const deletedAt = Date.now()
+    await Promise.all(exact.map((range) => enqueueDelete('frozenRanges', range.id, deletedAt)))
     return true
   })
 }
