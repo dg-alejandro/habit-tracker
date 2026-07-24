@@ -7,9 +7,11 @@ Es lo que permite que una instancia nueva sepa dónde estamos sin releer todo el
 
 ## Estado actual
 
-**Fase en curso:** ninguna en esta sesión. La Fase 2 está **construida al completo** (98 tests en verde, build limpio, revisor de estética pasado y aplicado, código en GitHub) pero **bloqueada en su cierre** por las acciones manuales del propietario listadas en *Bloqueos*. **Por decisión del propietario (2026-07-24), la Fase 3 arranca en sesión nueva sin esperar ese cierre** — excepción consciente a la regla del ROADMAP («no se empieza una fase sin cerrar la anterior»), con los riesgos anotados en *Bloqueos*.
-**Última fase cerrada:** Fase 1 — Registro diario en local (2026-07-23)
+**Fase en curso:** Fase 3 — Rachas y estadísticas (en construcción en esta sesión).
+**Última fase cerrada:** Fase 2 — Supabase y sincronización (2026-07-24)
 **Última actualización:** 2026-07-24
+
+**Fase 4 en paralelo (decisión del propietario, 2026-07-24):** el propietario puede estar construyendo la Fase 4 en una sesión aparte, en un worktree con la rama `fase-4` (segunda excepción a «una fase tras otra»). Esa rama NO se fusiona hasta que la Fase 3 esté en `main`; conflictos previstos al fusionar: este archivo (seguro), `src/logic/dates.ts` + test y `src/routes.tsx` (posibles), `package-lock.json` (improbable).
 
 ---
 
@@ -19,8 +21,8 @@ Es lo que permite que una instancia nueva sepa dónde estamos sin releer todo el
 |---|---|---|---|
 | 0 — Esqueleto y despliegue | **Cerrada** | 2026-07-23 | Repo `dg-alejandro/habit-tracker` + Vercel; el propietario confirma que la URL navega en el iPhone |
 | 1 — Registro diario en local | **Cerrada** | 2026-07-23 | Probada y dada por buena por el propietario el mismo día de su construcción (decisión suya, sin esperar las tres noches) |
-| 2 — Supabase y sincronización | **Bloqueada** (construida; cierre pendiente del propietario) | | Código completo y en GitHub; ver *Bloqueos* |
-| 3 — Rachas y estadísticas | Pendiente | | |
+| 2 — Supabase y sincronización | **Cerrada** | 2026-07-24 | El propietario confirma completado su checklist de *Bloqueos* («mi parte está hecha»): verificación autenticada, Vercel y prueba PC ↔ iPhone |
+| 3 — Rachas y estadísticas | En curso | | |
 | 4 — Planificador semanal | Pendiente | | |
 | 5 — Pulido y PWA | Pendiente | | |
 | 6 — Notificación (opcional) | Pendiente | | |
@@ -34,7 +36,7 @@ Una fase solo pasa a *Cerrada* cuando yo he probado su criterio de aceptación y
 
 Si hace falta una acción manual mía, anótala aquí y para.
 
-- **Cierre de la Fase 2 (acciones del propietario, aplazadas por decisión suya el 2026-07-24):** (1) iniciar sesión con su contraseña en un navegador con la app para la verificación autenticada — **el adaptador real de Supabase (`supabaseBackend`) es la única pieza sin red de tests y sigue sin ejercitarse contra el servidor real**; (2) limpiar la cuenta con `truncate table public.habits, public.entries, public.frozen_ranges, public.planner_tasks, public.task_templates, public.settings;` si algún navegador de pruebas subió datos de relleno; (3) pegar `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` en Vercel y redesplegar (SETUP.md §4); (4) coreografía de adopción única: el dispositivo cuyos datos de la Fase 1 se conservan sincroniza PRIMERO; el otro borra antes sus datos de sitio (iPhone: Ajustes → Apps → Safari → Avanzado → Datos de sitios web → eliminar `vercel.app`) — sin esto habrá hábitos duplicados; (5) prueba de aceptación PC ↔ iPhone con modo avión (ROADMAP Fase 2). Riesgo asumido al aplazar: si la verificación destapa un fallo del adaptador, se corregirá con la Fase 3 ya construida encima; cuanto más historial se acumule antes de la adopción, más engorrosa será.
+- ~~Cierre de la Fase 2 (acciones del propietario)~~ — **hecho el 2026-07-24**: el propietario confirma su checklist completo («mi parte está hecha»): verificación autenticada en navegador, limpieza de la cuenta si procedía, variables en Vercel, coreografía de adopción y prueba PC ↔ iPhone. La fase se cierra sobre esa confirmación (el criterio de aceptación lo prueba él, según ROADMAP); el adaptador real de Supabase queda ejercitado por su uso real, sin re-verificación del agente (no maneja su contraseña).
 - ~~Antes de la Fase 2: proyecto de Supabase y claves (SETUP.md §2)~~ — hecho el 2026-07-24: proyecto creado, claves en el `.env` local y SQL de §3 ejecutado por el propietario.
 
 ---
@@ -114,6 +116,11 @@ Lo que se ha dejado a medias a propósito, para no olvidarlo.
 ## Registro de sesiones
 
 Una entrada por sesión: fecha, fase, qué se hizo, qué quedó pendiente.
+
+### 2026-07-24 — Cierre de la Fase 2 · Fase 3 en curso (esta sesión)
+- El propietario confirma completado su checklist de *Bloqueos* de la Fase 2 («mi parte está hecha»): Fase 2 → **Cerrada** sobre esa confirmación, sin re-verificación autenticada del agente (no maneja su contraseña). Push a `origin/main`.
+- Decide además construir la **Fase 4 en paralelo** en otra sesión (worktree, rama `fase-4`, sin push); guía entregada. La fusión, después de que la Fase 3 llegue a `main`.
+- Arranca la construcción de la Fase 3 — rachas y estadísticas. (Esta entrada se completará al cerrar la sesión.)
 
 ### 2026-07-24 — Fase 2 (construcción completa)
 - Plan de la fase diseñado con exploración previa y agente arquitecto; dos agujeros de convergencia detectados en el diseño y cerrados: trigger `lww_guard` en el servidor (un dispositivo rezagado no pisa filas más nuevas) y read-back tras cada push (el perdedor de la guardia se corrige a sí mismo).
