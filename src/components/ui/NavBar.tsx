@@ -1,4 +1,5 @@
 import { NavLink } from 'react-router'
+import { SyncIndicator } from './SyncIndicator'
 
 interface Section {
   to: string
@@ -36,6 +37,7 @@ export function NavBar() {
               }
             >
               {section.short}
+              {section.to === '/ajustes' && <SyncIndicator variant="tab" />}
             </NavLink>
           ))}
         </div>
@@ -60,6 +62,7 @@ export function NavBar() {
             {section.full}
           </NavLink>
         ))}
+        <SyncIndicator variant="aside" />
       </aside>
     </>
   )

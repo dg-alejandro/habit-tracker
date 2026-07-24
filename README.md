@@ -25,7 +25,9 @@ Requiere Node 20 o superior.
 
 ## Variables de entorno
 
-Copiar `.env.example` a `.env` y rellenar las claves de Supabase (a partir de la Fase 2; ver `SETUP.md` §2). El `.env` nunca se sube al repositorio.
+Copiar `.env.example` a `.env` y rellenar las claves de Supabase (`SETUP.md` §2). El `.env` nunca se sube al repositorio.
+
+Sin claves, la app funciona 100 % en local (IndexedDB); con ellas, sincroniza entre dispositivos: sesión con email y contraseña en **Ajustes** (usuario único creado a mano en el panel de Supabase, sin registro), subida en segundo plano y bajada al arrancar o al volver a la pestaña. La copia de seguridad se exporta e importa en JSON desde **Ajustes** — es el único respaldo: el plan gratuito de Supabase no hace copias.
 
 ## Despliegue
 

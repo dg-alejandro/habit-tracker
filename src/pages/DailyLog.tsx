@@ -3,8 +3,10 @@ import { DayNavigator } from '../components/habits/DayNavigator'
 import { FrozenDayBanner } from '../components/habits/FrozenDayBanner'
 import { HabitRow } from '../components/habits/HabitRow'
 import { WeeklyHeader } from '../components/habits/WeeklyHeader'
+import { ExportReminderBanner } from '../components/ui/ExportReminderBanner'
 import { freezeDay } from '../data/repositories/frozenRepo'
 import { useEntriesForDate } from '../hooks/useEntries'
+import { useExportReminder } from '../hooks/useExportReminder'
 import { useFrozenRanges } from '../hooks/useFrozenRanges'
 import { useActiveHabits } from '../hooks/useHabits'
 import { useLogicalToday } from '../hooks/useLogicalToday'
@@ -23,6 +25,7 @@ export function DailyLog() {
   const entries = useEntriesForDate(viewDate)
   const ranges = useFrozenRanges()
   const weeklyPercent = useWeeklyPercentage(today)
+  const exportReminder = useExportReminder()
 
   const loading = habits === undefined || entries === undefined || ranges === undefined
   const frozen = ranges !== undefined && isDateFrozen(viewDate, ranges)
@@ -69,6 +72,8 @@ export function DailyLog() {
           </button>
         </div>
       )}
+
+      {exportReminder && <ExportReminderBanner />}
     </div>
   )
 }

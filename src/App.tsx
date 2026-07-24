@@ -2,12 +2,13 @@ import { useEffect } from 'react'
 import { BrowserRouter } from 'react-router'
 import { AppRoutes } from './routes'
 import { NavBar } from './components/ui/NavBar'
-import { ensureSeeded } from './data/seed'
+import { startSync } from './data/sync'
 
 export function App() {
-  // Siembra los 14 hábitos la primera vez; useLiveQuery re-emite cuando aterrizan.
+  // Arranca la sincronización (bajada inicial, subida en segundo plano) y la
+  // siembra: inmediata sin Supabase, pospuesta al primer pull con sesión si lo hay.
   useEffect(() => {
-    void ensureSeeded()
+    startSync()
   }, [])
 
   return (
