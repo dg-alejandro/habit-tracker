@@ -1,7 +1,7 @@
 import { useEffect, useState, useSyncExternalStore } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../data/db'
-import { syncStore } from '../data/sync'
+import { requestSyncNow, syncStore } from '../data/sync'
 import { isSupabaseConfigured } from '../data/supabase'
 import { useSession } from './useSession'
 
@@ -14,6 +14,8 @@ export interface SyncState {
   pendingCount: number
   syncing: boolean
   lastError: string | null
+  /** Dispara un ciclo completo a demanda (botón «Reintentar»). */
+  retry: () => void
 }
 
 function useOnline(): boolean {
@@ -45,5 +47,11 @@ export function useSyncStatus(): SyncState {
   else if (pendingCount > 0 || snapshot.syncing || session === undefined) status = 'pending'
   else status = 'synced'
 
-  return { status, pendingCount, syncing: snapshot.syncing, lastError: snapshot.lastError }
+  return {
+    status,
+    pendingCount,
+    syncing: snapshot.syncing,
+    lastError: snapshot.lastError,
+    retry: requestSyncNow,
+  }
 }

@@ -31,7 +31,7 @@ export function NavBar() {
               to={section.to}
               end={section.end}
               className={({ isActive }) =>
-                `flex h-14 items-center justify-center text-xs ${
+                `relative flex h-14 items-center justify-center text-xs ${
                   isActive ? 'font-semibold text-ink' : 'text-ink-soft'
                 }`
               }

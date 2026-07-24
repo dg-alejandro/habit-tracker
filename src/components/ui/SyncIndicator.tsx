@@ -13,8 +13,10 @@ const ASIDE_LABELS: Record<SyncStatus, string> = {
 /**
  * Indicador discreto y monocromo del estado de sincronización (CLAUDE.md §2).
  * - 'aside': línea de texto al pie de la barra lateral de escritorio.
- * - 'tab': marcador tipográfico junto a la etiqueta «Ajustes» del móvil,
- *   solo cuando hay algo que decir; no desplaza el layout.
+ * - 'tab': insignia en la esquina de la pestaña «Ajustes» del móvil, solo
+ *   cuando hay algo que decir. Va en absoluto (la pestaña es `relative`) para
+ *   que su aparición no mueva la etiqueta: el tránsito sincronizado↔pendiente
+ *   ocurre en cada marcado nocturno.
  * El detalle completo vive en /ajustes. Nada de streak-red: el rojo está
  * reservado a la ruptura de rachas (Fase 3).
  */
@@ -27,7 +29,9 @@ export function SyncIndicator({ variant }: { variant: 'aside' | 'tab' }) {
     return (
       <span
         aria-hidden
-        className={`ml-1 font-semibold ${attention ? 'text-ink' : 'text-ink-soft'}`}
+        className={`absolute right-2.5 top-1.5 text-xs font-semibold ${
+          attention ? 'text-ink' : 'text-ink-soft'
+        }`}
       >
         {attention ? '!' : '·'}
       </span>

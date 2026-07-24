@@ -1,6 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { getSupabaseClient } from '../../data/supabase'
-import { requestSyncNow } from '../../data/sync'
+import { useAuth } from '../../hooks/useAuth'
 import { useSession } from '../../hooks/useSession'
 import { useSyncStatus, type SyncStatus } from '../../hooks/useSyncStatus'
 
@@ -17,11 +16,12 @@ const STATUS_DETAIL: Record<SyncStatus, string> = {
 /**
  * Cuenta y estado de sincronización. Usuario único creado a mano en el panel
  * de Supabase: aquí solo hay inicio de sesión, nunca registro (SETUP.md §2).
+ * Todo el acceso a datos pasa por hooks (CLAUDE.md §2).
  */
 export function AuthSection() {
-  const client = getSupabaseClient()
+  const { configured, signIn, signOut } = useAuth()
   const session = useSession()
-  const { status, pendingCount, lastError } = useSyncStatus()
+  const { status, pendingCount, lastError, retry } = useSyncStatus()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -29,21 +29,16 @@ export function AuthSection() {
 
   async function handleLogin(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault()
-    if (client === null || submitting) return
+    if (!configured || submitting) return
     setSubmitting(true)
     setAuthError(null)
-    const { error } = await client.auth.signInWithPassword({ email: email.trim(), password })
+    const result = await signIn(email, password)
     setSubmitting(false)
-    if (error !== null) {
+    if (!result.ok) {
       setAuthError('No se pudo iniciar sesión. Revisa el correo y la contraseña.')
       return
     }
     setPassword('')
-  }
-
-  async function handleLogout(): Promise<void> {
-    if (client === null) return
-    await client.auth.signOut()
   }
 
   const statusLine =
@@ -57,9 +52,9 @@ export function AuthSection() {
         Cuenta y sincronización
       </h2>
 
-      {client === null && <p className="mt-3 text-sm text-ink-soft">{STATUS_DETAIL.disabled}</p>}
+      {!configured && <p className="mt-3 text-sm text-ink-soft">{STATUS_DETAIL.disabled}</p>}
 
-      {client !== null && session === null && (
+      {configured && session === null && (
         <form onSubmit={handleLogin} className="mt-4 flex flex-col gap-3">
           <p className="text-sm text-ink-soft">{STATUS_DETAIL.signedOut}</p>
           <label className="flex flex-col gap-1">
@@ -99,7 +94,7 @@ export function AuthSection() {
         </form>
       )}
 
-      {client !== null && session !== null && session !== undefined && (
+      {configured && session !== null && session !== undefined && (
         <div className="mt-4 flex flex-col gap-3">
           <p className="text-sm text-ink">{session.email ?? 'Sesión iniciada'}</p>
           <p className={`text-sm ${status === 'error' ? 'font-semibold text-ink' : 'text-ink-soft'}`}>
@@ -112,7 +107,7 @@ export function AuthSection() {
             {status === 'error' && (
               <button
                 type="button"
-                onClick={requestSyncNow}
+                onClick={retry}
                 className="h-11 rounded-lg bg-ink px-5 text-sm font-semibold text-paper"
               >
                 Reintentar
@@ -121,7 +116,7 @@ export function AuthSection() {
             <button
               type="button"
               onClick={() => {
-                void handleLogout()
+                void signOut()
               }}
               className="h-11 rounded-lg px-4 text-sm text-ink-soft transition-colors hover:bg-surface hover:text-ink"
             >

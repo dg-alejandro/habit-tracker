@@ -1,7 +1,6 @@
 import { useState, type ChangeEvent } from 'react'
-import { useLiveQuery } from 'dexie-react-hooks'
 import { exportBackup, importBackup } from '../../data/backup'
-import { getSettings } from '../../data/repositories/settingsRepo'
+import { useSettings } from '../../hooks/useSettings'
 import { validateBackup, type BackupFile } from '../../logic/backup'
 import { formatDateEs, logicalDateOf } from '../../logic/dates'
 
@@ -16,7 +15,7 @@ interface PendingImport {
  * La restauración confirma en dos pasos, en línea — sin modales.
  */
 export function BackupSection() {
-  const settings = useLiveQuery(() => getSettings(), [])
+  const settings = useSettings()
   const [pending, setPending] = useState<PendingImport | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)

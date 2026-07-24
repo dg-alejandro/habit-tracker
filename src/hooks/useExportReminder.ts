@@ -1,13 +1,12 @@
-import { useLiveQuery } from 'dexie-react-hooks'
-import { getSettings } from '../data/repositories/settingsRepo'
 import { shouldRemindExport } from '../logic/backup'
 import { useAllHabits } from './useHabits'
 import { useLogicalToday } from './useLogicalToday'
+import { useSettings } from './useSettings'
 
 /** true si toca avisar de que hace >30 días de la última exportación. */
 export function useExportReminder(): boolean {
   const today = useLogicalToday()
-  const settings = useLiveQuery(() => getSettings(), [])
+  const settings = useSettings()
   const habits = useAllHabits()
 
   if (habits === undefined) return false // cargando: sin parpadeo del aviso
