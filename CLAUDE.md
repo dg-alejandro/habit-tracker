@@ -198,6 +198,8 @@ Según §4. Incluye pantalla de gestión de plantillas.
 
 **Excepción deliberada:** las **rachas y todos los datos estadísticos** van en colores chillones y saturados — naranja, verde ácido, magenta. Deben destacar violentamente sobre el fondo neutro. Son el único color de la app, y por eso funcionan.
 
+**Segunda excepción, la del rojo:** el rojo de ruptura aparece también en el planificador, en las tareas arrastradas tres semanas o más (§4). Se reduce a un filete a la izquierda y a una insignia diminuta —el texto de la tarea sigue en blanco—, así que la pantalla se sigue leyendo monocroma y el rojo solo salta cuando hay algo podrido. Escrito aquí para que no se lea como una infracción de la regla anterior.
+
 - Números de racha **enormes**, desproporcionados a propósito.
 - **Al romper una racha: que duela.** Rojo, aviso claro, el número cayendo a cero de forma visible. No lo suavices ni lo escondas: es el mecanismo que hace funcionar la app.
 - Mobile-first: se diseña para el iPhone y se adapta al escritorio, no al revés.

@@ -51,7 +51,12 @@ export function TaskChip({ task, density, onToggle, onOpen, handle }: TaskChipPr
             }`}
           />
         </button>
-        <button type="button" onClick={onOpen} className="min-w-0 flex-1 py-0.5 pr-1 text-left">
+        <button
+          type="button"
+          onClick={onOpen}
+          title={task.text}
+          className="min-w-0 flex-1 py-0.5 pr-1 text-left"
+        >
           <span
             className={`block truncate text-xs leading-tight ${
               task.done ? 'text-ink-faint line-through' : 'text-ink'
