@@ -12,17 +12,32 @@ import {
 import { TaskChip } from './TaskChip'
 import type { IsoWeekday, PlannerTask } from '../../data/types'
 
-/** Alto de un bloque de 30 min. Con la madrugada plegada el día mide 36 filas. */
-export const CELL_PX = 42
+/**
+ * Alto de un bloque de 30 min. Con la madrugada plegada el día mide 36 filas,
+ * o sea ~2600 px: es scroll vertical, como cualquier calendario semanal.
+ *
+ * Lo manda la legibilidad, no la estética: la casilla tiene que dar de sí para
+ * el nombre de la tarea en DOS líneas más su duración debajo (16 px × 2 + 14 px
+ * + aire = 61 px de contenido), porque con siete columnas el nombre no cabe en
+ * una sola. Bajarlo vuelve a recortar los nombres, que es de lo que el
+ * propietario se quejó dos veces.
+ */
+export const CELL_PX = 72
 
 /** Ancho del raíl de horas. */
-export const HOUR_RAIL_WIDTH = '4.25rem'
+export const HOUR_RAIL_WIDTH = '5rem'
 
-/** Alto mínimo de un chip: por debajo deja de poder pulsarse con el dedo. */
-const COMPACT_CHIP_PX = 26
-
-/** A partir de aquí caben dos líneas (nombre y hora); por debajo, solo una. */
-const TWO_LINE_CHIP_PX = 38
+/**
+ * Alto mínimo de un chip: una casilla entera menos el filete.
+ *
+ * No es arbitrario ni cabe subirlo más: la hora de inicio está cuantizada a la
+ * media hora, así que dos chips del MISMO carril están siempre al menos un
+ * bloque separados. Un mínimo de una casilla nunca puede pisar al de abajo, y
+ * uno de dos casillas sí. A cambio, toda tarea —aunque dure 10 minutos— tiene
+ * sitio para su nombre en dos líneas y su duración debajo, que es lo que el
+ * propietario pidió ver. Lo que dura de menos lo dice la etiqueta, no el alto.
+ */
+const MIN_CHIP_PX = CELL_PX - 3
 
 /** Bloque en el que estamos ahora, para pintar la raya de la hora actual. */
 export interface NowMarker {
@@ -95,14 +110,14 @@ export function HourGrid({
   return (
     <section className="mt-12">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 border-b border-line pb-2">
-        <h2 className="font-display text-sm uppercase tracking-[0.2em] text-streak-lime">
+        <h2 className="font-display text-base uppercase tracking-[0.2em] text-streak-lime">
           La semana
         </h2>
         <button
           type="button"
           onClick={onToggleNight}
           aria-expanded={nightOpen}
-          className="flex h-11 items-center gap-2 font-display text-xs uppercase tracking-widest text-ink-soft transition-colors hover:text-ink"
+          className="flex h-11 items-center gap-2 font-display text-sm uppercase tracking-widest text-ink-soft transition-colors hover:text-ink"
         >
           <span>{nightOpen ? '— madrugada' : '+ 00:00–06:00'}</span>
           {!nightOpen && hiddenNight > 0 && (
@@ -121,14 +136,14 @@ export function HourGrid({
           {days.map((day) => (
             <div
               key={`head-${day}`}
-              className={`border-b-2 border-l pb-2 pt-1 text-center font-display uppercase ${
+              className={`border-b-2 border-l pb-3 pt-2 text-center font-display uppercase ${
                 day === todayWeekday
                   ? 'border-b-streak-lime border-l-line bg-streak-lime/10 text-streak-lime'
                   : 'border-b-line border-l-line text-ink-soft'
               }`}
             >
-              <span className="block text-base tracking-[0.2em]">{weekdayShortEs(day)}</span>
-              <span className="block truncate text-xs normal-case tracking-normal text-ink-soft">
+              <span className="block text-lg tracking-[0.2em]">{weekdayShortEs(day)}</span>
+              <span className="block truncate text-sm normal-case tracking-normal text-ink-soft">
                 {formatDateShortEs(dates[day - 1] ?? '')}
               </span>
             </div>
@@ -140,7 +155,7 @@ export function HourGrid({
               block % 2 === 0 ? (
                 <span
                   key={block}
-                  className="absolute right-3 -translate-y-1/2 font-display text-sm tabular-nums text-ink-soft"
+                  className="absolute right-3 -translate-y-1/2 font-display text-base tabular-nums text-ink-soft"
                   style={{ top: (block - firstBlock) * CELL_PX }}
                 >
                   {blockLabel(block)}
@@ -189,14 +204,14 @@ export function HourGrid({
 
                 {placements.map((placement) => {
                   const height = Math.max(
-                    COMPACT_CHIP_PX,
+                    MIN_CHIP_PX,
                     (placement.minutes / BLOCK_MINUTES) * CELL_PX - 3,
                   )
                   const chip = (
                     <TaskChip
                       task={placement.task}
                       density="grid"
-                      compact={height < TWO_LINE_CHIP_PX}
+                      shared={placement.lanes > 1}
                       onToggle={() => void toggleTaskDone(placement.task.id)}
                       onOpen={() => onOpenTask(placement.task.id)}
                     />

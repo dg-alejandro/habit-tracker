@@ -40,12 +40,12 @@ export function TaskBank({ bank, onSend }: TaskBankProps) {
         type="button"
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
-        className="flex h-12 w-full items-center gap-3 border-b border-streak-lime/60 font-display text-sm uppercase tracking-[0.2em] text-streak-lime transition-colors hover:bg-surface"
+        className="flex h-14 w-full items-center gap-3 border-b border-streak-lime/60 font-display text-base uppercase tracking-[0.2em] text-streak-lime transition-colors hover:bg-surface"
       >
         <span aria-hidden="true">{open ? '▾' : '▸'}</span>
         <span>Banco de tareas</span>
-        <span className="tabular-nums text-ink-faint">· {bank.length}</span>
-        <span className="ml-auto text-xs normal-case tracking-normal text-ink-faint">
+        <span className="tabular-nums text-ink-soft">· {bank.length}</span>
+        <span className="ml-auto text-sm normal-case tracking-normal text-ink-soft">
           {open ? 'arrastra una a la cuadrícula' : 'lo que se repite cada semana'}
         </span>
       </button>

@@ -57,11 +57,11 @@ export function UnplacedTray({ weekId, tasks, editingId, onEdit }: UnplacedTrayP
   return (
     <section className="mt-8">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 border-b border-line pb-2">
-        <h2 className="font-display text-sm uppercase tracking-[0.2em] text-streak-lime">
+        <h2 className="font-display text-base uppercase tracking-[0.2em] text-streak-lime">
           Sueltas de esta semana{' '}
           {pending > 0 && <span className="tabular-nums text-streak-orange">· {pending}</span>}
         </h2>
-        <p className="font-display text-xs text-ink-faint">
+        <p className="font-display text-sm text-ink-soft">
           desaparecen al acabar la semana
         </p>
       </div>

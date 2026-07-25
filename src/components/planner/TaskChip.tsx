@@ -13,10 +13,10 @@ interface TaskChipProps {
   /** 'row' en las listas; 'grid' dentro de la cuadrícula. */
   density: 'row' | 'grid'
   /**
-   * Solo en la cuadrícula: el chip es demasiado bajo para dos líneas. Pasa con
-   * las tareas de menos de media hora, y sin esto su duración no se vería.
+   * Solo en la cuadrícula: el chip comparte la columna con otros porque se
+   * solapan. Con la columna partida no cabe la casilla, y el nombre manda.
    */
-  compact?: boolean
+  shared?: boolean
   onToggle: () => void
   onOpen: () => void
   /** Asa de arrastre; solo la pone la envoltura arrastrable en densidad 'row'. */
@@ -29,7 +29,7 @@ interface TaskChipProps {
  * cuadrícula llena, el color es lo que deja leerla de un vistazo.
  * La completada se queda visible, tachada y atenuada (§4).
  */
-export function TaskChip({ task, density, compact, onToggle, onOpen, handle }: TaskChipProps) {
+export function TaskChip({ task, density, shared, onToggle, onOpen, handle }: TaskChipProps) {
   const fromBank = isFromBank(task)
   // Tailwind no ve nombres de clase construidos por interpolación: enteros.
   const doneBox = fromBank
@@ -46,53 +46,59 @@ export function TaskChip({ task, density, compact, onToggle, onOpen, handle }: T
           fromBank ? 'border-l-streak-lime' : 'border-l-streak-orange'
         }`}
       >
-        <button
-          type="button"
-          onClick={onToggle}
-          aria-pressed={task.done}
-          aria-label={`Completar ${task.text}`}
-          className="flex w-9 shrink-0 items-center justify-center"
-        >
-          <span
-            aria-hidden="true"
-            className={`h-3.5 w-3.5 border ${task.done ? doneBox : 'border-ink-faint'}`}
-          />
-        </button>
+        {/* Con la columna partida entre varias tareas el chip baja de 90 px, y
+            40 de casilla dejarían el nombre en dos letras. Ahí desaparece: la
+            tarea se completa desde el editor, que tiene su botón a ancho
+            completo. Lo que no se puede leer no sirve de nada. */}
+        {shared !== true && (
+          <button
+            type="button"
+            onClick={onToggle}
+            aria-pressed={task.done}
+            aria-label={`Completar ${task.text}`}
+            className="flex w-10 shrink-0 items-center justify-center"
+          >
+            <span
+              aria-hidden="true"
+              className={`h-4 w-4 border-2 ${task.done ? doneBox : 'border-ink-faint'}`}
+            />
+          </button>
+        )}
         <button
           type="button"
           onClick={onOpen}
           title={hint}
-          className="flex min-w-0 flex-1 flex-col justify-center py-1 pr-1.5 text-left"
+          className={`flex min-w-0 flex-1 flex-col justify-center overflow-hidden py-1 pr-2 text-left ${
+            shared === true ? 'pl-2' : ''
+          }`}
         >
-          {compact === true ? (
-            // Una sola línea: el nombre se recorta, la duración NUNCA — es
-            // justo el dato que no cabía en las tareas de menos de media hora.
-            <span className="flex items-baseline gap-1">
-              <span
-                className={`min-w-0 truncate text-sm leading-tight ${
-                  task.done ? 'text-ink-faint line-through' : 'text-ink'
-                }`}
-              >
-                {task.text}
-              </span>
-              <span className="shrink-0 font-display text-sm tabular-nums text-ink-soft">
-                {shortDurationLabel(task.estimatedMinutes)}
-              </span>
-            </span>
-          ) : (
-            <>
-              <span
-                className={`block truncate text-sm leading-tight ${
-                  task.done ? 'text-ink-faint line-through' : 'text-ink'
-                }`}
-              >
-                {task.text}
-              </span>
-              {time !== null && (
-                <span className="block truncate font-display text-xs text-ink-soft">{time}</span>
-              )}
-            </>
-          )}
+          {/* Con siete columnas el nombre no cabe en una línea: se parte antes
+              de recortar. Debajo va la DURACIÓN, no el rango horario — la hora de
+              inicio ya la dice la fila en la que está el chip, y gastar una línea
+              en repetirla era lo que dejaba el nombre en tres letras.
+
+              Compartiendo columna quedan ~66 px de texto: ahí el cuerpo baja a
+              14 px, que es la diferencia entre leer «Reunión con Marta» y leer
+              «Reu…». Dos líneas y no tres: con tres, la duración se salía de la
+              casilla mínima y el overflow se la comía sin avisar.
+
+              shrink-0 en los dos: son items de un flex column, y sin él el
+              navegador le roba altura al nombre y parte la última línea por la
+              mitad en vez de recortarla limpiamente. */}
+          <span
+            className={`line-clamp-2 shrink-0 leading-tight ${shared === true ? 'text-sm' : 'text-base'} ${
+              task.done ? 'text-ink-faint line-through' : 'text-ink'
+            }`}
+          >
+            {task.text}
+          </span>
+          <span
+            className={`mt-0.5 block shrink-0 truncate font-display tabular-nums text-ink-soft ${
+              shared === true ? 'text-xs' : 'text-sm'
+            }`}
+          >
+            {shortDurationLabel(task.estimatedMinutes)}
+          </span>
         </button>
       </div>
     )

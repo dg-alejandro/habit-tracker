@@ -205,7 +205,10 @@ export function Planner() {
       onDragEnd={onDragEnd}
       onDragCancel={() => setDragging(null)}
     >
-      <div className="mx-auto max-w-xl px-5 py-6 md:max-w-6xl md:px-10 md:py-10">
+      {/* Sin tope de ancho en escritorio, al contrario que el resto de la app:
+          siete columnas dentro de `max-w-6xl` dejaban 140 px por día y el nombre
+          de la tarea salía recortado. Es un calendario — se queda con la pantalla. */}
+      <div className="mx-auto max-w-xl px-5 py-6 md:max-w-none md:px-8 md:py-10">
         <h1 className="border-b border-line pb-4 font-display text-3xl uppercase tracking-[0.2em] text-ink">
           Planificador
         </h1>
