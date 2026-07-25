@@ -10,18 +10,28 @@ import { describe, expect, it } from 'vitest'
 import {
   addDaysIso,
   addMonthsToMonthId,
+  addWeeksToWeekId,
+  dateOfWeekday,
   daysOfMonth,
+  daysOfWeekId,
   eachDayIso,
   formatDateEs,
   formatMonthShortEs,
+  formatWeekRangeEs,
   isDateFrozen,
   isoWeekDaysOf,
   isoWeekIdOf,
+  isoWeekdayOf,
   logicalDateOf,
   madridWallClock,
+  mondayOfWeekId,
   monthIdOf,
   relativeDayLabel,
+  weekdayLongEs,
+  weekdayShortEs,
+  weeksBetweenWeekIds,
 } from './dates'
+import type { IsoWeekday, WeekId } from './dates'
 
 /** Instante UTC con mes 1–12, para leer igual que las fechas ISO. */
 function utc(year: number, month: number, day: number, hour = 0, minute = 0, second = 0): Date {
@@ -203,6 +213,189 @@ describe('isoWeekDaysOf', () => {
       '2026-03-07',
       '2026-03-08',
     ])
+  })
+})
+
+describe('isoWeekdayOf', () => {
+  it('lunes es 1 y domingo es 7', () => {
+    expect(isoWeekdayOf('2026-07-20')).toBe(1)
+    expect(isoWeekdayOf('2026-07-26')).toBe(7)
+  })
+
+  it('funciona en una semana que cruza el año', () => {
+    expect(isoWeekdayOf('2025-12-31')).toBe(3)
+    expect(isoWeekdayOf('2026-01-01')).toBe(4)
+  })
+})
+
+describe('mondayOfWeekId', () => {
+  it('semana normal de mitad de año', () => {
+    expect(mondayOfWeekId('2026-W30')).toBe('2026-07-20')
+  })
+
+  it('la W01 puede arrancar en diciembre del año anterior', () => {
+    expect(mondayOfWeekId('2026-W01')).toBe('2025-12-29')
+  })
+
+  it('el ancla del 4 de enero: en 2021 la W01 empieza justo ese día (lunes)', () => {
+    expect(mondayOfWeekId('2021-W01')).toBe('2021-01-04')
+  })
+
+  it('años ISO largos: 2020 y 2026 tienen W53', () => {
+    expect(mondayOfWeekId('2020-W53')).toBe('2020-12-28')
+    expect(mondayOfWeekId('2026-W53')).toBe('2026-12-28')
+  })
+
+  it('ida y vuelta con isoWeekIdOf en todas las semanas de 2020, 2021 y 2026', () => {
+    // El test más fuerte del calendario semanal: si el ancla del 4 de enero
+    // fallara en algún año, aquí saltaría.
+    for (const year of [2020, 2021, 2026]) {
+      const lastWeek = isoWeekIdOf(`${year}-12-28`) === `${year}-W53` ? 53 : 52
+      for (let week = 1; week <= lastWeek; week += 1) {
+        const weekId: WeekId = `${year}-W${String(week).padStart(2, '0')}`
+        const monday = mondayOfWeekId(weekId)
+        expect(isoWeekIdOf(monday)).toBe(weekId)
+        // Y el lunes devuelto abre de verdad su propia semana.
+        expect(isoWeekDaysOf(monday)[0]).toBe(monday)
+      }
+    }
+  })
+
+  it('un id mal formado lanza en vez de devolver una fecha silenciosamente errónea', () => {
+    expect(() => mondayOfWeekId('2026-31')).toThrow()
+    expect(() => mondayOfWeekId('2026-W')).toThrow()
+    expect(() => mondayOfWeekId('2026-W1')).toThrow() // sin cero a la izquierda
+    expect(() => mondayOfWeekId('2026-W00')).toThrow()
+    expect(() => mondayOfWeekId('2026-W54')).toThrow()
+    expect(() => mondayOfWeekId('basura')).toThrow()
+  })
+})
+
+describe('addWeeksToWeekId', () => {
+  it('suma y resta dentro del mismo año', () => {
+    expect(addWeeksToWeekId('2026-W30', 1)).toBe('2026-W31')
+    expect(addWeeksToWeekId('2026-W30', -1)).toBe('2026-W29')
+  })
+
+  it('cruza el año pasando por la W53 de 2026', () => {
+    expect(addWeeksToWeekId('2026-W52', 1)).toBe('2026-W53')
+    expect(addWeeksToWeekId('2026-W53', 1)).toBe('2027-W01')
+  })
+
+  it('hacia atrás cae en la W53 del año anterior', () => {
+    expect(addWeeksToWeekId('2021-W01', -1)).toBe('2020-W53')
+  })
+
+  it('delta 0 es la identidad y la ida y vuelta también', () => {
+    expect(addWeeksToWeekId('2026-W30', 0)).toBe('2026-W30')
+    expect(addWeeksToWeekId(addWeeksToWeekId('2026-W02', 5), -5)).toBe('2026-W02')
+  })
+
+  it('es inmune al DST de la zona del DISPOSITIVO (la suite corre en America/New_York)', () => {
+    // NY salta el 8-mar-2026 (día de 23 h) y retrocede el 1-nov-2026 (25 h).
+    expect(addWeeksToWeekId('2026-W10', 1)).toBe('2026-W11')
+    expect(addWeeksToWeekId('2026-W44', 1)).toBe('2026-W45')
+  })
+})
+
+describe('daysOfWeekId y dateOfWeekday', () => {
+  it('devuelve los 7 días de lunes a domingo', () => {
+    expect(daysOfWeekId('2026-W30')).toEqual([
+      '2026-07-20',
+      '2026-07-21',
+      '2026-07-22',
+      '2026-07-23',
+      '2026-07-24',
+      '2026-07-25',
+      '2026-07-26',
+    ])
+  })
+
+  it('la W01 de 2026 cruza el año', () => {
+    expect(daysOfWeekId('2026-W01')[0]).toBe('2025-12-29')
+    expect(daysOfWeekId('2026-W01')[6]).toBe('2026-01-04')
+  })
+
+  it('dateOfWeekday coincide con la posición dentro de daysOfWeekId', () => {
+    const days = daysOfWeekId('2026-W01')
+    for (let weekday = 1; weekday <= 7; weekday += 1) {
+      expect(dateOfWeekday('2026-W01', weekday as IsoWeekday)).toBe(days[weekday - 1])
+    }
+  })
+
+  it('cada día devuelve su propio índice al pasarlo por isoWeekdayOf', () => {
+    const days = daysOfWeekId('2026-W30')
+    days.forEach((day, index) => {
+      expect(isoWeekdayOf(day)).toBe(index + 1)
+    })
+  })
+})
+
+describe('weeksBetweenWeekIds', () => {
+  it('la misma semana son 0 y dos consecutivas son 1', () => {
+    expect(weeksBetweenWeekIds('2026-W30', '2026-W30')).toBe(0)
+    expect(weeksBetweenWeekIds('2026-W30', '2026-W31')).toBe(1)
+  })
+
+  it('hacia atrás es negativo', () => {
+    expect(weeksBetweenWeekIds('2026-W31', '2026-W30')).toBe(-1)
+  })
+
+  it('cruzando el año ISO largo de 2020', () => {
+    expect(weeksBetweenWeekIds('2020-W52', '2021-W01')).toBe(2)
+  })
+
+  it('un salto grande es coherente con addWeeksToWeekId', () => {
+    expect(weeksBetweenWeekIds('2026-W10', addWeeksToWeekId('2026-W10', 52))).toBe(52)
+  })
+})
+
+describe('formatWeekRangeEs', () => {
+  // Se comprueba por partes: la puntuación exacta de ICU varía entre versiones de Node.
+  it('dentro del mismo mes no repite el mes', () => {
+    const label = formatWeekRangeEs('2026-W30')
+    expect(label).toContain('20')
+    expect(label).toContain('26')
+    expect(label).toContain('jul')
+    expect(label).toContain('2026')
+    expect(label.match(/jul/g)).toHaveLength(1)
+  })
+
+  it('cruzando de mes nombra los dos meses', () => {
+    const label = formatWeekRangeEs('2026-W27') // 29 jun – 5 jul
+    expect(label).toContain('jun')
+    expect(label).toContain('jul')
+  })
+
+  it('cruzando de año nombra los dos años', () => {
+    const label = formatWeekRangeEs('2026-W01') // 29 dic 2025 – 4 ene 2026
+    expect(label).toContain('2025')
+    expect(label).toContain('2026')
+  })
+})
+
+describe('weekdayShortEs y weekdayLongEs', () => {
+  it('nombran los siete días en español', () => {
+    expect(weekdayLongEs(1)).toBe('lunes')
+    expect(weekdayLongEs(7)).toBe('domingo')
+    expect(weekdayShortEs(1)).toContain('lun')
+    expect(weekdayShortEs(7)).toContain('dom')
+  })
+
+  it('los siete nombres cortos son distintos entre sí', () => {
+    const names = ([1, 2, 3, 4, 5, 6, 7] as IsoWeekday[]).map(weekdayShortEs)
+    expect(new Set(names).size).toBe(7)
+  })
+})
+
+describe('WeekId como string ordenable', () => {
+  it('canario: el orden lexicográfico es el cronológico, también cruzando año ISO', () => {
+    // Todo el planificador compara semanas con < y >; si "RRRR-'W'II" dejara de
+    // llevar cero a la izquierda o de usar el año ISO, esto saltaría.
+    expect('2026-W09' < '2026-W10').toBe(true)
+    expect('2020-W53' < '2021-W01').toBe(true)
+    expect('2025-W52' < '2026-W01').toBe(true)
+    expect('2026-W53' < '2027-W01').toBe(true)
   })
 })
 

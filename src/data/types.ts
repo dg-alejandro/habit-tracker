@@ -7,15 +7,14 @@
  * casilla); un campo `| null` aplica pero está vacío. La Fase 2 mapea
  * `undefined → null` en la frontera de sincronización.
  */
-import type { IsoDate, WeekId } from '../logic/dates'
+import type { IsoDate, IsoWeekday, WeekId } from '../logic/dates'
 
-export type { IsoDate, WeekId }
+// IsoWeekday vive en logic/dates.ts (es calendario, y las firmas de allí lo necesitan);
+// se reexporta aquí para que el modelo se siga leyendo entero desde este archivo.
+export type { IsoDate, IsoWeekday, WeekId }
 
 /** Epoch en milisegundos. Toda fila lo lleva: la Fase 2 resuelve conflictos por última escritura. */
 export type EpochMs = number
-
-/** Día de la semana ISO: 1 = lunes … 7 = domingo. */
-export type IsoWeekday = 1 | 2 | 3 | 4 | 5 | 6 | 7
 
 /** Casilla sí/no, contador con objetivo en minutos, o contador con nota de texto. */
 export type HabitType = 'check' | 'counter' | 'counter_note'

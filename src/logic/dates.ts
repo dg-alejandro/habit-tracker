@@ -7,7 +7,7 @@
  * - Zona horaria fija Europe/Madrid, independiente del dispositivo.
  * - Semana ISO, de lunes a domingo.
  */
-import { addDays, format, startOfISOWeek } from 'date-fns'
+import { addDays, differenceInCalendarISOWeeks, format, startOfISOWeek } from 'date-fns'
 
 /**
  * Fecha de calendario 'YYYY-MM-DD'.
@@ -16,8 +16,16 @@ import { addDays, format, startOfISOWeek } from 'date-fns'
  */
 export type IsoDate = string
 
-/** Identificador de semana ISO, p. ej. '2026-W31'. */
+/**
+ * Identificador de semana ISO, p. ej. '2026-W31'.
+ * Contrato: como IsoDate, se compara como string. El formato es "RRRR-'W'II"
+ * (año de NUMERACIÓN ISO + semana con cero), así que el orden lexicográfico es
+ * el cronológico incluso cruzando año: '2020-W53' < '2021-W01'.
+ */
 export type WeekId = string
+
+/** Día de la semana ISO: 1 = lunes … 7 = domingo. */
+export type IsoWeekday = 1 | 2 | 3 | 4 | 5 | 6 | 7
 
 /** Hora a la que cierra el día lógico: antes de las 4:00 se cuenta el día anterior. */
 export const LOGICAL_DAY_CUTOFF_HOUR = 4
@@ -92,6 +100,105 @@ export function isoWeekIdOf(date: IsoDate): WeekId {
 export function isoWeekDaysOf(date: IsoDate): IsoDate[] {
   const monday = startOfISOWeek(toLocalDate(date))
   return Array.from({ length: 7 }, (_, i) => format(addDays(monday, i), 'yyyy-MM-dd'))
+}
+
+/** Día de la semana ISO de una fecha: 1 = lunes … 7 = domingo. */
+export function isoWeekdayOf(date: IsoDate): IsoWeekday {
+  // getISODay de date-fns haría lo mismo, pero la distancia al lunes de su propia
+  // semana no depende de convenciones de librería y se lee de un vistazo.
+  const days = isoWeekDaysOf(date)
+  const index = days.indexOf(date)
+  if (index === -1) throw new Error(`Fecha ISO inválida: '${date}'`)
+  return (index + 1) as IsoWeekday
+}
+
+const WEEK_ID_PATTERN = /^(\d{4})-W(\d{2})$/
+
+/**
+ * Lunes de la semana ISO indicada. El 4 de enero cae SIEMPRE en la semana 1
+ * ISO de su año, en cualquier año: es el ancla estándar y evita casos especiales.
+ */
+export function mondayOfWeekId(weekId: WeekId): IsoDate {
+  const match = WEEK_ID_PATTERN.exec(weekId)
+  if (match === null) throw new Error(`Semana ISO inválida: '${weekId}'`)
+  const [, yearText, weekText] = match
+  if (yearText === undefined || weekText === undefined) {
+    throw new Error(`Semana ISO inválida: '${weekId}'`)
+  }
+  const week = Number(weekText)
+  if (week < 1 || week > 53) throw new Error(`Semana ISO inválida: '${weekId}'`)
+  const firstWeekMonday = startOfISOWeek(toLocalDate(`${yearText}-01-04`))
+  return format(addDays(firstWeekMonday, (week - 1) * 7), 'yyyy-MM-dd')
+}
+
+/**
+ * Suma (o resta) semanas a un WeekId: '2026-W53' + 1 = '2027-W01'.
+ * Pasa por addDaysIso, así que hereda su inmunidad al DST del dispositivo.
+ */
+export function addWeeksToWeekId(weekId: WeekId, delta: number): WeekId {
+  return isoWeekIdOf(addDaysIso(mondayOfWeekId(weekId), delta * 7))
+}
+
+/** Los 7 días, de lunes a domingo, de la semana ISO indicada. */
+export function daysOfWeekId(weekId: WeekId): IsoDate[] {
+  return isoWeekDaysOf(mondayOfWeekId(weekId))
+}
+
+/** Fecha del día `weekday` (1 = lunes … 7 = domingo) dentro de la semana indicada. */
+export function dateOfWeekday(weekId: WeekId, weekday: IsoWeekday): IsoDate {
+  return addDaysIso(mondayOfWeekId(weekId), weekday - 1)
+}
+
+/**
+ * Semanas enteras de `from` a `to`; negativo si `to` es anterior.
+ * Cuenta semanas de calendario ISO, no divisiones de milisegundos: inmune a los
+ * días de 23/25 h del cambio de hora.
+ */
+export function weeksBetweenWeekIds(from: WeekId, to: WeekId): number {
+  return differenceInCalendarISOWeeks(
+    toLocalDate(mondayOfWeekId(to)),
+    toLocalDate(mondayOfWeekId(from)),
+  )
+}
+
+const spanishDayFormatter = new Intl.DateTimeFormat('es-ES', { day: 'numeric' })
+const spanishDayMonthFormatter = new Intl.DateTimeFormat('es-ES', {
+  day: 'numeric',
+  month: 'short',
+})
+
+/**
+ * Rango de la semana para la cabecera del planificador:
+ * '20 – 26 jul 2026' · '29 jun – 5 jul 2026' · '29 dic 2025 – 4 ene 2026'.
+ */
+export function formatWeekRangeEs(weekId: WeekId): string {
+  const monday = mondayOfWeekId(weekId)
+  const sunday = addDaysIso(monday, 6)
+  const sundayLabel = formatDateShortEs(sunday)
+  if (monday.slice(0, 4) !== sunday.slice(0, 4)) {
+    return `${formatDateShortEs(monday)} – ${sundayLabel}`
+  }
+  const mondayLabel =
+    monthIdOf(monday) === monthIdOf(sunday)
+      ? spanishDayFormatter.format(atNoon(monday))
+      : spanishDayMonthFormatter.format(atNoon(monday))
+  return `${mondayLabel} – ${sundayLabel}`
+}
+
+/** Lunes canónico de referencia para nombrar los días sin depender de una semana concreta. */
+const REFERENCE_MONDAY: IsoDate = '2026-07-20'
+
+const spanishWeekdayShortFormatter = new Intl.DateTimeFormat('es-ES', { weekday: 'short' })
+const spanishWeekdayLongFormatter = new Intl.DateTimeFormat('es-ES', { weekday: 'long' })
+
+/** 'lun' — cabeceras de la cuadrícula. */
+export function weekdayShortEs(weekday: IsoWeekday): string {
+  return spanishWeekdayShortFormatter.format(atNoon(addDaysIso(REFERENCE_MONDAY, weekday - 1)))
+}
+
+/** 'lunes' — selector de día del editor de tarea. */
+export function weekdayLongEs(weekday: IsoWeekday): string {
+  return spanishWeekdayLongFormatter.format(atNoon(addDaysIso(REFERENCE_MONDAY, weekday - 1)))
 }
 
 /** Rango de fechas con bordes inclusivos (estructural: le vale a FrozenRange). */
@@ -200,6 +307,13 @@ function isoDateFrom(year: number, month: number, day: number): IsoDate {
  * Nunca `new Date('YYYY-MM-DD')`: el estándar parsea las fechas sin hora como UTC
  * y desplazaría un día en zonas horarias negativas.
  */
+/** Mediodía local del día indicado: lejos de cualquier borde de medianoche al formatear. */
+function atNoon(date: IsoDate): Date {
+  const noon = toLocalDate(date)
+  noon.setHours(12)
+  return noon
+}
+
 function toLocalDate(date: IsoDate): Date {
   const [year, month, day] = date.split('-').map(Number)
   if (
