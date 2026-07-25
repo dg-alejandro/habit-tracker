@@ -1,4 +1,4 @@
-import { weekdayShortEs } from '../../logic/dates'
+import { weekdayInitialEs, weekdayLongEs } from '../../logic/dates'
 import type { IsoWeekday } from '../../data/types'
 
 interface MobileDayPagerProps {
@@ -24,20 +24,20 @@ export function MobileDayPager({ selected, today, pendingByDay, onSelect }: Mobi
             type="button"
             onClick={() => onSelect(day)}
             aria-current={active ? 'true' : undefined}
-            className={`flex h-11 flex-col items-center justify-center rounded-lg border text-xs capitalize transition-colors ${
+            aria-label={`${weekdayLongEs(day)}${day === today ? ' (hoy)' : ''}`}
+            className={`flex h-11 flex-col items-center justify-center rounded-lg border text-xs transition-colors ${
               active
                 ? 'border-ink bg-ink font-semibold text-paper'
-                : 'border-line text-ink-soft hover:bg-surface'
+                : `border-line hover:bg-surface ${day === today ? 'font-semibold text-ink' : 'text-ink-soft'}`
             }`}
           >
-            <span>{weekdayShortEs(day).slice(0, 1)}</span>
+            <span aria-hidden="true">{weekdayInitialEs(day)}</span>
             <span
               aria-hidden="true"
               className={`mt-0.5 h-1 w-1 rounded-full ${
                 pending > 0 ? (active ? 'bg-paper' : 'bg-ink-soft') : 'bg-transparent'
               }`}
             />
-            {day === today && <span className="sr-only">(hoy)</span>}
           </button>
         )
       })}

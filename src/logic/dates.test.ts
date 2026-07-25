@@ -27,6 +27,7 @@ import {
   mondayOfWeekId,
   monthIdOf,
   relativeDayLabel,
+  weekdayInitialEs,
   weekdayLongEs,
   weekdayShortEs,
   weeksBetweenWeekIds,
@@ -385,6 +386,13 @@ describe('weekdayShortEs y weekdayLongEs', () => {
   it('los siete nombres cortos son distintos entre sí', () => {
     const names = ([1, 2, 3, 4, 5, 6, 7] as IsoWeekday[]).map(weekdayShortEs)
     expect(new Set(names).size).toBe(7)
+  })
+
+  it('las iniciales siguen la convención del calendario español, con X el miércoles', () => {
+    // Recortar la primera letra del nombre corto daría 'M' para martes Y miércoles.
+    const initials = ([1, 2, 3, 4, 5, 6, 7] as IsoWeekday[]).map(weekdayInitialEs)
+    expect(initials).toEqual(['L', 'M', 'X', 'J', 'V', 'S', 'D'])
+    expect(new Set(initials).size).toBe(7)
   })
 })
 

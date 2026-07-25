@@ -201,6 +201,17 @@ export function weekdayLongEs(weekday: IsoWeekday): string {
   return spanishWeekdayLongFormatter.format(atNoon(addDaysIso(REFERENCE_MONDAY, weekday - 1)))
 }
 
+/**
+ * 'L M X J V S D' — inicial del día para tiras muy estrechas.
+ * A mano y no recortando el nombre corto: en español martes y miércoles
+ * empiezan igual, y la convención del calendario usa X para el miércoles.
+ */
+const WEEKDAY_INITIALS = ['L', 'M', 'X', 'J', 'V', 'S', 'D'] as const
+
+export function weekdayInitialEs(weekday: IsoWeekday): string {
+  return WEEKDAY_INITIALS[weekday - 1] ?? ''
+}
+
 /** Rango de fechas con bordes inclusivos (estructural: le vale a FrozenRange). */
 export interface DateRange {
   startDate: IsoDate

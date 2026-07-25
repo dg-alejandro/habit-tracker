@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router'
 import { DayLane } from '../components/planner/DayLane'
+import { HourGrid } from '../components/planner/HourGrid'
 import { MobileDayPager } from '../components/planner/MobileDayPager'
 import { WeekInbox } from '../components/planner/WeekInbox'
 import { TaskEditor } from '../components/planner/TaskEditor'
@@ -21,6 +22,8 @@ export function Planner() {
   const currentWeekId = isoWeekIdOf(today)
   const [weekId, setWeekId] = useState<WeekId>(currentWeekId)
   const [editingId, setEditingId] = useState<string | null>(null)
+  // La madrugada arranca plegada (§4): 48 bloques enteros son ingobernables.
+  const [nightOpen, setNightOpen] = useState(false)
   const isDesktop = useIsDesktop()
   const [selectedDay, setSelectedDay] = useState<IsoWeekday>(() => isoWeekdayOf(today))
 
@@ -34,6 +37,7 @@ export function Planner() {
   const inboxTasks = (tasks ?? []).filter((task) => task.day === null)
   const byDay = useMemo(() => groupByDay(tasks ?? []), [tasks])
   const pendingByDay = useMemo(() => countPendingByDay(byDay), [byDay])
+  const scheduledByDay = useMemo(() => filterScheduled(byDay), [byDay])
 
   const closeEdit = () => setEditingId(null)
   // La decisión móvil/escritorio se toma en JS, no con `hidden md:`: renderizar
@@ -92,6 +96,14 @@ export function Planner() {
           />
         ))}
       </div>
+
+      <HourGrid
+        days={visibleDays}
+        tasksByDay={scheduledByDay}
+        nightOpen={nightOpen}
+        onToggleNight={() => setNightOpen((open) => !open)}
+        onOpenTask={setEditingId}
+      />
     </div>
   )
 }
@@ -105,6 +117,20 @@ function groupByDay(tasks: readonly PlannerTask[]): Map<IsoWeekday, PlannerTask[
     else list.push(task)
   }
   return byDay
+}
+
+/** Las que tienen hora viven en la cuadrícula; las que no, en el carril del día. */
+function filterScheduled(
+  byDay: ReadonlyMap<IsoWeekday, PlannerTask[]>,
+): Map<IsoWeekday, PlannerTask[]> {
+  const scheduled = new Map<IsoWeekday, PlannerTask[]>()
+  for (const [day, tasks] of byDay) {
+    scheduled.set(
+      day,
+      tasks.filter((task) => task.startBlock !== null),
+    )
+  }
+  return scheduled
 }
 
 function countPendingByDay(byDay: ReadonlyMap<IsoWeekday, PlannerTask[]>): Map<IsoWeekday, number> {

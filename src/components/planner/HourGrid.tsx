@@ -1,0 +1,155 @@
+import { toggleTaskDone } from '../../data/repositories/plannerTasksRepo'
+import { weekdayShortEs } from '../../logic/dates'
+import {
+  BLOCKS_PER_DAY,
+  NIGHT_END_BLOCK,
+  blockLabel,
+  countNightTasks,
+  layoutDayTasks,
+} from '../../logic/planner'
+import { TaskChip } from './TaskChip'
+import type { IsoWeekday, PlannerTask } from '../../data/types'
+
+/** Alto de un bloque de 30 min. Con la madrugada plegada el día mide 36 filas. */
+export const CELL_PX = 28
+
+interface HourGridProps {
+  /** Los días que se pintan: los siete en escritorio, uno en móvil. */
+  days: readonly IsoWeekday[]
+  /** Tareas CON hora, por día. */
+  tasksByDay: ReadonlyMap<IsoWeekday, PlannerTask[]>
+  nightOpen: boolean
+  onToggleNight: () => void
+  onOpenTask: (id: string) => void
+  /** Envoltura de zona de soltado; sin drag & drop devuelve la celda tal cual. */
+  renderCell?: (day: IsoWeekday, block: number, cell: React.ReactNode) => React.ReactNode
+  /** Envoltura arrastrable del chip. */
+  renderTask?: (task: PlannerTask, chip: React.ReactNode) => React.ReactNode
+}
+
+/**
+ * Cuadrícula horaria de 00:00 a 24:00 en bloques de 30 min (§4).
+ *
+ * Cada día es una columna con DOS capas: las celdas apiladas (que son las zonas
+ * de soltado) y, encima, los chips en posición absoluta según `layoutDayTasks`.
+ * Mezclar la colocación con `grid-row: span` no permitiría los carriles de
+ * solape. Las medidas en línea son geometría calculada, no color.
+ *
+ * La franja 00:00–06:00 va plegada por defecto: además de que una rejilla de 48
+ * bloques es ingobernable en móvil, plegarla quita el 25 % de las celdas.
+ */
+export function HourGrid({
+  days,
+  tasksByDay,
+  nightOpen,
+  onToggleNight,
+  onOpenTask,
+  renderCell,
+  renderTask,
+}: HourGridProps) {
+  const firstBlock = nightOpen ? 0 : NIGHT_END_BLOCK
+  const blocks = Array.from({ length: BLOCKS_PER_DAY - firstBlock }, (_, i) => firstBlock + i)
+  const height = blocks.length * CELL_PX
+  const hiddenNight = [...tasksByDay.values()].reduce(
+    (total, tasks) => total + countNightTasks(tasks),
+    0,
+  )
+
+  return (
+    <section className="mt-8">
+      <h2 className="text-xs font-medium uppercase tracking-widest text-ink-soft">Horario</h2>
+
+      <button
+        type="button"
+        onClick={onToggleNight}
+        className="mt-2 flex h-11 w-full items-center gap-2 rounded-lg border border-line px-3 text-sm text-ink-soft transition-colors hover:bg-surface hover:text-ink"
+      >
+        <span>{nightOpen ? 'Ocultar la madrugada' : 'Mostrar 00:00 – 06:00'}</span>
+        {!nightOpen && hiddenNight > 0 && (
+          <span className="text-ink">· {hiddenNight} sin ver</span>
+        )}
+      </button>
+
+      <div className="mt-3 overflow-x-auto">
+        <div
+          className="grid min-w-full"
+          style={{ gridTemplateColumns: `3.25rem repeat(${days.length}, minmax(0, 1fr))` }}
+        >
+          {/* Cabecera: esquina vacía sobre el raíl horario, y un día por columna */}
+          <div className="border-b border-line" />
+          {days.map((day) => (
+            <div
+              key={`head-${day}`}
+              className="border-b border-l border-line pb-1 text-center text-xs capitalize text-ink-soft"
+            >
+              {weekdayShortEs(day)}
+            </div>
+          ))}
+
+          {/* Raíl horario: una etiqueta por hora en punto */}
+          <div className="relative" style={{ height }}>
+            {blocks.map((block) =>
+              block % 2 === 0 ? (
+                <span
+                  key={block}
+                  className="absolute right-2 -translate-y-1/2 text-[10px] tabular-nums text-ink-faint"
+                  style={{ top: (block - firstBlock) * CELL_PX }}
+                >
+                  {blockLabel(block)}
+                </span>
+              ) : null,
+            )}
+          </div>
+
+          {days.map((day) => {
+            const placements = layoutDayTasks(tasksByDay.get(day) ?? [])
+            return (
+              <div key={day} className="relative border-l border-line" style={{ height }}>
+                {blocks.map((block) => {
+                  const cell = (
+                    <div
+                      className={`absolute inset-x-0 ${
+                        block % 2 === 0 ? 'border-t border-line' : 'border-t border-line/40'
+                      }`}
+                      style={{ top: (block - firstBlock) * CELL_PX, height: CELL_PX }}
+                    />
+                  )
+                  return (
+                    <div key={block}>{renderCell === undefined ? cell : renderCell(day, block, cell)}</div>
+                  )
+                })}
+
+                {placements.map((placement) => {
+                  const chip = (
+                    <TaskChip
+                      task={placement.task}
+                      density="grid"
+                      onToggle={() => void toggleTaskDone(placement.task.id)}
+                      onOpen={() => onOpenTask(placement.task.id)}
+                    />
+                  )
+                  return (
+                    <div
+                      key={placement.task.id}
+                      className="absolute px-px"
+                      style={{
+                        top: (placement.startBlock - firstBlock) * CELL_PX,
+                        height: placement.span * CELL_PX - 2,
+                        left: `${(placement.lane / placement.lanes) * 100}%`,
+                        width: `${100 / placement.lanes}%`,
+                        // Un chip que empieza en la madrugada plegada no se pinta.
+                        display: placement.startBlock < firstBlock ? 'none' : undefined,
+                      }}
+                    >
+                      {renderTask === undefined ? chip : renderTask(placement.task, chip)}
+                    </div>
+                  )
+                })}
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    </section>
+  )
+}

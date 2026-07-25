@@ -74,7 +74,13 @@ export function useIsDesktop(): boolean {
 function subscribeToDesktop(onChange: () => void): () => void {
   const query = window.matchMedia(DESKTOP_QUERY)
   query.addEventListener('change', onChange)
-  return () => query.removeEventListener('change', onChange)
+  // También al `resize`: girar el iPhone cruza el breakpoint y hay entornos
+  // donde el evento del media query no llega. Comparar el snapshot es barato.
+  window.addEventListener('resize', onChange)
+  return () => {
+    query.removeEventListener('change', onChange)
+    window.removeEventListener('resize', onChange)
+  }
 }
 
 function getDesktopSnapshot(): boolean {
