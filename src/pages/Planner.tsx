@@ -16,6 +16,7 @@ import {
 } from '@dnd-kit/core'
 import { DayLane } from '../components/planner/DayLane'
 import { DraggableTask, DropZone } from '../components/planner/DropZone'
+import { DuplicateWeekButton } from '../components/planner/DuplicateWeekButton'
 import { HourGrid } from '../components/planner/HourGrid'
 import { MobileDayPager } from '../components/planner/MobileDayPager'
 import { WeekInbox } from '../components/planner/WeekInbox'
@@ -205,6 +206,8 @@ export function Planner() {
           </DraggableTask>
         )}
       />
+
+      <DuplicateWeekButton weekId={weekId} />
 
       {/* Imprescindible: el inbox y la cuadrícula son contenedores distintos,
           y sin capa flotante no se puede arrastrar de uno al otro. */}
