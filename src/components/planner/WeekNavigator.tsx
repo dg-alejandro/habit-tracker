@@ -32,7 +32,7 @@ export function WeekNavigator({ weekId, currentWeekId, onChange }: WeekNavigator
           <button
             type="button"
             onClick={() => onChange(currentWeekId)}
-            className="inline-flex h-11 items-center font-display text-xs text-ink-soft underline-offset-2 hover:text-streak-lime hover:underline"
+            className="inline-flex h-11 items-center font-display text-xs text-ink-soft underline-offset-2 hover:text-ink hover:underline"
           >
             Volver a esta semana
           </button>

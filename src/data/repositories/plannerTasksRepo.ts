@@ -66,7 +66,7 @@ export async function createTask(input: CreateTaskInput): Promise<PlannerTask> {
 }
 
 /**
- * Edita la tarea entera en UNA escritura: texto, duración, colocación y clase.
+ * Edita la tarea entera en UNA escritura: texto, duración y colocación.
  * Que sea una sola importa — dos transacciones sin esperar releerían la misma
  * fila y la segunda pisaría lo que escribió la primera.
  *
@@ -85,13 +85,12 @@ export async function updateTask(id: string, patch: UpdateTaskPatch): Promise<vo
     }
     if (patch.estimatedMinutes === null) delete next.estimatedMinutes
     else if (patch.estimatedMinutes !== undefined) next.estimatedMinutes = patch.estimatedMinutes
-    if (patch.day !== undefined) {
-      next.day = patch.day
-      // Colocar es ocupar un hueco de la cuadrícula: sin día no hay hora, y con
-      // día siempre hay una, porque si no la tarea no se vería en ningún sitio.
-      next.startBlock = patch.day === null ? null : (patch.startBlock ?? next.startBlock)
-    } else if (patch.startBlock !== undefined) {
-      next.startBlock = next.day === null ? null : patch.startBlock
+    if (patch.day !== undefined || patch.startBlock !== undefined) {
+      const day = patch.day !== undefined ? patch.day : next.day
+      const block = patch.startBlock !== undefined ? patch.startBlock : next.startBlock
+      const placement = placedOrNowhere(day, block)
+      next.day = placement.day
+      next.startBlock = placement.startBlock
     }
     return next
   })
@@ -106,9 +105,9 @@ export async function moveTask(
   day: IsoWeekday | null,
   startBlock: number | null,
 ): Promise<void> {
-  const block = day === null ? null : startBlock
-  assertBlock(block)
-  await writeTask(id, (current) => ({ ...current, day, startBlock: block }))
+  assertBlock(startBlock)
+  const placement = placedOrNowhere(day, startBlock)
+  await writeTask(id, (current) => ({ ...current, ...placement }))
 }
 
 /** Completar o descompletar. La tarea hecha se queda visible y tachada (§4). */
@@ -133,11 +132,14 @@ export async function createTaskFromBank(
   day: IsoWeekday | null,
   startBlock: number | null,
 ): Promise<PlannerTask> {
-  const block = day === null ? null : startBlock
-  assertBlock(block)
+  assertBlock(startBlock)
+  // La ficha puede venir de un import JSON o de una fila remota antigua: su
+  // duración se valida aquí, o cada tarea que salga del banco la propagaría.
+  assertMinutes(bank.estimatedMinutes)
+  const placement = placedOrNowhere(day, startBlock)
   return await db.transaction('rw', db.plannerTasks, db.outbox, async () => {
     const row: PlannerTask = {
-      ...taskFromBank(bank, weekId, day, block),
+      ...taskFromBank(bank, weekId, placement.day, placement.startBlock),
       id: crypto.randomUUID(),
       updatedAt: Date.now(),
     }
@@ -172,6 +174,21 @@ async function writeTask(id: string, mutate: (current: PlannerTask) => PlannerTa
     await db.plannerTasks.put({ ...mutate(current), updatedAt: Date.now() })
     await enqueueUpsert('plannerTasks', id)
   })
+}
+
+/**
+ * El invariante de §4: día y hora van juntos. Una tarea con día pero sin hora no
+ * se vería en ninguna parte —ni en la caja, que filtra por día, ni en la
+ * cuadrícula, que filtra por hora—, así que la mitad suelta la devuelve entera a
+ * la caja. Es la última defensa: la UI ya las empareja, pero un parche futuro,
+ * un import o una fila remota corrupta no tienen por qué.
+ */
+function placedOrNowhere(
+  day: IsoWeekday | null,
+  startBlock: number | null,
+): Pick<PlannerTask, 'day' | 'startBlock'> {
+  if (day === null || startBlock === null) return { day: null, startBlock: null }
+  return { day, startBlock }
 }
 
 function assertBlock(block: number | null): void {

@@ -48,9 +48,13 @@ export function blockToMinutes(block: number): number {
  */
 export const MAX_ESTIMATED_MINUTES = 24 * 60
 
-/** true si la duración es un número de minutos utilizable. */
+/**
+ * true si la duración es un número de minutos utilizable.
+ * Entero obligatorio: la columna remota es `integer` —un 20,5 reventaría el push
+ * y atascaría la cola— y además el chip pintaría un '09:00–09:20.5'.
+ */
 export function isValidEstimatedMinutes(minutes: number): boolean {
-  return Number.isFinite(minutes) && minutes > 0 && minutes <= MAX_ESTIMATED_MINUTES
+  return Number.isInteger(minutes) && minutes > 0 && minutes <= MAX_ESTIMATED_MINUTES
 }
 
 /**
@@ -76,7 +80,9 @@ export function taskMinutes(estimatedMinutes?: number): number {
   if (estimatedMinutes === undefined || !Number.isFinite(estimatedMinutes) || estimatedMinutes <= 0) {
     return BLOCK_MINUTES
   }
-  return Math.min(estimatedMinutes, BLOCKS_PER_DAY * BLOCK_MINUTES)
+  // Se redondea al minuto —no al bloque— por si una fila remota vieja o un
+  // import traen un decimal: '09:20,5' no es una hora.
+  return Math.max(1, Math.min(Math.round(estimatedMinutes), BLOCKS_PER_DAY * BLOCK_MINUTES))
 }
 
 /**
@@ -96,7 +102,11 @@ function minuteLabel(minuteOfDay: number): string {
   return `${String(hours).padStart(2, '0')}:${String(minuteOfDay % 60).padStart(2, '0')}`
 }
 
-/** '09:00–09:20'; null si la tarea no está colocada. El final es el REAL. */
+/**
+ * '09:00–09:20'; null si la tarea no está colocada. El final es el de la
+ * duración entera, no el del recorte que se pinta, salvo cuando se sale del día:
+ * ahí se lee '24:00', que es hasta donde llega la cuadrícula.
+ */
 export function blockRangeLabel(
   startBlock: number | null,
   estimatedMinutes?: number,
@@ -189,18 +199,26 @@ export interface EphemeralPurgeInput {
 }
 
 /**
- * Ids de las tareas PUNTUALES que se borran al cambiar de semana: las que
- * quedaron sin hacer no te siguen, desaparecen (decisión del propietario).
+ * Ids de las tareas que se borran al cambiar de semana: lo que quedó sin hacer
+ * no te sigue, desaparece (decisión del propietario).
  *
  * NO toca lo COMPLETADO —eso es el historial de lo que sí hiciste— ni lo que
- * salió del banco, que se queda en su semana como registro de que ese jueves
- * no fuiste al gimnasio.
+ * salió del banco y SE COLOCÓ, que se queda en su semana como registro de que
+ * ese jueves no fuiste al gimnasio.
+ *
+ * Sí borra lo que salió del banco y se quedó SIN COLOCAR: eso no llegó a ser
+ * un plan de nada, y si no se limpiara se acumularía en la caja para siempre.
  *
  * Idempotente por construcción: borrado el lote, no queda nada que borrar.
  */
 export function planEphemeralPurge(input: EphemeralPurgeInput): string[] {
   return input.staleTasks
-    .filter((task) => task.weekId < input.currentWeek && !task.done && task.templateId === null)
+    .filter(
+      (task) =>
+        task.weekId < input.currentWeek &&
+        !task.done &&
+        (task.templateId === null || task.day === null),
+    )
     .map((task) => task.id)
 }
 
@@ -344,7 +362,7 @@ export function sortTasksForDisplay(tasks: readonly PlannerTask[]): PlannerTask[
 
 /** Bloque de 30 min en el que cae un instante del reloj de pared de Madrid. */
 export function blockOfWallClock(hour: number, minute: number): number {
-  return Math.min(BLOCKS_PER_DAY - 1, hour * 2 + (minute >= 30 ? 1 : 0))
+  return Math.max(0, Math.min(BLOCKS_PER_DAY - 1, hour * 2 + (minute >= 30 ? 1 : 0)))
 }
 
 /* ── Zonas de soltado del drag & drop ─────────────────────────────────────── */

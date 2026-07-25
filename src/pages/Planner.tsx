@@ -32,6 +32,7 @@ import {
 } from '../hooks/usePlanner'
 import { useLogicalToday } from '../hooks/useLogicalToday'
 import {
+  addWeeksToWeekId,
   daysOfWeekId,
   isoWeekIdOf,
   isoWeekdayOf,
@@ -64,7 +65,7 @@ interface PendingMove {
 
 /**
  * `closestCenter` engancha la celda equivocada en una rejilla de bloques de
- * 28 px: se prioriza lo que hay bajo el puntero y solo se cae al solape de
+ * 42 px: se prioriza lo que hay bajo el puntero y solo se cae al solape de
  * rectángulos cuando el puntero está fuera de toda zona.
  */
 const collisionDetection: CollisionDetection = (args) => {
@@ -95,18 +96,26 @@ function describeTarget(id: string): string {
 
 /*
  * Planificador semanal, independiente de los hábitos (CLAUDE.md §4 y §5.4).
- * Dos piezas y nada más: la caja donde se escribe y la cuadrícula donde se
- * coloca. No hay listas por día — arrastrar es lo que decide día y hora.
+ * Tres piezas: el banco de tareas reutilizables, la caja de sueltas de esta
+ * semana y la cuadrícula. No hay listas por día — arrastrar decide día y hora.
  */
 export function Planner() {
   const today = useLogicalToday()
   const currentWeekId = isoWeekIdOf(today)
-  const [weekId, setWeekId] = useState<WeekId>(currentWeekId)
+  // El domingo se abre ya en la semana que EMPIEZA (§1: «los domingos organizo
+  // la semana que empieza»). Si no, planificar un domingo por la noche caería
+  // sobre la semana que muere, y la purga del lunes se lo llevaría todo.
+  const planningAhead = isoWeekdayOf(today) === 7
+  const [weekId, setWeekId] = useState<WeekId>(() =>
+    planningAhead ? addWeeksToWeekId(currentWeekId, 1) : currentWeekId,
+  )
   const [editingId, setEditingId] = useState<string | null>(null)
   // La madrugada arranca plegada (§4): 48 bloques enteros son ingobernables.
   const [nightOpen, setNightOpen] = useState(false)
   const isDesktop = useIsDesktop()
-  const [selectedDay, setSelectedDay] = useState<IsoWeekday>(() => isoWeekdayOf(today))
+  const [selectedDay, setSelectedDay] = useState<IsoWeekday>(() =>
+    planningAhead ? 1 : isoWeekdayOf(today),
+  )
 
   const [dragging, setDragging] = useState<string | null>(null)
   const [pendingMove, setPendingMove] = useState<PendingMove | null>(null)
@@ -211,7 +220,12 @@ export function Planner() {
           </div>
         )}
 
-        <TaskBank bank={bank ?? []} />
+        {/* Del banco a la caja de sin colocar, sin gesto: desde ahí el editor
+            le pone día y hora. Es la alternativa sin arrastre que pide §4. */}
+        <TaskBank
+          bank={bank ?? []}
+          onSend={(item) => void createTaskFromBank(item, weekId, null, null)}
+        />
 
         <UnplacedTray weekId={weekId} tasks={unplaced} editingId={editingId} onEdit={setEditingId} />
 
@@ -249,7 +263,7 @@ export function Planner() {
             y sin capa flotante no se puede arrastrar de una a otra. */}
         <DragOverlay dropAnimation={null}>
           {draggingBank !== undefined ? (
-            <div className="rounded-sm border border-streak-magenta bg-surface px-3 py-2 text-sm text-ink opacity-90">
+            <div className="rounded-sm border border-streak-lime bg-surface px-3 py-2 text-base text-ink opacity-90">
               {draggingBank.text}
             </div>
           ) : draggingTask === undefined ? null : (

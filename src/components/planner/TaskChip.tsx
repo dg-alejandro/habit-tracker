@@ -51,7 +51,7 @@ export function TaskChip({ task, density, compact, onToggle, onOpen, handle }: T
           onClick={onToggle}
           aria-pressed={task.done}
           aria-label={`Completar ${task.text}`}
-          className="flex w-7 shrink-0 items-center justify-center"
+          className="flex w-9 shrink-0 items-center justify-center"
         >
           <span
             aria-hidden="true"
@@ -69,13 +69,13 @@ export function TaskChip({ task, density, compact, onToggle, onOpen, handle }: T
             // justo el dato que no cabía en las tareas de menos de media hora.
             <span className="flex items-baseline gap-1">
               <span
-                className={`min-w-0 truncate text-xs leading-tight ${
+                className={`min-w-0 truncate text-sm leading-tight ${
                   task.done ? 'text-ink-faint line-through' : 'text-ink'
                 }`}
               >
                 {task.text}
               </span>
-              <span className="shrink-0 font-display text-xs tabular-nums text-ink-faint">
+              <span className="shrink-0 font-display text-sm tabular-nums text-ink-soft">
                 {shortDurationLabel(task.estimatedMinutes)}
               </span>
             </span>
@@ -89,7 +89,7 @@ export function TaskChip({ task, density, compact, onToggle, onOpen, handle }: T
                 {task.text}
               </span>
               {time !== null && (
-                <span className="block truncate font-display text-xs text-ink-faint">{time}</span>
+                <span className="block truncate font-display text-xs text-ink-soft">{time}</span>
               )}
             </>
           )}

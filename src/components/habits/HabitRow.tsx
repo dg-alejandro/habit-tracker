@@ -27,7 +27,7 @@ export function HabitRow({ habit, entry, date, disabled }: HabitRowProps) {
         className="flex min-h-14 w-full items-center gap-4 py-2 text-left"
       >
         <CheckToggle checked={done} />
-        <span className="text-base text-ink">{habit.name}</span>
+        <span className="text-lg text-ink">{habit.name}</span>
       </button>
     )
   }
@@ -37,7 +37,7 @@ export function HabitRow({ habit, entry, date, disabled }: HabitRowProps) {
     <div className="flex min-h-14 items-start gap-4 py-3">
       <CheckToggle checked={done} />
       <div className="min-w-0 flex-1">
-        <p className="text-base leading-7 text-ink">{habit.name}</p>
+        <p className="text-lg leading-7 text-ink">{habit.name}</p>
         <CounterControls habit={habit} entry={entry} date={date} disabled={disabled} />
         {habit.type === 'counter_note' && (
           <NoteField habit={habit} entry={entry} date={date} disabled={disabled} />

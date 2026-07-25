@@ -43,14 +43,10 @@ export function useNowMarker(todayWeekday: IsoWeekday | null): NowMarker | null 
   return { day: todayWeekday, block, fraction: (wall.minute % 30) / 30 }
 }
 
+/** La zona horaria vive en `logic/dates.ts` y en ningún otro sitio. */
 function madridWallClockNow(): { hour: number; minute: number } {
-  const now = new Date()
-  const wall = madridWallClock(now)
-  // madridWallClock no devuelve minutos: se leen del reloj con la misma zona.
-  const minute = Number(
-    new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Madrid', minute: '2-digit' }).format(now),
-  )
-  return { hour: wall.hour, minute: Number.isNaN(minute) ? 0 : minute }
+  const wall = madridWallClock(new Date())
+  return { hour: wall.hour, minute: wall.minute }
 }
 
 /**
@@ -60,7 +56,7 @@ function madridWallClockNow(): { hour: number; minute: number } {
  * Sin plazo de espera a propósito. La preparación de la semana genera y mueve
  * filas sin que el usuario toque nada, y la resolución de conflictos es por
  * última escritura: si se adelantara a la bajada, un dispositivo desactualizado
- * regeneraría una tarea fija que el otro había editado o borrado, y ganaría.
+ * borraría tareas que el otro acababa de completar, y ganaría.
  * Sin conexión el planificador sigue siendo usable a mano; lo automático espera.
  */
 export function useSyncSettled(): boolean {
@@ -72,10 +68,7 @@ export function useSyncSettled(): boolean {
   return snapshot.lastSyncedAt !== null
 }
 
-/**
- * Genera las tareas fijas de la semana visitada y arrastra las pendientes a la
- * semana actual, una sola vez por par de semanas.
- */
+/** Limpia lo que caducó al cambiar de semana, una sola vez por par de semanas. */
 export function useWeekPreparation(weekId: WeekId, currentWeekId: WeekId): void {
   const settled = useSyncSettled()
   // Sobrevive al doble efecto de StrictMode sin depender de cómo se serialicen

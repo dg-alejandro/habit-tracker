@@ -79,14 +79,18 @@ Cada fase termina con: código funcionando, `PROGRESO.md` actualizado, commit he
 
 **Objetivo:** poder planificar un domingo de verdad con él.
 
-- Repositorios de tareas y plantillas.
-- `logic/planner.ts`: semana ISO, generación de tareas desde plantillas, arrastre de tareas no completadas al inbox siguiente con su contador. **Con tests.**
-- Inbox semanal + cuadrícula de 7 días.
+*(El modelo de esta fase se rehízo entero durante su construcción. Lo que sigue es
+lo que se construyó; el diseño original —inbox, plantillas que generaban tareas
+solas, arrastre semanal con contador— está descrito en `PROGRESO.md` como lo que
+NO se hace, para que nadie lo reinvente.)*
+
+- Repositorios de tareas de la semana y del banco.
+- `logic/planner.ts`: semana ISO, bloques de 30 min, carriles de solape, purga de lo puntual caducado. **Con tests.**
+- Banco de tareas reutilizables, plegable, que no recuerda dónde estuvo cada tarea.
+- Caja de tareas de la semana sin colocar.
 - Cuadrícula horaria 00:00–24:00 en bloques de 30 min, con la franja nocturna plegada por defecto.
-- Drag & drop con @dnd-kit: inbox → día, día → bloque horario.
+- Drag & drop con @dnd-kit: del banco o de la caja a un hueco de día y hora.
 - Creación rápida con Enter, edición en línea, completar tareas.
-- Pantalla de gestión de plantillas de tarea fija.
-- Duplicar la semana anterior.
 - Vista móvil: un día cada vez.
 
 **Criterio de aceptación:** planifico una semana completa desde el iPhone sin abrir el PC.

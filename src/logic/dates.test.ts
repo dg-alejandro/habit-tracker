@@ -11,7 +11,6 @@ import {
   addDaysIso,
   addMonthsToMonthId,
   addWeeksToWeekId,
-  dateOfWeekday,
   daysOfMonth,
   daysOfWeekId,
   eachDayIso,
@@ -30,7 +29,6 @@ import {
   weekdayInitialEs,
   weekdayLongEs,
   weekdayShortEs,
-  weeksBetweenWeekIds,
 } from './dates'
 import type { IsoWeekday, WeekId } from './dates'
 
@@ -41,15 +39,39 @@ function utc(year: number, month: number, day: number, hour = 0, minute = 0, sec
 
 describe('madridWallClock', () => {
   it('convierte un instante de verano a la pared de Madrid (CEST, +2)', () => {
-    expect(madridWallClock(utc(2026, 7, 23, 20, 0))).toEqual({ year: 2026, month: 7, day: 23, hour: 22 })
+    expect(madridWallClock(utc(2026, 7, 23, 20, 0))).toEqual({
+      year: 2026,
+      month: 7,
+      day: 23,
+      hour: 22,
+      minute: 0,
+    })
   })
 
   it('convierte un instante de invierno a la pared de Madrid (CET, +1)', () => {
-    expect(madridWallClock(utc(2026, 1, 15, 20, 0))).toEqual({ year: 2026, month: 1, day: 15, hour: 21 })
+    expect(madridWallClock(utc(2026, 1, 15, 20, 0))).toEqual({
+      year: 2026,
+      month: 1,
+      day: 15,
+      hour: 21,
+      minute: 0,
+    })
+  })
+
+  it('lee también el minuto, que es lo que sitúa la raya del «ahora»', () => {
+    const wall = madridWallClock(utc(2026, 7, 23, 20, 37))
+    expect(wall.hour).toBe(22)
+    expect(wall.minute).toBe(37)
   })
 
   it('a medianoche la hora es 0, nunca 24', () => {
-    expect(madridWallClock(utc(2026, 7, 23, 22, 0))).toEqual({ year: 2026, month: 7, day: 24, hour: 0 })
+    expect(madridWallClock(utc(2026, 7, 23, 22, 0))).toEqual({
+      year: 2026,
+      month: 7,
+      day: 24,
+      hour: 0,
+      minute: 0,
+    })
   })
 })
 
@@ -299,7 +321,7 @@ describe('addWeeksToWeekId', () => {
   })
 })
 
-describe('daysOfWeekId y dateOfWeekday', () => {
+describe('daysOfWeekId', () => {
   it('devuelve los 7 días de lunes a domingo', () => {
     expect(daysOfWeekId('2026-W30')).toEqual([
       '2026-07-20',
@@ -317,12 +339,6 @@ describe('daysOfWeekId y dateOfWeekday', () => {
     expect(daysOfWeekId('2026-W01')[6]).toBe('2026-01-04')
   })
 
-  it('dateOfWeekday coincide con la posición dentro de daysOfWeekId', () => {
-    const days = daysOfWeekId('2026-W01')
-    for (let weekday = 1; weekday <= 7; weekday += 1) {
-      expect(dateOfWeekday('2026-W01', weekday as IsoWeekday)).toBe(days[weekday - 1])
-    }
-  })
 
   it('cada día devuelve su propio índice al pasarlo por isoWeekdayOf', () => {
     const days = daysOfWeekId('2026-W30')
@@ -332,24 +348,6 @@ describe('daysOfWeekId y dateOfWeekday', () => {
   })
 })
 
-describe('weeksBetweenWeekIds', () => {
-  it('la misma semana son 0 y dos consecutivas son 1', () => {
-    expect(weeksBetweenWeekIds('2026-W30', '2026-W30')).toBe(0)
-    expect(weeksBetweenWeekIds('2026-W30', '2026-W31')).toBe(1)
-  })
-
-  it('hacia atrás es negativo', () => {
-    expect(weeksBetweenWeekIds('2026-W31', '2026-W30')).toBe(-1)
-  })
-
-  it('cruzando el año ISO largo de 2020', () => {
-    expect(weeksBetweenWeekIds('2020-W52', '2021-W01')).toBe(2)
-  })
-
-  it('un salto grande es coherente con addWeeksToWeekId', () => {
-    expect(weeksBetweenWeekIds('2026-W10', addWeeksToWeekId('2026-W10', 52))).toBe(52)
-  })
-})
 
 describe('formatWeekRangeEs', () => {
   // Se comprueba por partes: la puntuación exacta de ICU varía entre versiones de Node.

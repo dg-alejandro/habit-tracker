@@ -20,14 +20,14 @@ export function DayNavigator({ date, today, onChange }: DayNavigatorProps) {
         type="button"
         aria-label="Día anterior"
         onClick={() => onChange(addDaysIso(date, -1))}
-        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-sm border border-line text-ink transition-colors hover:bg-surface active:bg-surface"
+        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-sm border border-line text-ink transition-colors hover:bg-surface active:bg-surface"
       >
         <Chevron direction="left" />
       </button>
 
       <div className="min-w-0 text-center">
-        <p className="truncate font-display text-base uppercase text-ink">{label ?? formatDateEs(date)}</p>
-        {label !== null && <p className="truncate font-display text-xs text-ink-soft">{formatDateEs(date)}</p>}
+        <p className="truncate font-display text-xl uppercase text-ink">{label ?? formatDateEs(date)}</p>
+        {label !== null && <p className="truncate font-display text-sm text-ink-soft">{formatDateEs(date)}</p>}
       </div>
 
       <button
@@ -35,7 +35,7 @@ export function DayNavigator({ date, today, onChange }: DayNavigatorProps) {
         aria-label="Día siguiente"
         disabled={atToday}
         onClick={() => onChange(addDaysIso(date, 1))}
-        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-sm border border-line text-ink transition-colors hover:bg-surface active:bg-surface disabled:opacity-30 disabled:hover:bg-paper"
+        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-sm border border-line text-ink transition-colors hover:bg-surface active:bg-surface disabled:opacity-30 disabled:hover:bg-paper"
       >
         <Chevron direction="right" />
       </button>
@@ -48,7 +48,7 @@ function Chevron({ direction }: { direction: 'left' | 'right' }) {
     <svg
       viewBox="0 0 24 24"
       aria-hidden="true"
-      className={`h-5 w-5 ${direction === 'right' ? 'rotate-180' : ''}`}
+      className={`h-6 w-6 ${direction === 'right' ? 'rotate-180' : ''}`}
       fill="none"
       stroke="currentColor"
       strokeWidth="2.2"

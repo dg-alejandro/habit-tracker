@@ -218,10 +218,17 @@ describe('planEphemeralPurge — las puntuales solo viven su semana', () => {
     expect(planEphemeralPurge({ staleTasks: [stale], currentWeek: CURRENT })).toEqual([])
   })
 
-  it('NO borra lo que salio del banco, ni sin hacer', () => {
+  it('NO borra lo que salio del banco y estaba COLOCADO, ni sin hacer', () => {
     // Se queda como registro de que ese jueves no fuiste al gimnasio.
-    const stale = fromBank({ id: 'gym' })
+    const stale = fromBank({ id: 'gym', day: 4, startBlock: 38 })
     expect(planEphemeralPurge({ staleTasks: [stale], currentWeek: CURRENT })).toEqual([])
+  })
+
+  it('SÍ borra lo del banco que se quedó en la caja sin colocar', () => {
+    // Sin día no dice nada de ningún jueves: no es historial, es un resto. Si no
+    // se barriera, cada ficha bajada y no usada se acumularía para siempre.
+    const stale = fromBank({ id: 'gym' })
+    expect(planEphemeralPurge({ staleTasks: [stale], currentWeek: CURRENT })).toEqual(['gym'])
   })
 
   it('no toca la semana en curso ni las futuras', () => {
@@ -444,5 +451,98 @@ describe('zonas de soltado', () => {
   it('acepta los bordes válidos: día 1 y 7, bloques 0 y 47', () => {
     expect(parseDropTargetId('slot:1:0')).toEqual({ kind: 'slot', day: 1, block: 0 })
     expect(parseDropTargetId('slot:7:47')).toEqual({ kind: 'slot', day: 7, block: 47 })
+  })
+})
+
+describe('duraciones raras que no vienen del formulario', () => {
+  it('un decimal no es una duración válida (la columna remota es integer)', () => {
+    expect(isValidEstimatedMinutes(20.5)).toBe(false)
+    expect(isValidEstimatedMinutes(20)).toBe(true)
+  })
+
+  it('si un decimal llega igualmente, se pinta redondeado al minuto', () => {
+    // Un import JSON o una fila remota vieja pueden traerlo; '09:20,5' no es hora.
+    expect(taskMinutes(20.5)).toBe(21)
+    expect(blockRangeLabel(18, 20.5)).toBe('09:00–09:21')
+  })
+
+  it('una duración ridícula sigue ocupando el bloque entero', () => {
+    expect(taskMinutes(0.4)).toBe(1)
+  })
+
+  it('un día entero se resume sin decir 24h0', () => {
+    expect(shortDurationLabel(1440)).toBe('24h')
+  })
+
+  it('un bloque fuera de la rejilla no devuelve minutos negativos al pintar', () => {
+    expect(visibleMinutes(BLOCKS_PER_DAY, 60)).toBe(1)
+  })
+})
+
+describe('la rejilla frente a filas corruptas', () => {
+  it('una tarea con día pero sin hora no aparece en la rejilla ni en la caja', () => {
+    // Es el estado imposible que el repositorio ya no deja escribir; si una fila
+    // vieja lo trae, ninguna de las dos vistas debe fingir que sabe dónde va.
+    const orphan = task({ id: 'huérfana', day: 1, startBlock: null })
+    expect(layoutDayTasks([orphan])).toEqual([])
+    expect(unplacedTasks([orphan])).toEqual([])
+  })
+
+  it('un bloque inválido se descarta en vez de romper el pintado', () => {
+    expect(layoutDayTasks([task({ id: 'a', day: 1, startBlock: 48 })])).toEqual([])
+    expect(layoutDayTasks([task({ id: 'b', day: 1, startBlock: 3.5 })])).toEqual([])
+  })
+
+  it('dos tareas cortas caben bajo una larga sin pisarla ni pisarse', () => {
+    // El caso «contenedor»: A ocupa tres horas y B y C viven dentro, una detrás
+    // de otra. Deben compartir el carril 1 en vez de gastar uno cada una.
+    const placements = layoutDayTasks([
+      scheduled('A', 18, 180),
+      scheduled('B', 20, 30),
+      scheduled('C', 22, 30),
+    ])
+    const lane = (id: string) => placements.find((item) => item.task.id === id)
+    expect(lane('A')?.lane).toBe(0)
+    expect(lane('B')?.lane).toBe(1)
+    expect(lane('C')?.lane).toBe(1)
+    expect(placements.every((item) => item.lane < item.lanes)).toBe(true)
+  })
+
+  it('en un día denso, dos tareas del mismo carril nunca se solapan', () => {
+    const dense = [
+      scheduled('a', 18, 120),
+      scheduled('b', 19, 30),
+      scheduled('c', 19, 90),
+      scheduled('d', 20, 45),
+      scheduled('e', 21, 30),
+      scheduled('f', 22, 200),
+    ]
+    const placements = layoutDayTasks(dense)
+    for (const one of placements) {
+      for (const other of placements) {
+        if (one === other || one.lane !== other.lane) continue
+        const oneEnd = blockToMinutes(one.task.startBlock ?? 0) + one.minutes
+        const otherStart = blockToMinutes(other.task.startBlock ?? 0)
+        const otherEnd = otherStart + other.minutes
+        const overlaps = blockToMinutes(one.task.startBlock ?? 0) < otherEnd && otherStart < oneEnd
+        expect(overlaps).toBe(false)
+      }
+    }
+    expect(placements.every((item) => item.lane < item.lanes)).toBe(true)
+  })
+})
+
+describe('bordes de las zonas de soltado y del movimiento optimista', () => {
+  it('un id de zona con segmentos de más no se acepta', () => {
+    expect(parseDropTargetId('slot:3:20:1')).toBeNull()
+  })
+
+  it('un número con cero delante no se acepta (dos ids para el mismo hueco)', () => {
+    expect(parseDropTargetId('slot:03:20')).toBeNull()
+  })
+
+  it('mover un id que no está en la lista la deja igual', () => {
+    const tasks = [task({ id: 'a' })]
+    expect(applyTaskMove(tasks, { id: 'fantasma', day: 1, startBlock: 20 })).toEqual(tasks)
   })
 })

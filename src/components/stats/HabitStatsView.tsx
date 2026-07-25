@@ -56,7 +56,7 @@ export function HabitStatsView({ habit, data, today, onBack }: HabitStatsViewPro
       >
         ← Todos los hábitos
       </button>
-      <h1 className="mt-2 font-display text-2xl uppercase tracking-widest text-ink">
+      <h1 className="mt-2 border-b border-line pb-4 font-display text-3xl uppercase tracking-[0.2em] text-ink">
         {habit.name}
         {habit.archivedAt !== null && (
           <span className="ml-2 text-sm font-normal text-ink-faint">archivado</span>

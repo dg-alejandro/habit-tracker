@@ -53,9 +53,7 @@ export function TaskEditor({ task, onClose }: TaskEditorProps) {
   return (
     <form onSubmit={submit} className="rounded-sm border border-line p-4">
       <label className="block">
-        <span className="font-display text-xs uppercase tracking-widest text-streak-lime">
-          Tarea
-        </span>
+        <span className="font-display text-sm uppercase tracking-widest text-ink-soft">Tarea</span>
         <input
           autoFocus
           type="text"
@@ -68,7 +66,7 @@ export function TaskEditor({ task, onClose }: TaskEditorProps) {
 
       <div className="mt-3 flex flex-wrap gap-3">
         <label className="block min-w-32 flex-1">
-          <span className="font-display text-xs uppercase tracking-widest text-ink-soft">Día</span>
+          <span className="font-display text-sm uppercase tracking-widest text-ink-soft">Día</span>
           <select
             value={day ?? ''}
             onChange={(event) => {
@@ -91,7 +89,7 @@ export function TaskEditor({ task, onClose }: TaskEditorProps) {
         </label>
 
         <label className="block min-w-32 flex-1">
-          <span className="font-display text-xs uppercase tracking-widest text-ink-soft">Hora</span>
+          <span className="font-display text-sm uppercase tracking-widest text-ink-soft">Hora</span>
           <select
             value={startBlock ?? ''}
             disabled={day === null}
@@ -102,7 +100,12 @@ export function TaskEditor({ task, onClose }: TaskEditorProps) {
             }
             className={`mt-1 ${FIELD_CLASS} font-display tabular-nums disabled:text-ink-faint`}
           >
-            <option value="">Sin hora</option>
+            {/* Deshabilitada a propósito: elegir «sin hora» con un día puesto
+                dejaba la tarea sin sitio donde verse. Para quitarla de la
+                cuadrícula está «Sin colocar» en el selector de al lado. */}
+            <option value="" disabled>
+              —
+            </option>
             {Array.from({ length: BLOCKS_PER_DAY }, (_, block) => (
               <option key={block} value={block}>
                 {blockLabel(block)}
@@ -112,7 +115,7 @@ export function TaskEditor({ task, onClose }: TaskEditorProps) {
         </label>
 
         <label className="block min-w-32 flex-1">
-          <span className="font-display text-xs uppercase tracking-widest text-ink-soft">
+          <span className="font-display text-sm uppercase tracking-widest text-ink-soft">
             Duración (min)
           </span>
           <input

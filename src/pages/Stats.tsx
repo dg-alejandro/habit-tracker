@@ -19,7 +19,7 @@ export function Stats() {
   return (
     <div className="mx-auto max-w-xl px-5 py-6 md:px-10 md:py-10">
       {data === undefined ? (
-        <h1 className="font-display text-2xl uppercase tracking-widest text-ink">Rachas y estadísticas</h1>
+        <h1 className="border-b border-line pb-4 font-display text-3xl uppercase tracking-[0.2em] text-ink">Rachas y estadísticas</h1>
       ) : selected === null ? (
         <GlobalStatsView data={data} today={today} onSelectHabit={setSelectedHabitId} />
       ) : (

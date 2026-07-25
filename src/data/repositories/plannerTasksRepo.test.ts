@@ -11,6 +11,7 @@ import { SYNC_TABLES } from '../types'
 import {
   createTask,
   createTaskFromBank,
+  deleteTask,
   ensureWeekReady,
   listWeekTasks,
   moveTask,
@@ -229,5 +230,108 @@ describe('cola de subida', () => {
     await createTaskFromBank(item, WEEK, 4, 38)
     const queued = await db.outbox.toArray()
     expect(queued.filter((entry) => entry.table === 'plannerTasks')).toHaveLength(1)
+  })
+})
+
+describe('el invariante de colocación — día y hora van juntos', () => {
+  it('quitarle la hora a una tarea colocada la devuelve entera a la caja', async () => {
+    // El fallo que arregla esto la dejaba con día y sin hora: fuera de la caja
+    // (filtra por día) y fuera de la cuadrícula (filtra por hora). Invisible.
+    const id = await place('Llamar', WEEK, 4, 20)
+    await updateTask(id, { startBlock: null })
+    const [task] = await listWeekTasks(WEEK)
+    expect(task?.day).toBeNull()
+    expect(task?.startBlock).toBeNull()
+  })
+
+  it('poner día y «sin hora» a la vez tampoco deja la mitad suelta', async () => {
+    const created = await createTask({ text: 'Llamar', weekId: WEEK })
+    await updateTask(created.id, { day: 4, startBlock: null })
+    const [task] = await listWeekTasks(WEEK)
+    expect(task?.day).toBeNull()
+    expect(task?.startBlock).toBeNull()
+  })
+
+  it('moveTask con día y sin bloque devuelve la tarea a la caja', async () => {
+    const id = await place('Llamar', WEEK, 4, 20)
+    await moveTask(id, 4, null)
+    const [task] = await listWeekTasks(WEEK)
+    expect(task?.day).toBeNull()
+    expect(task?.startBlock).toBeNull()
+  })
+
+  it('dar hora a una tarea sin día no la coloca a medias', async () => {
+    const created = await createTask({ text: 'Llamar', weekId: WEEK })
+    await updateTask(created.id, { startBlock: 20 })
+    const [task] = await listWeekTasks(WEEK)
+    expect(task?.day).toBeNull()
+    expect(task?.startBlock).toBeNull()
+  })
+
+  it('sacar del banco sin día deja la tarea en la caja, no colgando de una hora', async () => {
+    const item = await createBankTask({ text: 'Gimnasio' })
+    await createTaskFromBank(item, WEEK, null, 20)
+    const [task] = await listWeekTasks(WEEK)
+    expect(task?.day).toBeNull()
+    expect(task?.startBlock).toBeNull()
+  })
+})
+
+describe('duraciones que el servidor no aceptaría', () => {
+  it('rechaza los decimales: la columna remota es integer', async () => {
+    await expect(createTask({ text: 'Leer', weekId: WEEK, estimatedMinutes: 20.5 })).rejects.toThrow(
+      /Duración/,
+    )
+    const id = await place('Llamar', WEEK, 4, 20)
+    await expect(updateTask(id, { estimatedMinutes: 20.5 })).rejects.toThrow(/Duración/)
+  })
+
+  it('rechaza cero y negativos', async () => {
+    await expect(createTask({ text: 'Leer', weekId: WEEK, estimatedMinutes: 0 })).rejects.toThrow()
+    await expect(createTask({ text: 'Leer', weekId: WEEK, estimatedMinutes: -5 })).rejects.toThrow()
+  })
+
+  it('una ficha del banco corrupta no contamina la tarea que sale de ella', async () => {
+    // Puede llegar de un import JSON o de una fila remota vieja: el banco no es
+    // la única puerta de entrada a la tabla.
+    await expect(
+      createTaskFromBank({ id: 'x', text: 'Leer', estimatedMinutes: 20.5 }, WEEK, 4, 20),
+    ).rejects.toThrow(/Duración/)
+    expect(await listWeekTasks(WEEK)).toEqual([])
+  })
+})
+
+describe('escrituras que no deben tocar nada', () => {
+  it('escribir sobre un id que no existe no encola basura', async () => {
+    await db.outbox.clear()
+    await updateTask('fantasma', { text: 'Nada' })
+    await moveTask('fantasma', 3, 20)
+    await toggleTaskDone('fantasma')
+    expect(await db.outbox.toArray()).toEqual([])
+  })
+
+  it('abrir una semana pasada no purga nada', async () => {
+    await place('Llamar', PREV, 3, 20)
+    await ensureWeekReady(PREV, WEEK)
+    expect(await textsOf(PREV)).toEqual(['Llamar'])
+  })
+
+  it('borrar quita la fila y encola el borrado', async () => {
+    const id = await place('Llamar', WEEK, 3, 20)
+    await db.outbox.clear()
+    await deleteTask(id)
+    expect(await listWeekTasks(WEEK)).toEqual([])
+    const queued = await db.outbox.toArray()
+    expect(queued).toHaveLength(1)
+    expect(queued[0]?.op).toBe('delete')
+  })
+
+  it('editar la ficha del banco no reescribe lo que ya estaba colocado', async () => {
+    const item = await createBankTask({ text: 'Gimnasio', estimatedMinutes: 60 })
+    await createTaskFromBank(item, WEEK, 4, 38)
+    await updateBankTask(item.id, { text: 'Gimnasio (nuevo)', estimatedMinutes: 90 })
+    const [task] = await listWeekTasks(WEEK)
+    expect(task?.text).toBe('Gimnasio')
+    expect(task?.estimatedMinutes).toBe(60)
   })
 })

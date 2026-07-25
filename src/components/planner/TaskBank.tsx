@@ -15,10 +15,12 @@ import {
 
 interface TaskBankProps {
   bank: readonly BankTask[]
+  /** Manda la ficha a la semana sin colocarla: la ruta que no necesita arrastrar. */
+  onSend: (item: BankTask) => void
 }
 
 const FIELD_CLASS =
-  'h-11 rounded-sm border border-line bg-paper px-3 text-base text-ink placeholder:text-ink-faint focus:border-streak-magenta focus:outline-none'
+  'h-11 rounded-sm border border-line bg-paper px-3 text-base text-ink placeholder:text-ink-faint focus:border-streak-lime focus:outline-none'
 
 /**
  * El banco de tareas reutilizables (§4): lo que se repite semana tras semana.
@@ -28,7 +30,7 @@ const FIELD_CLASS =
  * Va plegado por defecto: mientras planificas quieres verlo, pero no ocupa
  * pantalla el resto del tiempo.
  */
-export function TaskBank({ bank }: TaskBankProps) {
+export function TaskBank({ bank, onSend }: TaskBankProps) {
   const [open, setOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
 
@@ -38,7 +40,7 @@ export function TaskBank({ bank }: TaskBankProps) {
         type="button"
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
-        className="flex h-12 w-full items-center gap-3 border-b border-streak-magenta/60 font-display text-sm uppercase tracking-[0.2em] text-streak-magenta transition-colors hover:bg-surface"
+        className="flex h-12 w-full items-center gap-3 border-b border-streak-lime/60 font-display text-sm uppercase tracking-[0.2em] text-streak-lime transition-colors hover:bg-surface"
       >
         <span aria-hidden="true">{open ? '▾' : '▸'}</span>
         <span>Banco de tareas</span>
@@ -75,7 +77,11 @@ export function TaskBank({ bank }: TaskBankProps) {
                   </li>
                 ) : (
                   <li key={item.id}>
-                    <BankChip item={item} onEdit={() => setEditingId(item.id)} />
+                    <BankChip
+                      item={item}
+                      onEdit={() => setEditingId(item.id)}
+                      onSend={() => onSend(item)}
+                    />
                   </li>
                 ),
               )}
@@ -91,14 +97,27 @@ export function TaskBank({ bank }: TaskBankProps) {
   )
 }
 
-/** Ficha del banco: se arrastra por el asa y se edita tocando el nombre. */
-function BankChip({ item, onEdit }: { item: BankTask; onEdit: () => void }) {
+/**
+ * Ficha del banco: se arrastra por el asa, se edita tocando el nombre y el «+»
+ * la manda a la semana sin colocar. Ese botón es la red de seguridad de §4: si
+ * el gesto de arrastre falla —un ratón torpe, un dedo, el teclado—, la ficha
+ * sigue pudiendo bajar a la semana y colocarse luego desde el editor.
+ */
+function BankChip({
+  item,
+  onEdit,
+  onSend,
+}: {
+  item: BankTask
+  onEdit: () => void
+  onSend: () => void
+}) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: bankDragId(item.id) })
   const duration = durationLabel(item.estimatedMinutes)
 
   return (
     <div
-      className={`flex items-stretch rounded-sm border border-streak-magenta/60 bg-surface ${
+      className={`flex items-stretch rounded-sm border border-line border-l-4 border-l-streak-lime bg-surface ${
         isDragging ? 'opacity-30' : ''
       }`}
     >
@@ -108,15 +127,24 @@ function BankChip({ item, onEdit }: { item: BankTask; onEdit: () => void }) {
         aria-label={`Arrastrar ${item.text} a la semana`}
         {...attributes}
         {...listeners}
-        className="flex w-10 shrink-0 cursor-grab touch-none items-center justify-center text-streak-magenta active:cursor-grabbing"
+        className="flex w-11 shrink-0 cursor-grab touch-none items-center justify-center text-streak-lime active:cursor-grabbing"
       >
         <GripIcon />
       </button>
-      <button type="button" onClick={onEdit} className="min-h-12 py-2 pr-4 text-left">
-        <span className="block text-base text-ink">{item.text}</span>
+      <button type="button" onClick={onEdit} className="min-h-12 py-2 pr-3 text-left">
+        <span className="block text-lg text-ink">{item.text}</span>
         {duration !== null && (
-          <span className="block font-display text-sm text-ink-faint">{duration}</span>
+          <span className="block font-display text-sm text-ink-soft">{duration}</span>
         )}
+      </button>
+      <button
+        type="button"
+        onClick={onSend}
+        aria-label={`Mandar ${item.text} a la semana`}
+        title="Mandar a la semana, sin colocar"
+        className="flex w-11 shrink-0 items-center justify-center border-l border-line font-display text-xl text-ink-soft transition-colors hover:bg-paper hover:text-streak-lime"
+      >
+        +
       </button>
     </div>
   )
@@ -133,6 +161,7 @@ interface BankTaskFormProps {
 function BankTaskForm({ initial, onSubmit, onCancel, onDelete }: BankTaskFormProps) {
   const [text, setText] = useState(initial?.text ?? '')
   const [minutes, setMinutes] = useState(initial?.estimatedMinutes?.toString() ?? '')
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
 
   const parsed = Number(minutes)
   const minutesValid = minutes.trim() === '' || isValidEstimatedMinutes(parsed)
@@ -202,13 +231,34 @@ function BankTaskForm({ initial, onSubmit, onCancel, onDelete }: BankTaskFormPro
           >
             Cancelar
           </button>
-          <button
-            type="button"
-            onClick={onDelete}
-            className="h-11 rounded-sm px-3 font-display text-xs uppercase tracking-widest text-streak-red hover:bg-surface"
-          >
-            Quitar del banco
-          </button>
+          {/* En dos pasos, como el resto de borrados de la app: una ficha del
+              banco es lo que se repite cada semana, no una tarea de un día. */}
+          {confirmingDelete ? (
+            <>
+              <button
+                type="button"
+                onClick={onDelete}
+                className="h-11 rounded-sm border border-streak-red px-4 font-display text-xs uppercase tracking-widest text-streak-red hover:bg-surface"
+              >
+                Quitar de verdad
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmingDelete(false)}
+                className="h-11 rounded-sm px-3 font-display text-xs uppercase tracking-widest text-ink-soft hover:bg-surface"
+              >
+                No
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setConfirmingDelete(true)}
+              className="h-11 rounded-sm px-3 font-display text-xs uppercase tracking-widest text-streak-red hover:bg-surface"
+            >
+              Quitar del banco
+            </button>
+          )}
         </>
       )}
     </form>

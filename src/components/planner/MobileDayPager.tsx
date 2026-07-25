@@ -21,8 +21,9 @@ export function MobileDayPager({ selected, today, pendingByDay, onSelect }: Mobi
   return (
     <nav aria-label="Elegir día" className="mt-4 grid grid-cols-7 gap-1">
       {WEEKDAYS.map((day) => {
-        const button = (
+        return (
           <DayButton
+            key={day}
             day={day}
             active={day === selected}
             isToday={day === today}
@@ -30,7 +31,6 @@ export function MobileDayPager({ selected, today, pendingByDay, onSelect }: Mobi
             onSelect={onSelect}
           />
         )
-        return <div key={day}>{button}</div>
       })}
     </nav>
   )
@@ -51,7 +51,7 @@ function DayButton({ day, active, isToday, pending, onSelect }: DayButtonProps) 
       onClick={() => onSelect(day)}
       aria-current={active ? 'true' : undefined}
       aria-label={`${weekdayLongEs(day)}${isToday ? ' (hoy)' : ''}`}
-      className={`flex h-11 w-full flex-col items-center justify-center rounded-sm border text-xs transition-colors ${
+      className={`flex h-12 w-full flex-col items-center justify-center rounded-sm border font-display text-base transition-colors ${
         active
           ? 'border-ink bg-ink font-semibold text-paper'
           : `border-line hover:bg-surface ${isToday ? 'text-streak-lime' : 'text-ink-soft'}`

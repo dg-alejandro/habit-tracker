@@ -1,6 +1,6 @@
 /*
  * Modelo de datos compartido: hábitos, registros diarios, días congelados,
- * tareas del planificador y plantillas de tarea fija. Se define completo aquí
+ * tareas del planificador y banco de tareas. Se define completo aquí
  * (ROADMAP.md Fase 1) aunque el planificador y los ajustes no se usen hasta después.
  *
  * Convención: un campo `?:` NO aplica a ese tipo de fila (p. ej. minutos en una
@@ -74,7 +74,7 @@ export interface FrozenRange {
 export interface PlannerTask {
   id: string
   text: string
-  /** Determina cuántos bloques de 30 min ocupa al colocarla. */
+  /** Minutos que dura. NO se redondea al bloque: una de 20 min mide 20. */
   estimatedMinutes?: number
   /** Semana ISO a la que pertenece, p. ej. '2026-W31'. */
   weekId: WeekId
@@ -86,19 +86,25 @@ export interface PlannerTask {
   /** Bloque de 30 min desde las 00:00 (0–47); null = sin hora asignada. */
   startBlock: number | null
   done: boolean
-  /** Plantilla que la generó; null = tarea ocasional. */
+  /** Ficha del banco de la que salió; null = tarea suelta de esta semana. */
   templateId: string | null
-  /** Semanas que lleva arrastrándose; a partir de 3 se marca en rojo. */
+  /** En desuso (§4): vale siempre cero. La columna sigue en el esquema remoto. */
   carriedOverCount: number
   updatedAt: EpochMs
 }
 
-/** Plantilla de tarea fija: genera su tarea al crear cada semana nueva (Fase 4). */
+/**
+ * Ficha del BANCO de tareas reutilizables (§4). La tabla conserva el nombre
+ * `taskTemplates` y las columnas de su diseño original; hoy solo se usan `text`
+ * y `estimatedMinutes`. `weekday` es `not null` en Postgres y aquí no significa
+ * nada: se escribe 1 y no se lee. Quitarla exigiría ejecutar SQL a mano.
+ */
 export interface TaskTemplate {
   id: string
   text: string
+  /** Sin significado en el banco: ver la nota de arriba. */
   weekday: IsoWeekday
-  /** Bloque de 30 min (0–47); null = sin hora. */
+  /** Sin uso en el banco. */
   startBlock: number | null
   estimatedMinutes?: number
   updatedAt: EpochMs

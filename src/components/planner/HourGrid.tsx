@@ -111,7 +111,7 @@ export function HourGrid({
         </button>
       </div>
 
-      <div className="mt-4 overflow-x-auto">
+      <div className="mt-4 overflow-x-auto pt-2">
         <div
           className="grid min-w-full border-r border-b border-line"
           style={{ gridTemplateColumns: `${HOUR_RAIL_WIDTH} repeat(${days.length}, minmax(0, 1fr))` }}
@@ -128,7 +128,7 @@ export function HourGrid({
               }`}
             >
               <span className="block text-base tracking-[0.2em]">{weekdayShortEs(day)}</span>
-              <span className="block truncate text-xs normal-case tracking-normal text-ink-faint">
+              <span className="block truncate text-xs normal-case tracking-normal text-ink-soft">
                 {formatDateShortEs(dates[day - 1] ?? '')}
               </span>
             </div>
@@ -140,9 +140,7 @@ export function HourGrid({
               block % 2 === 0 ? (
                 <span
                   key={block}
-                  className={`absolute right-3 -translate-y-1/2 font-display text-sm tabular-nums ${
-                    block % 4 === 0 ? 'text-ink-soft' : 'text-ink-faint'
-                  }`}
+                  className="absolute right-3 -translate-y-1/2 font-display text-sm tabular-nums text-ink-soft"
                   style={{ top: (block - firstBlock) * CELL_PX }}
                 >
                   {blockLabel(block)}

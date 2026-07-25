@@ -183,7 +183,7 @@ Añadir, editar, reordenar (drag & drop) y archivar. Al crear: nombre, tipo, obj
 - Historial de las notas del hábito de aprendizaje, para ver qué se ha estudiado durante el año.
 
 ### 5.4 Planificador semanal
-Según §4. Incluye pantalla de gestión de plantillas.
+Según §4. El banco de tareas se gestiona en la misma pantalla, plegado.
 
 ### 5.5 Ajustes y datos
 - **Exportar e importar todo en JSON.** Único respaldo existente (ver §9).
@@ -204,7 +204,7 @@ Según §4. Incluye pantalla de gestión de plantillas.
 |---|---|
 | `streak-lime` | «Estás aquí» y «esto es estructura»: sección activa de la navegación, día de hoy, rótulos de sección, tareas fijas |
 | `streak-orange` | Cifras que miden: el % semanal, los pendientes, las series |
-| `streak-magenta` | Récords |
+| `streak-magenta` | Récords, y la raya del «ahora» en el planificador: es la única marca que no se puede confundir con una tarea |
 | `streak-red` | **Solo ruptura.** La racha rota, y los botones que borran de verdad |
 
 Un color que no signifique nada de eso no entra. El fondo, el texto y los bordes siguen siendo neutros siempre: sobre negro, un filete de dos píxeles ya grita bastante.

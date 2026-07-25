@@ -7,7 +7,7 @@
  * - Zona horaria fija Europe/Madrid, independiente del dispositivo.
  * - Semana ISO, de lunes a domingo.
  */
-import { addDays, differenceInCalendarISOWeeks, format, startOfISOWeek } from 'date-fns'
+import { addDays, format, startOfISOWeek } from 'date-fns'
 
 /**
  * Fecha de calendario 'YYYY-MM-DD'.
@@ -42,6 +42,8 @@ export interface WallClock {
   day: number
   /** 0–23 */
   hour: number
+  /** 0–59 */
+  minute: number
 }
 
 /**
@@ -55,6 +57,7 @@ const madridFormatter = new Intl.DateTimeFormat('en-GB', {
   month: '2-digit',
   day: '2-digit',
   hour: '2-digit',
+  minute: '2-digit',
   hourCycle: 'h23',
 })
 
@@ -73,6 +76,7 @@ export function madridWallClock(instant: Date): WallClock {
     month: read('month'),
     day: read('day'),
     hour: read('hour'),
+    minute: read('minute'),
   }
 }
 
@@ -148,22 +152,6 @@ export function daysOfWeekId(weekId: WeekId): IsoDate[] {
   return isoWeekDaysOf(mondayOfWeekId(weekId))
 }
 
-/** Fecha del día `weekday` (1 = lunes … 7 = domingo) dentro de la semana indicada. */
-export function dateOfWeekday(weekId: WeekId, weekday: IsoWeekday): IsoDate {
-  return addDaysIso(mondayOfWeekId(weekId), weekday - 1)
-}
-
-/**
- * Semanas enteras de `from` a `to`; negativo si `to` es anterior.
- * Cuenta semanas de calendario ISO, no divisiones de milisegundos: inmune a los
- * días de 23/25 h del cambio de hora.
- */
-export function weeksBetweenWeekIds(from: WeekId, to: WeekId): number {
-  return differenceInCalendarISOWeeks(
-    toLocalDate(mondayOfWeekId(to)),
-    toLocalDate(mondayOfWeekId(from)),
-  )
-}
 
 const spanishDayFormatter = new Intl.DateTimeFormat('es-ES', { day: 'numeric' })
 const spanishDayMonthFormatter = new Intl.DateTimeFormat('es-ES', {
