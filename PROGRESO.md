@@ -7,7 +7,7 @@ Es lo que permite que una instancia nueva sepa dónde estamos sin releer todo el
 
 ## Estado actual
 
-**Fase en curso:** Fase 4 — Planificador semanal: construida y después **rehecha a petición del propietario** (2026-07-25) en modelo y en estética, con los hallazgos del revisor aplicados. 291 tests en verde, build limpio, verificada en navegador. Pendiente de la **prueba de aceptación del propietario**.
+**Fase en curso:** Fase 4 — Planificador semanal: construida y después **rehecha dos veces a petición del propietario** (2026-07-25) en modelo y en estética, con los hallazgos del revisor aplicados. 296 tests en verde, build limpio, verificada en navegador a 375 y 1280. Pendiente de la **prueba de aceptación del propietario**.
 
 **Ojo al criterio de aceptación del ROADMAP para esta fase** («planifico una semana completa desde el iPhone sin abrir el PC»): el propietario ha aclarado que su uso real es **montar la semana en el PC** y usar el iPhone para consultar y marcar. El criterio está pendiente de reescribirse.
 **También pendiente:** la aceptación de la Fase 3 (sus cifras contra el historial real). Las dos pruebas son independientes.
@@ -26,7 +26,7 @@ Es lo que permite que una instancia nueva sepa dónde estamos sin releer todo el
 | 1 — Registro diario en local | **Cerrada** | 2026-07-23 | Probada y dada por buena por el propietario el mismo día de su construcción (decisión suya, sin esperar las tres noches) |
 | 2 — Supabase y sincronización | **Cerrada** | 2026-07-24 | El propietario confirma completado su checklist de *Bloqueos* («mi parte está hecha»): verificación autenticada, Vercel y prueba PC ↔ iPhone |
 | 3 — Rachas y estadísticas | En curso (construida; aceptación pendiente) | | Código completo y en GitHub; falta que el propietario compruebe sus cifras reales |
-| 4 — Planificador semanal | En curso (rehecha; aceptación pendiente) | | Modelo nuevo sin bandeja ni arrastre, y pasada de estética sobre toda la app |
+| 4 — Planificador semanal | En curso (rehecha; aceptación pendiente) | | Se escribe en una caja y se arrastra al día o a la hora; tareas fijas con varios días; pasada de estética sobre toda la app |
 | 5 — Pulido y PWA | Pendiente | | |
 | 6 — Notificación (opcional) | Pendiente | | |
 
