@@ -14,6 +14,11 @@ export function enqueueDelete(table: SyncTable, rowId: string, deletedAt: EpochM
   return defaultDb.outbox.add({ table, rowId, op: 'delete', deletedAt })
 }
 
+/** Varias filas de la misma tabla de una vez (generar una semana, duplicarla, arrastrar). */
+export function enqueueUpsertMany(table: SyncTable, rowIds: readonly string[]): Promise<number> {
+  return defaultDb.outbox.bulkAdd(rowIds.map((rowId) => ({ table, rowId, op: 'upsert' as const })))
+}
+
 /**
  * Encola como upsert todas las filas existentes de las seis tablas.
  * Lo usan el import JSON y la guardia de cambio de cuenta (la migración v2
