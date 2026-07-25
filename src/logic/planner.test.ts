@@ -6,31 +6,30 @@
 import { describe, expect, it } from 'vitest'
 import {
   BLOCKS_PER_DAY,
+  applyTaskMove,
   blockLabel,
   blockRangeLabel,
   blockSpan,
   blockToMinutes,
-  carryLabel,
-  carryLevel,
-  applyTaskMove,
   countNightTasks,
   countPendingByDay,
   dropTargetId,
   durationLabel,
+  fixedTaskEntryId,
   generateWeekTasks,
   generatedTaskId,
+  groupFixedTasks,
   groupTasksByDay,
   isValidBlock,
   isValidEstimatedMinutes,
   layoutDayTasks,
   parseDropTargetId,
-  planCarryOver,
-  planDuplicateWeek,
+  parseFixedTaskGroupId,
+  planEphemeralPurge,
   scheduledTasksByDay,
   sortTasksForDisplay,
   visibleSpan,
 } from './planner'
-import type { CarryOverPatch } from './planner'
 import type { IsoWeekday, PlannerTask, TaskTemplate, WeekId } from '../data/types'
 
 const WEEK: WeekId = '2026-W30'
@@ -39,7 +38,7 @@ function task(overrides: Partial<PlannerTask> & Pick<PlannerTask, 'id'>): Planne
   return {
     text: overrides.id,
     weekId: WEEK,
-    day: null,
+    day: 1,
     startBlock: null,
     done: false,
     templateId: null,
@@ -64,11 +63,6 @@ function scheduled(id: string, startBlock: number, estimatedMinutes?: number): P
   const row = task({ id, day: 1, startBlock })
   if (estimatedMinutes !== undefined) row.estimatedMinutes = estimatedMinutes
   return row
-}
-
-/** Aplica un parche de arrastre, para poder comprobar la idempotencia de verdad. */
-function applyPatch(source: PlannerTask, patch: CarryOverPatch): PlannerTask {
-  return { ...source, ...patch }
 }
 
 describe('bloques ↔ minutos ↔ etiqueta', () => {
@@ -154,54 +148,119 @@ describe('duración de una tarea en bloques', () => {
   })
 })
 
+describe('tareas fijas — una ficha, varios días, una hora por día', () => {
+  it('ida y vuelta del identificador de grupo', () => {
+    const id = fixedTaskEntryId('gimnasio', 4)
+    expect(id).toBe('grp:gimnasio:4')
+    expect(parseFixedTaskGroupId(id)).toBe('gimnasio')
+  })
+
+  it('el grupo va en el id, así que renombrar la tarea no rompe la agrupación', () => {
+    const group = 'abc-123'
+    const templates = [
+      template({ id: fixedTaskEntryId(group, 4), text: 'Gimnasio', weekday: 4, startBlock: 38 }),
+      template({ id: fixedTaskEntryId(group, 6), text: 'GIMNASIO', weekday: 6, startBlock: 22 }),
+    ]
+    expect(groupFixedTasks(templates)).toHaveLength(1)
+  })
+
+  it('junta los días de una misma tarea, cada uno con su hora', () => {
+    const group = 'g1'
+    const [fixed] = groupFixedTasks([
+      template({ id: fixedTaskEntryId(group, 6), text: 'Gimnasio', weekday: 6, startBlock: 22 }),
+      template({ id: fixedTaskEntryId(group, 4), text: 'Gimnasio', weekday: 4, startBlock: 38 }),
+    ])
+    expect(fixed?.text).toBe('Gimnasio')
+    // Ordenados de lunes a domingo, aunque entren al revés.
+    expect(fixed?.days).toEqual([
+      { weekday: 4, startBlock: 38 },
+      { weekday: 6, startBlock: 22 },
+    ])
+  })
+
+  it('un día puede no tener hora: los horarios varían y no se obliga a ponerla', () => {
+    const [fixed] = groupFixedTasks([
+      template({ id: fixedTaskEntryId('g1', 7), text: 'Gimnasio', weekday: 7, startBlock: null }),
+    ])
+    expect(fixed?.days[0]?.startBlock).toBeNull()
+  })
+
+  it('una fila sin grupo en el id forma su propia ficha: nada del planificador viejo se pierde', () => {
+    const fixed = groupFixedTasks([
+      template({ id: 'uuid-antiguo', text: 'Compra', weekday: 6 }),
+      template({ id: fixedTaskEntryId('g1', 4), text: 'Gimnasio', weekday: 4 }),
+    ])
+    expect(fixed.map((row) => row.text)).toEqual(['Compra', 'Gimnasio'])
+    expect(fixed[0]?.groupId).toBe('uuid-antiguo')
+  })
+
+  it('un id que no cumple el formato no cuenta como grupo', () => {
+    expect(parseFixedTaskGroupId('grp:g1:8')).toBeNull()
+    expect(parseFixedTaskGroupId('grp:g1')).toBeNull()
+    expect(parseFixedTaskGroupId('uuid-suelto')).toBeNull()
+  })
+
+  it('las fichas salen por orden alfabético', () => {
+    const fixed = groupFixedTasks([
+      template({ id: fixedTaskEntryId('b', 1), text: 'Zumba' }),
+      template({ id: fixedTaskEntryId('a', 1), text: 'Ábaco' }),
+    ])
+    expect(fixed.map((row) => row.text)).toEqual(['Ábaco', 'Zumba'])
+  })
+})
+
 describe('generatedTaskId — la clave de la convergencia', () => {
   it('es determinista entre llamadas', () => {
     expect(generatedTaskId('t1', WEEK)).toBe(generatedTaskId('t1', WEEK))
   })
 
-  it('cambia con la plantilla y con la semana', () => {
+  it('cambia con la ficha y con la semana', () => {
     expect(generatedTaskId('t1', WEEK)).not.toBe(generatedTaskId('t2', WEEK))
     expect(generatedTaskId('t1', WEEK)).not.toBe(generatedTaskId('t1', '2026-W31'))
   })
 
-  it('lleva prefijo, así que no puede colisionar con el uuid de una tarea ocasional', () => {
+  it('lleva prefijo, así que no puede colisionar con el uuid de una tarea breve', () => {
     expect(generatedTaskId('t1', WEEK).startsWith('tpl:')).toBe(true)
   })
 })
 
 describe('generateWeekTasks — materialización de la semana', () => {
-  it('una plantilla genera su tarea en su día, su bloque y su duración', () => {
+  it('cada día de una tarea fija genera su tarea, con su hora y su duración', () => {
+    const group = 'g1'
     const result = generateWeekTasks({
-      templates: [template({ id: 't1', text: 'Gimnasio', weekday: 4, startBlock: 38, estimatedMinutes: 60 })],
+      templates: [
+        template({
+          id: fixedTaskEntryId(group, 4),
+          text: 'Gimnasio',
+          weekday: 4,
+          startBlock: 38,
+          estimatedMinutes: 60,
+        }),
+        template({ id: fixedTaskEntryId(group, 6), text: 'Gimnasio', weekday: 6, startBlock: 22 }),
+      ],
       weekId: WEEK,
     })
-    expect(result).toEqual([
-      {
-        id: 'tpl:t1:2026-W30',
-        text: 'Gimnasio',
-        weekId: WEEK,
-        day: 4,
-        startBlock: 38,
-        estimatedMinutes: 60,
-        done: false,
-        templateId: 't1',
-        carriedOverCount: 0,
-      },
-    ])
+    expect(result).toHaveLength(2)
+    expect(result[0]).toEqual({
+      id: 'tpl:grp:g1:4:2026-W30',
+      text: 'Gimnasio',
+      weekId: WEEK,
+      day: 4,
+      startBlock: 38,
+      estimatedMinutes: 60,
+      done: false,
+      templateId: 'grp:g1:4',
+      carriedOverCount: 0,
+    })
+    expect(result[1]?.day).toBe(6)
+    expect(result[1]?.startBlock).toBe(22)
   })
 
-  it('nace pendiente, sin arrastre y apuntando a su plantilla', () => {
-    const [generated] = generateWeekTasks({ templates: [template({ id: 't1' })], weekId: WEEK })
-    expect(generated?.done).toBe(false)
-    expect(generated?.carriedOverCount).toBe(0)
-    expect(generated?.templateId).toBe('t1')
-  })
-
-  it('sin plantillas no genera nada', () => {
+  it('sin tareas fijas no genera nada', () => {
     expect(generateWeekTasks({ templates: [], weekId: WEEK })).toEqual([])
   })
 
-  it('una plantilla sin hora aterriza en la lista de su día, no en el inbox', () => {
+  it('un día sin hora aterriza en la lista del día, no en la cuadrícula', () => {
     const [generated] = generateWeekTasks({
       templates: [template({ id: 't1', weekday: 6, startBlock: null })],
       weekId: WEEK,
@@ -213,18 +272,6 @@ describe('generateWeekTasks — materialización de la semana', () => {
   it('sin duración, la propiedad estimatedMinutes NO existe (no es null)', () => {
     const [generated] = generateWeekTasks({ templates: [template({ id: 't1' })], weekId: WEEK })
     expect(generated === undefined ? true : 'estimatedMinutes' in generated).toBe(false)
-  })
-
-  it('dos plantillas en el mismo día y bloque generan dos tareas distintas', () => {
-    const result = generateWeekTasks({
-      templates: [
-        template({ id: 't1', weekday: 2, startBlock: 20 }),
-        template({ id: 't2', weekday: 2, startBlock: 20 }),
-      ],
-      weekId: WEEK,
-    })
-    expect(result).toHaveLength(2)
-    expect(new Set(result.map((row) => row.id)).size).toBe(2)
   })
 
   it('el orden de salida es estable e independiente del orden de entrada', () => {
@@ -243,165 +290,40 @@ describe('generateWeekTasks — materialización de la semana', () => {
   })
 })
 
-describe('planCarryOver — arrastre al inbox de la semana nueva', () => {
-  const TARGET: WeekId = '2026-W31'
+describe('planEphemeralPurge — las breves solo viven su semana', () => {
+  const CURRENT: WeekId = '2026-W31'
 
-  it('una pendiente ocasional se muda al inbox destino perdiendo día y hora', () => {
-    const stale = task({ id: 'a', weekId: WEEK, day: 3, startBlock: 20 })
-    expect(planCarryOver({ staleTasks: [stale], targetWeek: TARGET })).toEqual([
-      { id: 'a', weekId: TARGET, day: null, startBlock: null, carriedOverCount: 1 },
-    ])
-  })
-
-  it('tras una semana el contador sube a 1', () => {
-    const stale = task({ id: 'a', weekId: WEEK, carriedOverCount: 0 })
-    expect(planCarryOver({ staleTasks: [stale], targetWeek: TARGET })[0]?.carriedOverCount).toBe(1)
-  })
-
-  it('tres semanas sin abrir la app suman 3, no 1: la tarea debe llegar en rojo', () => {
-    const stale = task({ id: 'a', weekId: '2026-W28' })
-    expect(planCarryOver({ staleTasks: [stale], targetWeek: TARGET })[0]?.carriedOverCount).toBe(3)
-  })
-
-  it('el contador acumula sobre el que ya traía', () => {
-    const stale = task({ id: 'a', weekId: WEEK, carriedOverCount: 2 })
-    expect(planCarryOver({ staleTasks: [stale], targetWeek: TARGET })[0]?.carriedOverCount).toBe(3)
-  })
-
-  it('no toca las completadas: lo hecho se queda en su semana', () => {
-    const stale = task({ id: 'a', weekId: WEEK, done: true })
-    expect(planCarryOver({ staleTasks: [stale], targetWeek: TARGET })).toEqual([])
-  })
-
-  it('no arrastra las de plantilla ni cuando están pendientes (§4)', () => {
-    const stale = task({ id: 'a', weekId: WEEK, templateId: 't1' })
-    expect(planCarryOver({ staleTasks: [stale], targetWeek: TARGET })).toEqual([])
-  })
-
-  it('ignora las de la propia semana destino y las futuras', () => {
-    const own = task({ id: 'a', weekId: TARGET })
-    const future = task({ id: 'b', weekId: '2026-W40' })
-    expect(planCarryOver({ staleTasks: [own, future], targetWeek: TARGET })).toEqual([])
-  })
-
-  it('es idempotente: aplicado el parche, la segunda pasada no devuelve nada', () => {
+  it('borra lo breve que quedó sin hacer en semanas anteriores', () => {
     const stale = task({ id: 'a', weekId: WEEK })
-    const [patch] = planCarryOver({ staleTasks: [stale], targetWeek: TARGET })
-    expect(patch).toBeDefined()
-    if (patch === undefined) return
-    const moved = applyPatch(stale, patch)
-    expect(planCarryOver({ staleTasks: [moved], targetWeek: TARGET })).toEqual([])
+    expect(planEphemeralPurge({ staleTasks: [stale], currentWeek: CURRENT })).toEqual(['a'])
   })
 
-  it('tareas de tres semanas distintas aterrizan juntas, cada una con su delta', () => {
-    const patches = planCarryOver({
-      staleTasks: [
-        task({ id: 'a', weekId: '2026-W28' }),
-        task({ id: 'b', weekId: '2026-W29' }),
-        task({ id: 'c', weekId: '2026-W30' }),
-      ],
-      targetWeek: TARGET,
-    })
-    expect(patches.map((patch) => patch.weekId)).toEqual([TARGET, TARGET, TARGET])
-    expect(patches.map((patch) => patch.carriedOverCount)).toEqual([3, 2, 1])
+  it('NO borra lo que sí hiciste: eso es historial', () => {
+    const stale = task({ id: 'a', weekId: WEEK, done: true })
+    expect(planEphemeralPurge({ staleTasks: [stale], currentWeek: CURRENT })).toEqual([])
   })
 
-  it('cruza el año ISO contando semanas de verdad', () => {
-    const stale = task({ id: 'a', weekId: '2020-W52' })
-    expect(planCarryOver({ staleTasks: [stale], targetWeek: '2021-W01' })[0]?.carriedOverCount).toBe(2)
+  it('NO borra las generadas por una tarea fija, ni sin hacer', () => {
+    // Se quedan como registro de que ese jueves no fuiste al gimnasio.
+    const stale = task({ id: 'a', weekId: WEEK, templateId: 'grp:g1:4' })
+    expect(planEphemeralPurge({ staleTasks: [stale], currentWeek: CURRENT })).toEqual([])
   })
 
-  it('sin tareas viejas no hay nada que arrastrar', () => {
-    expect(planCarryOver({ staleTasks: [], targetWeek: TARGET })).toEqual([])
+  it('no toca la semana en curso ni las futuras', () => {
+    const own = task({ id: 'a', weekId: CURRENT })
+    const future = task({ id: 'b', weekId: '2026-W40' })
+    expect(planEphemeralPurge({ staleTasks: [own, future], currentWeek: CURRENT })).toEqual([])
   })
 
-  it('un weekId corrupto no lanza: arrastra contando una semana', () => {
-    // Si lanzara, abortaría la transacción de preparación entera y el
-    // planificador dejaría de generar y arrastrar en silencio y para siempre.
-    const stale = task({ id: 'a', weekId: '2026-W00' })
-    expect(planCarryOver({ staleTasks: [stale], targetWeek: TARGET })).toEqual([
-      { id: 'a', weekId: TARGET, day: null, startBlock: null, carriedOverCount: 1 },
-    ])
+  it('es idempotente: borrado el lote, no queda nada que borrar', () => {
+    const stale = task({ id: 'a', weekId: WEEK })
+    const ids = planEphemeralPurge({ staleTasks: [stale], currentWeek: CURRENT })
+    expect(ids).toEqual(['a'])
+    expect(planEphemeralPurge({ staleTasks: [], currentWeek: CURRENT })).toEqual([])
   })
 
-  it('un contador corrupto (negativo) parte de cero en vez de propagarse', () => {
-    const stale = task({ id: 'a', weekId: WEEK, carriedOverCount: -5 })
-    expect(planCarryOver({ staleTasks: [stale], targetWeek: TARGET })[0]?.carriedOverCount).toBe(1)
-  })
-})
-
-describe('planDuplicateWeek — duplicar la semana anterior', () => {
-  const TARGET: WeekId = '2026-W31'
-
-  it('copia texto, día, bloque y duración', () => {
-    const source = task({
-      id: 'a',
-      text: 'Informe',
-      day: 2,
-      startBlock: 20,
-      estimatedMinutes: 90,
-      done: true,
-    })
-    expect(planDuplicateWeek({ sourceTasks: [source], targetWeek: TARGET })).toEqual([
-      {
-        text: 'Informe',
-        weekId: TARGET,
-        day: 2,
-        startBlock: 20,
-        estimatedMinutes: 90,
-        done: false,
-        templateId: null,
-        carriedOverCount: 0,
-      },
-    ])
-  })
-
-  it('la copia llega sin el estado de completado (§4) y sin arrastre', () => {
-    const source = task({ id: 'a', done: true, carriedOverCount: 4 })
-    const [draft] = planDuplicateWeek({ sourceTasks: [source], targetWeek: TARGET })
-    expect(draft?.done).toBe(false)
-    expect(draft?.carriedOverCount).toBe(0)
-  })
-
-  it('excluye las generadas por plantilla: la semana destino genera las suyas', () => {
-    const source = task({ id: 'a', templateId: 't1', done: true })
-    expect(planDuplicateWeek({ sourceTasks: [source], targetWeek: TARGET })).toEqual([])
-  })
-
-  it('NO copia las pendientes: esas ya viajan solas con el arrastre', () => {
-    // Copiarlas dejaría cada tarea dos veces en la semana destino: la copia con
-    // su día y su hora, y el original al arrastrarse al inbox.
-    expect(planDuplicateWeek({ sourceTasks: [task({ id: 'a' })], targetWeek: TARGET })).toEqual([])
-  })
-
-  it('duplicar y arrastrar sobre la misma semana destino no deja duplicados', () => {
-    const hecha = task({ id: 'a', text: 'Informe', day: 2, done: true })
-    const pendiente = task({ id: 'b', text: 'Llamada', day: 3 })
-    const copias = planDuplicateWeek({ sourceTasks: [hecha, pendiente], targetWeek: TARGET })
-    const arrastres = planCarryOver({ staleTasks: [hecha, pendiente], targetWeek: TARGET })
-    expect(copias.map((copia) => copia.text)).toEqual(['Informe'])
-    expect(arrastres.map((patch) => patch.id)).toEqual(['b'])
-  })
-
-  it('la copia nace ocasional, así que sí se arrastrará si no se hace', () => {
-    const [draft] = planDuplicateWeek({
-      sourceTasks: [task({ id: 'a', done: true })],
-      targetWeek: TARGET,
-    })
-    expect(draft?.templateId).toBeNull()
-  })
-
-  it('copia también las del inbox conservando su falta de día', () => {
-    const [draft] = planDuplicateWeek({
-      sourceTasks: [task({ id: 'a', day: null, startBlock: null, done: true })],
-      targetWeek: TARGET,
-    })
-    expect(draft?.day).toBeNull()
-    expect(draft?.startBlock).toBeNull()
-  })
-
-  it('una semana origen vacía no copia nada', () => {
-    expect(planDuplicateWeek({ sourceTasks: [], targetWeek: TARGET })).toEqual([])
+  it('sin nada viejo no borra nada', () => {
+    expect(planEphemeralPurge({ staleTasks: [], currentWeek: CURRENT })).toEqual([])
   })
 })
 
@@ -427,14 +349,22 @@ describe('layoutDayTasks — carriles de la cuadrícula', () => {
   })
 
   it('tres a la misma hora se reparten en tres carriles', () => {
-    const result = layoutDayTasks([scheduled('a', 20, 60), scheduled('b', 20, 60), scheduled('c', 20, 60)])
+    const result = layoutDayTasks([
+      scheduled('a', 20, 60),
+      scheduled('b', 20, 60),
+      scheduled('c', 20, 60),
+    ])
     expect(result.map((placement) => placement.lanes)).toEqual([3, 3, 3])
     expect(new Set(result.map((placement) => placement.lane)).size).toBe(3)
   })
 
   it('en una cadena A–B–C, A y C reutilizan carril y las tres comparten ancho', () => {
     // A(20–22) solapa con B(21–23), que solapa con C(22–24): un solo grupo conexo.
-    const result = layoutDayTasks([scheduled('a', 20, 60), scheduled('b', 21, 60), scheduled('c', 22, 60)])
+    const result = layoutDayTasks([
+      scheduled('a', 20, 60),
+      scheduled('b', 21, 60),
+      scheduled('c', 22, 60),
+    ])
     expect(result.map((placement) => placement.task.id)).toEqual(['a', 'b', 'c'])
     expect(result.map((placement) => placement.lane)).toEqual([0, 1, 0])
     expect(result.map((placement) => placement.lanes)).toEqual([2, 2, 2])
@@ -454,7 +384,10 @@ describe('layoutDayTasks — carriles de la cuadrícula', () => {
   })
 
   it('las completadas también se colocan: siguen visibles y tachadas', () => {
-    const result = layoutDayTasks([scheduled('a', 20, 30), { ...scheduled('b', 30, 30), done: true }])
+    const result = layoutDayTasks([
+      scheduled('a', 20, 30),
+      { ...scheduled('b', 30, 30), done: true },
+    ])
     expect(result).toHaveLength(2)
   })
 
@@ -489,10 +422,9 @@ describe('franja nocturna', () => {
 })
 
 describe('agrupación por día para la pantalla', () => {
-  it('groupTasksByDay deja fuera las del inbox', () => {
-    const byDay = groupTasksByDay([task({ id: 'a', day: 3 }), task({ id: 'b', day: null })])
-    expect([...byDay.keys()]).toEqual([3])
-    expect(byDay.get(3)?.map((row) => row.id)).toEqual(['a'])
+  it('groupTasksByDay reparte por día', () => {
+    const byDay = groupTasksByDay([task({ id: 'a', day: 3 }), task({ id: 'b', day: 5 })])
+    expect([...byDay.keys()].sort()).toEqual([3, 5])
   })
 
   it('scheduledTasksByDay separa las que tienen hora de las que no', () => {
@@ -501,19 +433,16 @@ describe('agrupación por día para la pantalla', () => {
   })
 
   it('countPendingByDay no cuenta las completadas', () => {
-    const byDay = groupTasksByDay([
-      task({ id: 'a', day: 1 }),
-      task({ id: 'b', day: 1, done: true }),
-    ])
+    const byDay = groupTasksByDay([task({ id: 'a', day: 1 }), task({ id: 'b', day: 1, done: true })])
     expect(countPendingByDay(byDay).get(1)).toBe(1)
   })
 
   it('applyTaskMove superpone el movimiento sin mutar la entrada', () => {
-    const tasks = [task({ id: 'a', day: null, startBlock: null })]
+    const tasks = [task({ id: 'a', day: 1, startBlock: null })]
     const moved = applyTaskMove(tasks, { id: 'a', day: 3, startBlock: 20 })
     expect(moved[0]?.day).toBe(3)
     expect(moved[0]?.startBlock).toBe(20)
-    expect(tasks[0]?.day).toBeNull()
+    expect(tasks[0]?.day).toBe(1)
   })
 
   it('applyTaskMove sin movimiento devuelve una copia intacta', () => {
@@ -528,16 +457,15 @@ describe('sortTasksForDisplay', () => {
     expect(result.map((row) => row.id)).toEqual(['b', 'a'])
   })
 
-  it('entre pendientes, la más arrastrada grita primero', () => {
+  it('las fijas abren el día: son su esqueleto', () => {
     const result = sortTasksForDisplay([
-      task({ id: 'a', carriedOverCount: 0 }),
-      task({ id: 'b', carriedOverCount: 3 }),
-      task({ id: 'c', carriedOverCount: 1 }),
+      task({ id: 'breve' }),
+      task({ id: 'fija', templateId: 'grp:g1:1' }),
     ])
-    expect(result.map((row) => row.id)).toEqual(['b', 'c', 'a'])
+    expect(result.map((row) => row.id)).toEqual(['fija', 'breve'])
   })
 
-  it('a igualdad de arrastre, ordena por hora y deja al final las que no la tienen', () => {
+  it('ordena por hora y deja al final las que no la tienen', () => {
     const result = sortTasksForDisplay([
       task({ id: 'a', startBlock: null }),
       task({ id: 'b', startBlock: 40 }),
@@ -561,31 +489,9 @@ describe('sortTasksForDisplay', () => {
   })
 })
 
-describe('carryLevel y carryLabel — la alarma de §4', () => {
-  it('el rojo entra a la TERCERA semana arrastrada', () => {
-    expect(carryLevel(0)).toBe('none')
-    expect(carryLevel(1)).toBe('warn')
-    expect(carryLevel(2)).toBe('warn')
-    expect(carryLevel(3)).toBe('alarm')
-    expect(carryLevel(10)).toBe('alarm')
-  })
-
-  it('un contador corrupto no enciende la alarma', () => {
-    expect(carryLevel(-1)).toBe('none')
-  })
-
-  it('la etiqueta cuenta arrastres, así que marca 3 justo cuando entra el rojo', () => {
-    expect(carryLabel(0)).toBeNull()
-    expect(carryLabel(1)).toBe('Arrastrada 1 semana')
-    expect(carryLabel(3)).toBe('Arrastrada 3 semanas')
-    expect(carryLevel(3)).toBe('alarm')
-  })
-})
-
 describe('zonas de soltado', () => {
-  it('ida y vuelta de los tres tipos de zona', () => {
+  it('ida y vuelta de los dos tipos de zona', () => {
     const targets = [
-      { kind: 'inbox' } as const,
       { kind: 'day', day: 3 as IsoWeekday } as const,
       { kind: 'slot', day: 3 as IsoWeekday, block: 20 } as const,
     ]
@@ -595,13 +501,23 @@ describe('zonas de soltado', () => {
   })
 
   it('los identificadores son los esperados', () => {
-    expect(dropTargetId({ kind: 'inbox' })).toBe('inbox')
     expect(dropTargetId({ kind: 'day', day: 3 })).toBe('day:3')
     expect(dropTargetId({ kind: 'slot', day: 3, block: 20 })).toBe('slot:3:20')
   })
 
   it('un id inválido devuelve null en vez de una zona inventada', () => {
-    for (const id of ['day:0', 'day:8', 'day:x', 'day:3:1', 'slot:3:48', 'slot:x:1', 'slot:3', '', 'otro']) {
+    for (const id of [
+      'inbox',
+      'day:0',
+      'day:8',
+      'day:x',
+      'day:3:1',
+      'slot:3:48',
+      'slot:x:1',
+      'slot:3',
+      '',
+      'otro',
+    ]) {
       expect(parseDropTargetId(id)).toBeNull()
     }
   })

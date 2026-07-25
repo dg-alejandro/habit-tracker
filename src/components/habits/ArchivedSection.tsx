@@ -11,7 +11,7 @@ export function ArchivedSection({ habits }: ArchivedSectionProps) {
 
   return (
     <section className="mt-12">
-      <h2 className="text-xs font-medium uppercase tracking-widest text-ink-soft">Archivados</h2>
+      <h2 className="font-display text-xs uppercase tracking-widest text-streak-lime">Archivados</h2>
       <ul className="mt-2 divide-y divide-line">
         {habits.map((habit) => (
           <li key={habit.id} className="flex min-h-12 items-center justify-between gap-3 py-2">
@@ -19,7 +19,7 @@ export function ArchivedSection({ habits }: ArchivedSectionProps) {
             <button
               type="button"
               onClick={() => void unarchiveHabit(habit.id)}
-              className="h-11 shrink-0 rounded-lg px-2 text-sm text-ink-soft transition-colors hover:bg-surface hover:text-ink"
+              className="h-11 shrink-0 rounded-sm px-2 text-sm text-ink-soft transition-colors hover:bg-surface hover:text-ink"
             >
               Desarchivar
             </button>

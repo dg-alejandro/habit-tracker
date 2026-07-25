@@ -17,11 +17,11 @@ export function StreakHero({ label, streak, accentClass = 'text-streak-lime' }: 
   const broken = streak.recentlyBroken !== null
   return (
     <section>
-      <p className="text-xs font-medium uppercase tracking-widest text-ink-soft">{label}</p>
+      <p className="font-display text-xs uppercase tracking-widest text-ink-soft">{label}</p>
       <div className="mt-1 flex flex-wrap items-end gap-x-4 gap-y-1">
         <p
           key={broken ? 'broken' : 'alive'}
-          className={`text-8xl font-extrabold leading-none tracking-tighter tabular-nums ${
+          className={`font-display text-8xl font-bold leading-none tracking-tighter tabular-nums ${
             broken ? 'streak-fall text-streak-red' : accentClass
           }`}
         >
@@ -30,7 +30,7 @@ export function StreakHero({ label, streak, accentClass = 'text-streak-lime' }: 
         <div className="pb-1.5 text-sm leading-snug">
           <p className="text-ink-soft">días seguidos</p>
           <p className="text-streak-magenta">
-            <span className="font-bold tabular-nums">{streak.record}</span> récord
+            <span className="font-display font-bold tabular-nums">{streak.record}</span> récord
           </p>
         </div>
       </div>

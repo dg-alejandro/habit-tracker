@@ -10,6 +10,16 @@
 @theme {
   --color-*: initial;
 
+  /* Tipografía. Dos caras: una de cuerpo, para leer, y una de máquina para
+     títulos, etiquetas, horas y cifras — el aire retro de la app sale de ahí.
+     La de máquina es la monoespaciada del sistema y no un archivo descargado:
+     cero bytes, cero dependencias y funciona sin red desde el primer día
+     (decisión del propietario, 2026-07-25). */
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-display:
+    ui-monospace, 'Cascadia Mono', 'Segoe UI Mono', 'SF Mono', Menlo, Consolas, monospace;
+
   /* Neutros — toda la interfaz es negro y blanco, tipo Notion en oscuro.
      Fondo negro (2026-07-23, decisión del propietario): la app se usa de noche.
      El texto principal no es blanco puro para no deslumbrar a oscuras. */

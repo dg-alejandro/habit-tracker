@@ -1,119 +1,124 @@
 /*
- * Acceso a datos de las plantillas de tarea fija (CLAUDE.md §4).
+ * Acceso a datos de las tareas fijas (CLAUDE.md §4).
+ *
+ * Una tarea fija —«Gimnasio»— es UNA ficha con varios días, y cada día lleva su
+ * propia hora: los horarios varían y un jueves no es un sábado. Por debajo, la
+ * tabla guarda una fila por día, agrupadas por el identificador de grupo que
+ * viaja dentro del `id` (`grp:<grupo>:<día>`), porque la tabla remota no tiene
+ * columna de grupo y añadirla exigiría ejecutar SQL a mano.
+ *
  * El catálogo es independiente de lo que ocurre en una semana concreta: editar
- * o borrar una plantilla NO toca las tareas que ya generó.
+ * o borrar una tarea fija NO toca las tareas que ya generó.
  */
 import { db } from '../db'
 import { enqueueDelete, enqueueUpsert } from '../outbox'
 import {
   MAX_ESTIMATED_MINUTES,
+  fixedTaskEntryId,
+  groupFixedTasks,
   isValidBlock,
   isValidEstimatedMinutes,
+  parseFixedTaskGroupId,
+  type FixedTask,
+  type FixedTaskDay,
 } from '../../logic/planner'
-import type { IsoWeekday, TaskTemplate } from '../types'
+import type { TaskTemplate } from '../types'
 
-export interface CreateTaskTemplateInput {
+export interface FixedTaskInput {
   text: string
-  weekday: IsoWeekday
-  startBlock: number | null
-  estimatedMinutes?: number
+  /** Al menos uno. Cada día lleva su hora, que puede ser null. */
+  days: readonly FixedTaskDay[]
 }
 
-/** `estimatedMinutes: null` quita la duración; `undefined` la deja como está. */
-export interface UpdateTaskTemplatePatch {
-  text?: string
-  weekday?: IsoWeekday
-  startBlock?: number | null
-  estimatedMinutes?: number | null
+/** Todas las tareas fijas, agrupadas y por orden alfabético. */
+export async function listFixedTasks(): Promise<FixedTask[]> {
+  return groupFixedTasks(await db.taskTemplates.toArray())
+}
+
+export async function createFixedTask(input: FixedTaskInput): Promise<string> {
+  const { text, days } = validate(input)
+  const groupId = crypto.randomUUID()
+  const now = Date.now()
+  const rows = days.map((day) => buildRow(groupId, text, day, now))
+  await db.transaction('rw', db.taskTemplates, db.outbox, async () => {
+    await db.taskTemplates.bulkPut(rows)
+    for (const row of rows) await enqueueUpsert('taskTemplates', row.id)
+  })
+  return groupId
 }
 
 /**
- * Todas las plantillas, por día de la semana y hora.
- * El índice de Dexie solo cubre `weekday`; el resto del orden se hace en
- * memoria porque el catálogo nunca pasa de unas pocas docenas de filas.
+ * Reescribe la ficha entera: cambia el nombre, añade días, les cambia la hora y
+ * borra los que ya no toquen. Las tareas ya generadas en semanas concretas se
+ * quedan como están (§4).
  */
-export async function listTaskTemplates(): Promise<TaskTemplate[]> {
+export async function updateFixedTask(groupId: string, input: FixedTaskInput): Promise<void> {
+  const { text, days } = validate(input)
+  const now = Date.now()
+  const rows = days.map((day) => buildRow(groupId, text, day, now))
+  const keep = new Set(rows.map((row) => row.id))
+  await db.transaction('rw', db.taskTemplates, db.outbox, async () => {
+    const existing = await rowsOfGroup(groupId)
+    const removed = existing.filter((row) => !keep.has(row.id))
+    await db.taskTemplates.bulkPut(rows)
+    for (const row of rows) await enqueueUpsert('taskTemplates', row.id)
+    if (removed.length > 0) {
+      await db.taskTemplates.bulkDelete(removed.map((row) => row.id))
+      for (const row of removed) await enqueueDelete('taskTemplates', row.id, now)
+    }
+  })
+}
+
+/** Borra la ficha y todos sus días. Las tareas ya generadas se quedan (§4). */
+export async function deleteFixedTask(groupId: string): Promise<void> {
+  const now = Date.now()
+  await db.transaction('rw', db.taskTemplates, db.outbox, async () => {
+    const existing = await rowsOfGroup(groupId)
+    if (existing.length === 0) return
+    await db.taskTemplates.bulkDelete(existing.map((row) => row.id))
+    for (const row of existing) await enqueueDelete('taskTemplates', row.id, now)
+  })
+}
+
+/**
+ * Filas de un grupo. Incluye las fichas antiguas de un solo día, cuyo `id` es
+ * un uuid suelto y hace de grupo de sí mismo.
+ */
+async function rowsOfGroup(groupId: string): Promise<TaskTemplate[]> {
   const all = await db.taskTemplates.toArray()
-  return all.sort(
-    (a, b) =>
-      a.weekday - b.weekday ||
-      (a.startBlock ?? Number.MAX_SAFE_INTEGER) - (b.startBlock ?? Number.MAX_SAFE_INTEGER) ||
-      a.text.localeCompare(b.text, 'es'),
-  )
+  return all.filter((row) => (parseFixedTaskGroupId(row.id) ?? row.id) === groupId)
 }
 
-// `async` a propósito: un valor inválido llega como promesa rechazada y no como
-// excepción síncrona que un llamador con `void ...` no podría capturar.
-export async function createTaskTemplate(
-  input: CreateTaskTemplateInput,
-): Promise<TaskTemplate> {
+function buildRow(groupId: string, text: string, day: FixedTaskDay, now: number): TaskTemplate {
+  const row: TaskTemplate = {
+    id: fixedTaskEntryId(groupId, day.weekday),
+    text,
+    weekday: day.weekday,
+    startBlock: day.startBlock,
+    updatedAt: now,
+  }
+  if (day.estimatedMinutes !== undefined) row.estimatedMinutes = day.estimatedMinutes
+  return row
+}
+
+function validate(input: FixedTaskInput): { text: string; days: FixedTaskDay[] } {
   const text = input.text.trim()
-  if (text === '') throw new Error('La plantilla necesita un texto')
-  assertBlock(input.startBlock)
-  assertMinutes(input.estimatedMinutes)
-  return await db.transaction('rw', db.taskTemplates, db.outbox, async () => {
-    const row: TaskTemplate = {
-      id: crypto.randomUUID(),
-      text,
-      weekday: input.weekday,
-      startBlock: input.startBlock,
-      updatedAt: Date.now(),
+  if (text === '') throw new Error('La tarea fija necesita un nombre')
+  if (input.days.length === 0) throw new Error('Elige al menos un día')
+  const seen = new Set<number>()
+  const days: FixedTaskDay[] = []
+  for (const day of input.days) {
+    // Un mismo día dos veces colisionaría en el id; gana la última entrada.
+    if (seen.has(day.weekday)) continue
+    seen.add(day.weekday)
+    if (day.startBlock !== null && !isValidBlock(day.startBlock)) {
+      throw new Error(`Bloque horario inválido: ${day.startBlock}`)
     }
-    if (input.estimatedMinutes !== undefined) row.estimatedMinutes = input.estimatedMinutes
-    await db.taskTemplates.add(row)
-    await enqueueUpsert('taskTemplates', row.id)
-    return row
-  })
-}
-
-/**
- * Se compone la fila entera y se hace `put` en vez de `update` parcial: hay que
- * poder ELIMINAR la duración, y confiar en cómo Dexie trata `undefined` en un
- * parche es frágil.
- */
-export async function updateTaskTemplate(
-  id: string,
-  patch: UpdateTaskTemplatePatch,
-): Promise<void> {
-  if (patch.startBlock !== undefined) assertBlock(patch.startBlock)
-  if (patch.estimatedMinutes !== null && patch.estimatedMinutes !== undefined) {
-    assertMinutes(patch.estimatedMinutes)
-  }
-  await db.transaction('rw', db.taskTemplates, db.outbox, async () => {
-    const current = await db.taskTemplates.get(id)
-    if (current === undefined) return
-    const next: TaskTemplate = {
-      id: current.id,
-      text: patch.text === undefined ? current.text : patch.text.trim(),
-      weekday: patch.weekday ?? current.weekday,
-      startBlock: patch.startBlock === undefined ? current.startBlock : patch.startBlock,
-      updatedAt: Date.now(),
+    // La columna remota es `integer`: un número disparatado atascaría la subida.
+    if (day.estimatedMinutes !== undefined && !isValidEstimatedMinutes(day.estimatedMinutes)) {
+      throw new Error(`Duración inválida: ${day.estimatedMinutes} (máximo ${MAX_ESTIMATED_MINUTES} min)`)
     }
-    const minutes = patch.estimatedMinutes === undefined ? current.estimatedMinutes : patch.estimatedMinutes
-    if (minutes !== undefined && minutes !== null) next.estimatedMinutes = minutes
-    if (next.text === '') throw new Error('La plantilla necesita un texto')
-    await db.taskTemplates.put(next)
-    await enqueueUpsert('taskTemplates', id)
-  })
-}
-
-/** Borra solo el catálogo: las tareas ya generadas en semanas concretas se quedan (§4). */
-export async function deleteTaskTemplate(id: string): Promise<void> {
-  await db.transaction('rw', db.taskTemplates, db.outbox, async () => {
-    await db.taskTemplates.delete(id)
-    await enqueueDelete('taskTemplates', id, Date.now())
-  })
-}
-
-function assertBlock(block: number | null): void {
-  if (block !== null && !isValidBlock(block)) {
-    throw new Error(`Bloque horario inválido: ${block}`)
+    days.push(day)
   }
-}
-
-/** La columna remota es `integer`: un número disparatado atascaría la subida. */
-function assertMinutes(minutes: number | undefined): void {
-  if (minutes !== undefined && !isValidEstimatedMinutes(minutes)) {
-    throw new Error(`Duración inválida: ${minutes} (máximo ${MAX_ESTIMATED_MINUTES} min)`)
-  }
+  return { text, days }
 }

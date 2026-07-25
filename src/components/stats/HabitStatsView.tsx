@@ -56,7 +56,7 @@ export function HabitStatsView({ habit, data, today, onBack }: HabitStatsViewPro
       >
         ← Todos los hábitos
       </button>
-      <h1 className="mt-2 text-2xl font-semibold tracking-tight text-ink">
+      <h1 className="mt-2 font-display text-2xl uppercase tracking-widest text-ink">
         {habit.name}
         {habit.archivedAt !== null && (
           <span className="ml-2 text-sm font-normal text-ink-faint">archivado</span>
@@ -85,7 +85,7 @@ function WeeklyStreakLine({ weekly }: { weekly: WeeklyStreakResult }) {
   const display = WEEK_STATUS_TEXT[status]
   return (
     <section className="mt-8">
-      <p className="text-xs font-medium uppercase tracking-widest text-ink-soft">Racha semanal</p>
+      <p className="font-display text-xs uppercase tracking-widest text-ink-soft">Racha semanal</p>
       <div className="mt-1 flex items-baseline gap-3">
         <p className="text-4xl font-extrabold leading-none tabular-nums text-streak-lime">
           {weekly.current}

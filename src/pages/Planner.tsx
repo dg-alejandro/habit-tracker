@@ -16,13 +16,11 @@ import {
 } from '@dnd-kit/core'
 import { DayLane } from '../components/planner/DayLane'
 import { DraggableTask, DropZone } from '../components/planner/DropZone'
-import { DuplicateWeekButton } from '../components/planner/DuplicateWeekButton'
 import { HourGrid } from '../components/planner/HourGrid'
 import { MobileDayPager } from '../components/planner/MobileDayPager'
-import { WeekInbox } from '../components/planner/WeekInbox'
+import { TaskChip } from '../components/planner/TaskChip'
 import { TaskEditor } from '../components/planner/TaskEditor'
 import { WeekNavigator } from '../components/planner/WeekNavigator'
-import { TaskChip } from '../components/planner/TaskChip'
 import { moveTask } from '../data/repositories/plannerTasksRepo'
 import { useIsDesktop, useWeekPreparation, useWeekTasks } from '../hooks/usePlanner'
 import { useLogicalToday } from '../hooks/useLogicalToday'
@@ -44,7 +42,7 @@ const WEEKDAYS: IsoWeekday[] = [1, 2, 3, 4, 5, 6, 7]
  */
 interface PendingMove {
   id: string
-  day: IsoWeekday | null
+  day: IsoWeekday
   startBlock: number | null
 }
 
@@ -60,7 +58,8 @@ const collisionDetection: CollisionDetection = (args) => {
 
 /*
  * Planificador semanal, independiente de los hábitos (CLAUDE.md §4 y §5.4).
- * Estrictamente monocromo salvo la alarma de arrastre que §4 pide en rojo.
+ * Toda tarea vive dentro de un día: no hay bandeja intermedia. Las fijas salen
+ * de una ficha con varios días; las breves solo viven la semana en curso.
  */
 export function Planner() {
   const today = useLogicalToday()
@@ -109,10 +108,10 @@ export function Planner() {
 
   const editing = (tasks ?? []).find((task) => task.id === editingId)
   const draggingTask = (tasks ?? []).find((task) => task.id === dragging)
-  const inboxTasks = (tasks ?? []).filter((task) => task.day === null)
   const byDay = useMemo(() => groupTasksByDay(tasks ?? []), [tasks])
   const pendingByDay = useMemo(() => countPendingByDay(byDay), [byDay])
   const scheduledByDay = useMemo(() => scheduledTasksByDay(byDay), [byDay])
+  const pendingTotal = (tasks ?? []).filter((task) => !task.done).length
 
   const closeEdit = () => setEditingId(null)
 
@@ -125,13 +124,13 @@ export function Planner() {
     const target = parseDropTargetId(String(over.id))
     if (target === null) return
     const id = String(active.id)
-    const day = target.kind === 'inbox' ? null : target.day
     const startBlock = target.kind === 'slot' ? target.block : null
-    setPendingMove({ id, day, startBlock })
-    void moveTask(id, day, startBlock)
+    setPendingMove({ id, day: target.day, startBlock })
+    void moveTask(id, target.day, startBlock)
     // Soltar en un día distinto en móvil: seguir a la tarea a donde ha ido.
-    if (!isDesktop && day !== null) setSelectedDay(day)
+    if (!isDesktop) setSelectedDay(target.day)
   }
+
   // La decisión móvil/escritorio se toma en JS, no con `hidden md:`: renderizar
   // los dos árboles duplicaría las zonas de soltado del drag & drop.
   const visibleDays = isDesktop ? WEEKDAYS : [selectedDay]
@@ -146,94 +145,95 @@ export function Planner() {
       onDragEnd={onDragEnd}
       onDragCancel={() => setDragging(null)}
     >
-    <div className="mx-auto max-w-xl px-5 py-6 md:max-w-5xl md:px-10 md:py-10">
-      <div className="flex items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight text-ink">Planificador</h1>
-        <Link
-          to="/planificador/plantillas"
-          className="flex h-11 shrink-0 items-center rounded-lg px-3 text-sm text-ink-soft transition-colors hover:bg-surface hover:text-ink"
-        >
-          Tareas fijas
-        </Link>
-      </div>
-
-      <WeekNavigator weekId={weekId} currentWeekId={currentWeekId} onChange={setWeekId} />
-
-      {/* El editor vive aquí, a ancho completo: en escritorio una columna de día
-          es un séptimo de la pantalla y el formulario no cabría dentro. */}
-      {editing !== undefined && (
-        <div className="mt-4">
-          <TaskEditor key={editing.id} task={editing} onClose={closeEdit} />
+      <div className="mx-auto max-w-xl px-5 py-6 md:max-w-6xl md:px-8 md:py-10">
+        <div className="flex items-baseline justify-between gap-3 border-b border-line pb-3">
+          <h1 className="font-display text-2xl uppercase tracking-widest text-ink">
+            Planificador
+          </h1>
+          <div className="flex items-baseline gap-4">
+            {pendingTotal > 0 && (
+              <span className="font-display text-xs uppercase tracking-widest text-streak-orange">
+                {pendingTotal} pendientes
+              </span>
+            )}
+            <Link
+              to="/planificador/fijas"
+              className="font-display text-xs uppercase tracking-widest text-ink-soft transition-colors hover:text-streak-lime"
+            >
+              Tareas fijas
+            </Link>
+          </div>
         </div>
-      )}
 
-      <WeekInbox
-        weekId={weekId}
-        tasks={inboxTasks}
-        editingId={editingId}
-        onEdit={setEditingId}
-      />
+        <WeekNavigator weekId={weekId} currentWeekId={currentWeekId} onChange={setWeekId} />
 
-      {!isDesktop && (
-        <MobileDayPager
-          selected={selectedDay}
-          today={todayWeekday}
-          pendingByDay={pendingByDay}
-          onSelect={setSelectedDay}
-        />
-      )}
-
-      <div className={`mt-6 ${isDesktop ? 'grid grid-cols-7 gap-3' : ''}`}>
-        {visibleDays.map((day) => (
-          <DayLane
-            key={day}
-            weekId={weekId}
-            day={day}
-            date={days[day - 1] ?? ''}
-            isToday={day === todayWeekday}
-            tasks={(byDay.get(day) ?? []).filter((task) => task.startBlock === null)}
-            editingId={editingId}
-            onEdit={setEditingId}
-            density={isDesktop ? 'grid' : 'row'}
-          />
-        ))}
-      </div>
-
-      <HourGrid
-        days={visibleDays}
-        tasksByDay={scheduledByDay}
-        nightOpen={nightOpen}
-        onToggleNight={() => setNightOpen((open) => !open)}
-        onOpenTask={setEditingId}
-        renderCell={(day, block, className, style) => (
-          <DropZone target={{ kind: 'slot', day, block }} className={className} style={style}>
-            {null}
-          </DropZone>
-        )}
-        renderTask={(task, chip) => (
-          <DraggableTask task={task} density="grid">
-            {() => chip}
-          </DraggableTask>
-        )}
-      />
-
-      <DuplicateWeekButton weekId={weekId} />
-
-      {/* Imprescindible: el inbox y la cuadrícula son contenedores distintos,
-          y sin capa flotante no se puede arrastrar de uno al otro. */}
-      <DragOverlay dropAnimation={null}>
-        {draggingTask === undefined ? null : (
-          <div className="w-64 rounded-lg border border-line bg-surface px-2 opacity-90">
-            <TaskChip
-              task={draggingTask}
-              density="row"
-              onToggle={() => undefined}
-              onOpen={() => undefined}
-            />
+        {/* El editor vive aquí, a ancho completo: en escritorio una columna de
+            día es un séptimo de la pantalla y el formulario no cabría dentro. */}
+        {editing !== undefined && (
+          <div className="mt-4">
+            <TaskEditor key={editing.id} task={editing} onClose={closeEdit} />
           </div>
         )}
-      </DragOverlay>
-    </div>
+
+        {!isDesktop && (
+          <MobileDayPager
+            selected={selectedDay}
+            today={todayWeekday}
+            pendingByDay={pendingByDay}
+            onSelect={setSelectedDay}
+          />
+        )}
+
+        <div className={`mt-6 ${isDesktop ? 'grid grid-cols-7 gap-2' : ''}`}>
+          {visibleDays.map((day) => (
+            <DayLane
+              key={day}
+              weekId={weekId}
+              day={day}
+              date={days[day - 1] ?? ''}
+              isToday={day === todayWeekday}
+              tasks={(byDay.get(day) ?? []).filter((task) => task.startBlock === null)}
+              editingId={editingId}
+              onEdit={setEditingId}
+              density={isDesktop ? 'grid' : 'row'}
+            />
+          ))}
+        </div>
+
+        <HourGrid
+          days={visibleDays}
+          tasksByDay={scheduledByDay}
+          todayWeekday={todayWeekday}
+          nightOpen={nightOpen}
+          onToggleNight={() => setNightOpen((open) => !open)}
+          onOpenTask={setEditingId}
+          renderCell={(day, block, className, style) => (
+            <DropZone target={{ kind: 'slot', day, block }} className={className} style={style}>
+              {null}
+            </DropZone>
+          )}
+          renderTask={(task, chip) => (
+            <DraggableTask task={task} density="grid">
+              {() => chip}
+            </DraggableTask>
+          )}
+        />
+
+        {/* Imprescindible: las listas y la cuadrícula son contenedores
+            distintos, y sin capa flotante no se puede arrastrar de una a otra. */}
+        <DragOverlay dropAnimation={null}>
+          {draggingTask === undefined ? null : (
+            <div className="w-64 rounded-sm border border-streak-lime bg-surface px-2 opacity-90">
+              <TaskChip
+                task={draggingTask}
+                density="row"
+                onToggle={() => undefined}
+                onOpen={() => undefined}
+              />
+            </div>
+          )}
+        </DragOverlay>
+      </div>
     </DndContext>
   )
 }

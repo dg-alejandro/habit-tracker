@@ -11,7 +11,7 @@ export function CheckToggle({ checked }: CheckToggleProps) {
   return (
     <span
       aria-hidden="true"
-      className={`check-box flex h-7 w-7 shrink-0 items-center justify-center rounded-md border-2 ${
+      className={`check-box flex h-7 w-7 shrink-0 items-center justify-center rounded-sm border-2 ${
         checked ? 'border-ink bg-ink' : 'border-line bg-paper'
       }`}
     >

@@ -133,14 +133,14 @@ function SortableHabitItem({ habit, editing, onStartEdit, onStopEdit }: Sortable
           <button
             type="button"
             onClick={onStartEdit}
-            className="h-11 shrink-0 rounded-lg px-2 text-sm text-ink-soft transition-colors hover:bg-surface hover:text-ink"
+            className="h-11 shrink-0 rounded-sm px-2 text-sm text-ink-soft transition-colors hover:bg-surface hover:text-ink"
           >
             Editar
           </button>
           <button
             type="button"
             onClick={() => void archiveHabit(habit.id)}
-            className="h-11 shrink-0 rounded-lg px-2 text-sm text-ink-soft transition-colors hover:bg-surface hover:text-ink"
+            className="h-11 shrink-0 rounded-sm px-2 text-sm text-ink-soft transition-colors hover:bg-surface hover:text-ink"
           >
             Archivar
           </button>

@@ -1,14 +1,17 @@
 /*
- * Lógica del planificador (CLAUDE.md §4): cuadrícula de bloques, generación de
- * tareas desde plantillas, arrastre de no completadas al inbox siguiente y
- * colocación en la rejilla horaria.
- * Solo funciones puras: sin React, sin I/O y sin Date.now() sin inyectar.
+ * Lógica del planificador (CLAUDE.md §4). Solo funciones puras: sin React, sin
+ * I/O y sin Date.now() sin inyectar.
  *
- * Los ids que sí se generan aquí (`generatedTaskId`) son función DETERMINISTA
- * de sus argumentos: eso es lo que las mantiene puras y, de paso, lo que hace
- * que dos dispositivos materializando la misma semana produzcan la misma fila.
+ * Modelo, en dos frases:
+ * - Toda tarea nace dentro de un DÍA. La hora es opcional y se pone después.
+ * - Hay dos clases: las FIJAS, que salen de una ficha con varios días y su hora
+ *   propia en cada uno, y las BREVES, que solo viven la semana en curso.
+ *
+ * Los ids que se generan aquí son función DETERMINISTA de sus argumentos: eso
+ * es lo que las mantiene puras y, de paso, lo que hace que dos dispositivos
+ * materializando la misma semana produzcan la misma fila.
  */
-import { weeksBetweenWeekIds, type IsoWeekday, type WeekId } from './dates'
+import type { IsoWeekday, WeekId } from './dates'
 import type { PlannerTask, TaskTemplate } from '../data/types'
 
 /* ── Bloques horarios ─────────────────────────────────────────────────────── */
@@ -98,7 +101,66 @@ export function durationLabel(estimatedMinutes?: number): string | null {
   return `${hours} h ${minutes}`
 }
 
-/* ── Generación desde plantillas ──────────────────────────────────────────── */
+/* ── Tareas fijas: una ficha, varios días, una hora por día ───────────────── */
+
+/**
+ * Un día de una tarea fija. `startBlock: null` = ese día toca, pero sin hora
+ * fija: los horarios varían, y obligar a poner hora sobra.
+ */
+export interface FixedTaskDay {
+  weekday: IsoWeekday
+  startBlock: number | null
+  estimatedMinutes?: number
+}
+
+/** «Gimnasio»: un nombre y los días en los que toca, cada uno con su hora. */
+export interface FixedTask {
+  groupId: string
+  text: string
+  days: FixedTaskDay[]
+}
+
+/**
+ * Id de la fila de plantilla de un día concreto de una tarea fija.
+ *
+ * El grupo va DENTRO del id porque la tabla remota no tiene columna para él y
+ * añadirla exigiría que el propietario ejecutase SQL a mano. Agrupar por el
+ * texto sería más simple pero se rompería al renombrar la tarea.
+ */
+export function fixedTaskEntryId(groupId: string, weekday: IsoWeekday): string {
+  return `grp:${groupId}:${weekday}`
+}
+
+/** Grupo al que pertenece una fila de plantilla; null si no lleva grupo. */
+export function parseFixedTaskGroupId(templateId: string): string | null {
+  const match = /^grp:(.+):[1-7]$/.exec(templateId)
+  return match === null ? null : (match[1] ?? null)
+}
+
+/**
+ * Junta las filas de plantilla en fichas de tarea fija.
+ * Una fila sin grupo en el id —las que creó la primera versión del
+ * planificador— forma su propia ficha de un solo día, así que nada se pierde.
+ * Salida ordenada por nombre, y los días de cada ficha, de lunes a domingo.
+ */
+export function groupFixedTasks(templates: readonly TaskTemplate[]): FixedTask[] {
+  const byGroup = new Map<string, FixedTask>()
+  for (const template of templates) {
+    const groupId = parseFixedTaskGroupId(template.id) ?? template.id
+    const day: FixedTaskDay = { weekday: template.weekday, startBlock: template.startBlock }
+    if (template.estimatedMinutes !== undefined) day.estimatedMinutes = template.estimatedMinutes
+    const existing = byGroup.get(groupId)
+    if (existing === undefined) byGroup.set(groupId, { groupId, text: template.text, days: [day] })
+    else existing.days.push(day)
+  }
+  const fixed = [...byGroup.values()]
+  for (const task of fixed) task.days.sort((a, b) => a.weekday - b.weekday)
+  return fixed.sort(
+    (a, b) => a.text.localeCompare(b.text, 'es') || a.groupId.localeCompare(b.groupId),
+  )
+}
+
+/* ── Generación de la semana ──────────────────────────────────────────────── */
 
 /** Fila lista para insertar salvo `updatedAt`, que estampa el repositorio. */
 export type GeneratedTask = Omit<PlannerTask, 'updatedAt'>
@@ -111,7 +173,7 @@ export type PlannerTaskDraft = Omit<PlannerTask, 'id' | 'updatedAt'>
  * Determinista a propósito: dos dispositivos que materialicen la misma semana
  * a la vez producen la MISMA fila y la guardia LWW la colapsa, en vez de dejar
  * dos copias de cada tarea fija. El prefijo la hace incolisionable con los
- * uuid de las tareas ocasionales.
+ * uuid de las tareas breves.
  */
 export function generatedTaskId(templateId: string, weekId: WeekId): string {
   return `tpl:${templateId}:${weekId}`
@@ -123,8 +185,8 @@ export interface GenerateWeekTasksInput {
 }
 
 /**
- * Una tarea por plantilla, en su día y su bloque. Nacen pendientes y sin
- * arrastre. Salida en orden estable e independiente del orden de entrada.
+ * Una tarea por día de tarea fija, en su día y su bloque. Nacen pendientes.
+ * Salida en orden estable e independiente del orden de entrada.
  */
 export function generateWeekTasks(input: GenerateWeekTasksInput): GeneratedTask[] {
   const tasks = input.templates.map((template) => {
@@ -136,9 +198,11 @@ export function generateWeekTasks(input: GenerateWeekTasksInput): GeneratedTask[
       startBlock: template.startBlock,
       done: false,
       templateId: template.id,
+      // El contador de arrastre ya no se usa: nada se arrastra entre semanas.
+      // La columna sigue en el esquema remoto, que no se toca.
       carriedOverCount: 0,
     }
-    // La propiedad no existe cuando la plantilla no tiene duración (convención de types.ts).
+    // La propiedad no existe cuando la ficha no tiene duración (convención de types.ts).
     if (template.estimatedMinutes !== undefined) task.estimatedMinutes = template.estimatedMinutes
     return task
   })
@@ -151,103 +215,30 @@ export function generateWeekTasks(input: GenerateWeekTasksInput): GeneratedTask[
   )
 }
 
-/* ── Arrastre semanal ─────────────────────────────────────────────────────── */
+/* ── Tareas breves: solo viven la semana en curso ─────────────────────────── */
 
-export interface CarryOverPlanInput {
-  /** Tareas de semanas ANTERIORES a targetWeek; el repositorio ya acota con .below(). */
+export interface EphemeralPurgeInput {
+  /** Tareas de semanas ANTERIORES a currentWeek; el repositorio ya acota. */
   staleTasks: readonly PlannerTask[]
-  targetWeek: WeekId
-}
-
-/** Parche por tarea que se mueve. El repositorio estampa `updatedAt`. */
-export interface CarryOverPatch {
-  id: string
-  weekId: WeekId
-  day: null
-  startBlock: null
-  carriedOverCount: number
+  currentWeek: WeekId
 }
 
 /**
- * Mueve (no copia) al inbox de targetWeek toda tarea no completada y SIN
- * plantilla (§4: las generadas por plantilla no se arrastran; se quedan en su
- * semana como historial y la semana nueva genera las suyas).
+ * Ids de las tareas breves que se borran al cambiar de semana (decisión del
+ * propietario): las que quedaron sin hacer no te siguen, desaparecen.
  *
- * `carriedOverCount` sube las semanas REALMENTE transcurridas, no una por
- * evento: si no se abre el planificador en cinco semanas, la tarea debe llegar
- * en rojo, que es justo cuando más tiene que gritar.
+ * NO toca lo COMPLETADO —eso es historial de lo que sí hiciste— ni las
+ * generadas por una tarea fija, que se quedan en su semana como registro de
+ * que ese jueves no fuiste al gimnasio.
  *
- * Idempotente por construcción: aplicado el parche, weekId === targetWeek y la
- * tarea deja de entrar en staleTasks.
+ * Idempotente por construcción: borrado el lote, no queda nada que borrar.
  */
-export function planCarryOver(input: CarryOverPlanInput): CarryOverPatch[] {
-  const patches: CarryOverPatch[] = []
-  for (const task of input.staleTasks) {
-    if (task.weekId >= input.targetWeek) continue
-    if (task.done) continue
-    if (task.templateId !== null) continue
-    const weeks = weeksElapsed(task.weekId, input.targetWeek)
-    patches.push({
-      id: task.id,
-      weekId: input.targetWeek,
-      day: null,
-      startBlock: null,
-      carriedOverCount: Math.max(0, task.carriedOverCount) + Math.max(1, weeks),
-    })
-  }
-  return patches
-}
-
-/**
- * Semanas transcurridas, tolerante a basura. Un `weekId` corrupto —solo llega
- * por un import JSON manipulado, que no valida el formato— contaría como una
- * semana en vez de lanzar: si lanzara, abortaría la transacción entera de
- * preparación de la semana y el planificador dejaría de generar y arrastrar en
- * silencio y para siempre.
- */
-function weeksElapsed(from: WeekId, to: WeekId): number {
-  try {
-    return weeksBetweenWeekIds(from, to)
-  } catch {
-    return 1
-  }
-}
-
-/* ── Duplicar la semana anterior ──────────────────────────────────────────── */
-
-export interface DuplicateWeekInput {
-  sourceTasks: readonly PlannerTask[]
-  targetWeek: WeekId
-}
-
-/**
- * Copia las tareas de la semana origen SIN su estado de completado (§4),
- * conservando texto, día, bloque y duración.
- *
- * Copia solo las COMPLETADAS. Las que quedaron pendientes viajan solas con el
- * arrastre semanal, así que copiarlas también las dejaría por duplicado en la
- * semana destino: una con su día y su hora, y otra en el inbox al arrastrarse.
- * Excluye igualmente las generadas por plantilla: la semana destino genera las
- * suyas. Las copias nacen ocasionales, así que sí se arrastrarán si no se hacen.
- */
-export function planDuplicateWeek(input: DuplicateWeekInput): PlannerTaskDraft[] {
-  const drafts: PlannerTaskDraft[] = []
-  for (const task of input.sourceTasks) {
-    if (task.templateId !== null) continue
-    if (!task.done) continue
-    const draft: PlannerTaskDraft = {
-      text: task.text,
-      weekId: input.targetWeek,
-      day: task.day,
-      startBlock: task.startBlock,
-      done: false,
-      templateId: null,
-      carriedOverCount: 0,
-    }
-    if (task.estimatedMinutes !== undefined) draft.estimatedMinutes = task.estimatedMinutes
-    drafts.push(draft)
-  }
-  return drafts
+export function planEphemeralPurge(input: EphemeralPurgeInput): string[] {
+  return input.staleTasks
+    .filter(
+      (task) => task.weekId < input.currentWeek && !task.done && task.templateId === null,
+    )
+    .map((task) => task.id)
 }
 
 /* ── Colocación en la cuadrícula ──────────────────────────────────────────── */
@@ -331,27 +322,8 @@ export function countNightTasks(tasks: readonly PlannerTask[]): number {
 
 /* ── Presentación ─────────────────────────────────────────────────────────── */
 
-/**
- * Orden del inbox y de las listas sin hora. No muta la entrada.
- * Pendientes antes que hechas (la hecha se queda visible y tachada, §4);
- * dentro de cada grupo, primero las más arrastradas —las rojas arriba,
- * gritando—, luego por bloque (las sin hora al final) y luego alfabético.
- */
-export function sortTasksForDisplay(tasks: readonly PlannerTask[]): PlannerTask[] {
-  return [...tasks].sort(
-    (a, b) =>
-      Number(a.done) - Number(b.done) ||
-      b.carriedOverCount - a.carriedOverCount ||
-      blockOrder(a.startBlock) - blockOrder(b.startBlock) ||
-      a.text.localeCompare(b.text, 'es') ||
-      a.id.localeCompare(b.id),
-  )
-}
-
-/** Agrupa por día las tareas de una semana; las del inbox (`day: null`) se caen. */
-export function groupTasksByDay(
-  tasks: readonly PlannerTask[],
-): Map<IsoWeekday, PlannerTask[]> {
+/** Agrupa por día las tareas de una semana. */
+export function groupTasksByDay(tasks: readonly PlannerTask[]): Map<IsoWeekday, PlannerTask[]> {
   const byDay = new Map<IsoWeekday, PlannerTask[]>()
   for (const task of tasks) {
     if (task.day === null) continue
@@ -362,14 +334,14 @@ export function groupTasksByDay(
   return byDay
 }
 
-/** Las que tienen hora viven en la cuadrícula; las que no, en el carril del día. */
+/** Las que tienen hora viven en la cuadrícula; las que no, en la lista del día. */
 export function scheduledTasksByDay(
   byDay: ReadonlyMap<IsoWeekday, PlannerTask[]>,
 ): Map<IsoWeekday, PlannerTask[]> {
   return mapValues(byDay, (tasks) => tasks.filter((task) => task.startBlock !== null))
 }
 
-/** Pendientes por día, para el punto indicador del selector móvil. */
+/** Pendientes por día, para el indicador del selector móvil. */
 export function countPendingByDay(
   byDay: ReadonlyMap<IsoWeekday, PlannerTask[]>,
 ): Map<IsoWeekday, number> {
@@ -389,44 +361,31 @@ export function applyTaskMove(
   )
 }
 
-function mapValues<K, V>(source: ReadonlyMap<K, V>, transform: (value: V) => V): Map<K, V> {
-  const out = new Map<K, V>()
-  for (const [key, value] of source) out.set(key, transform(value))
-  return out
-}
-
-export type CarryLevel = 'none' | 'warn' | 'alarm'
-
 /**
- * Nivel de alarma por arrastre. A partir de la TERCERA semana arrastrada la
- * tarea se marca en rojo (§4): o se hace, o se borra. Antes, aviso monocromo.
+ * Orden de la lista de un día. No muta la entrada.
+ * Pendientes antes que hechas (la hecha se queda visible y tachada, §4); dentro
+ * de cada grupo, las fijas primero —son el esqueleto del día—, luego por hora
+ * (las que no tienen, al final) y luego alfabético.
  */
-export function carryLevel(carriedOverCount: number): CarryLevel {
-  if (carriedOverCount >= 3) return 'alarm'
-  if (carriedOverCount >= 1) return 'warn'
-  return 'none'
-}
-
-/**
- * 'Arrastrada 1 semana' · 'Arrastrada 3 semanas'; null si nunca se arrastró.
- * Cuenta arrastres, no semanas de vida, para que la etiqueta y el umbral rojo
- * digan lo mismo: el rojo entra justo cuando la insignia marca 3.
- */
-export function carryLabel(carriedOverCount: number): string | null {
-  if (carriedOverCount < 1) return null
-  return carriedOverCount === 1 ? 'Arrastrada 1 semana' : `Arrastrada ${carriedOverCount} semanas`
+export function sortTasksForDisplay(tasks: readonly PlannerTask[]): PlannerTask[] {
+  return [...tasks].sort(
+    (a, b) =>
+      Number(a.done) - Number(b.done) ||
+      Number(a.templateId === null) - Number(b.templateId === null) ||
+      blockOrder(a.startBlock) - blockOrder(b.startBlock) ||
+      a.text.localeCompare(b.text, 'es') ||
+      a.id.localeCompare(b.id),
+  )
 }
 
 /* ── Zonas de soltado del drag & drop ─────────────────────────────────────── */
 
 export type DropTarget =
-  | { kind: 'inbox' }
   | { kind: 'day'; day: IsoWeekday }
   | { kind: 'slot'; day: IsoWeekday; block: number }
 
-/** 'inbox' · 'day:3' · 'slot:3:20'. */
+/** 'day:3' · 'slot:3:20'. */
 export function dropTargetId(target: DropTarget): string {
-  if (target.kind === 'inbox') return 'inbox'
   if (target.kind === 'day') return `day:${target.day}`
   return `slot:${target.day}:${target.block}`
 }
@@ -437,7 +396,6 @@ export function dropTargetId(target: DropTarget): string {
  * split(':') sin cubrir.
  */
 export function parseDropTargetId(id: string): DropTarget | null {
-  if (id === 'inbox') return { kind: 'inbox' }
   const parts = id.split(':')
   const [kind, dayText, blockText] = parts
   if (kind === 'day' && parts.length === 2 && dayText !== undefined) {
@@ -461,4 +419,10 @@ function parseWeekday(text: string): IsoWeekday | null {
 /** Las tareas sin hora van al final de cualquier ordenación por bloque. */
 function blockOrder(startBlock: number | null): number {
   return startBlock ?? Number.MAX_SAFE_INTEGER
+}
+
+function mapValues<K, V>(source: ReadonlyMap<K, V>, transform: (value: V) => V): Map<K, V> {
+  const out = new Map<K, V>()
+  for (const [key, value] of source) out.set(key, transform(value))
+  return out
 }

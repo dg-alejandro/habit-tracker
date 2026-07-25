@@ -18,7 +18,11 @@ const SECTIONS: Section[] = [
   { to: '/ajustes', short: 'Ajustes', full: 'Ajustes' },
 ]
 
-/* Navegación monocroma: barra inferior en móvil, lateral en escritorio. */
+/*
+ * Navegación: barra inferior en móvil, lateral en escritorio.
+ * La sección activa se marca con un filete lima; el resto sigue monocromo, así
+ * que el color señala «estás aquí» y no adorna.
+ */
 export function NavBar() {
   return (
     <>
@@ -31,8 +35,10 @@ export function NavBar() {
               to={section.to}
               end={section.end}
               className={({ isActive }) =>
-                `relative flex h-14 items-center justify-center text-xs ${
-                  isActive ? 'font-semibold text-ink' : 'text-ink-soft'
+                `relative flex h-14 items-center justify-center border-t-2 font-display text-[11px] uppercase tracking-wide ${
+                  isActive
+                    ? 'border-t-streak-lime text-streak-lime'
+                    : 'border-t-transparent text-ink-soft'
                 }`
               }
             >
@@ -45,17 +51,19 @@ export function NavBar() {
 
       {/* Escritorio */}
       <aside className="hidden border-r border-line md:sticky md:top-0 md:flex md:h-dvh md:w-56 md:shrink-0 md:flex-col md:gap-1 md:p-4">
-        <div className="mb-4 px-3 pt-2 text-lg font-semibold tracking-tight">Hábitos</div>
+        <div className="mb-5 px-3 pt-2 font-display text-sm uppercase tracking-[0.3em] text-ink">
+          Hábitos
+        </div>
         {SECTIONS.map((section) => (
           <NavLink
             key={section.to}
             to={section.to}
             end={section.end}
             className={({ isActive }) =>
-              `rounded-md px-3 py-2 text-sm ${
+              `border-l-2 px-3 py-2 font-display text-xs uppercase tracking-widest transition-colors ${
                 isActive
-                  ? 'bg-surface font-medium text-ink'
-                  : 'text-ink-soft hover:bg-surface hover:text-ink'
+                  ? 'border-l-streak-lime bg-surface text-streak-lime'
+                  : 'border-l-transparent text-ink-soft hover:bg-surface hover:text-ink'
               }`
             }
           >

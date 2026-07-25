@@ -48,7 +48,7 @@ export function HabitStreakList({
 
   return (
     <section className="mt-12">
-      <h2 className="text-xs font-medium uppercase tracking-widest text-ink-soft">Por hábito</h2>
+      <h2 className="font-display text-xs uppercase tracking-widest text-streak-lime">Por hábito</h2>
       {active.length === 0 ? (
         <p className="mt-2 text-sm text-ink-soft">Sin hábitos activos.</p>
       ) : (

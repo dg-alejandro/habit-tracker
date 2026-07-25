@@ -36,7 +36,7 @@ export function MobileDayPager({ selected, today, pendingByDay, onSelect }: Mobi
         return day === selected ? (
           <div key={day}>{button}</div>
         ) : (
-          <DropZone key={day} target={{ kind: 'day', day }} className="rounded-lg">
+          <DropZone key={day} target={{ kind: 'day', day }} className="rounded-sm">
             {button}
           </DropZone>
         )
@@ -60,7 +60,7 @@ function DayButton({ day, active, isToday, pending, onSelect }: DayButtonProps) 
       onClick={() => onSelect(day)}
       aria-current={active ? 'true' : undefined}
       aria-label={`${weekdayLongEs(day)}${isToday ? ' (hoy)' : ''}`}
-      className={`flex h-11 w-full flex-col items-center justify-center rounded-lg border text-xs transition-colors ${
+      className={`flex h-11 w-full flex-col items-center justify-center rounded-sm border text-xs transition-colors ${
         active
           ? 'border-ink bg-ink font-semibold text-paper'
           : `border-line hover:bg-surface ${isToday ? 'font-semibold text-ink' : 'text-ink-soft'}`

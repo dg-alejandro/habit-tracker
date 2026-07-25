@@ -37,7 +37,7 @@ export function NotesHistory({ habit, entries }: NotesHistoryProps) {
 
   return (
     <section className="mt-12">
-      <h2 className="text-xs font-medium uppercase tracking-widest text-ink-soft">Notas</h2>
+      <h2 className="font-display text-xs uppercase tracking-widest text-streak-lime">Notas</h2>
       {groups.length === 0 ? (
         <p className="mt-2 text-sm text-ink-soft">Sin notas todavía.</p>
       ) : (

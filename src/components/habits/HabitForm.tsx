@@ -22,7 +22,7 @@ const TYPE_LABELS: Record<HabitType, string> = {
 }
 
 const FIELD_CLASS =
-  'h-11 w-full rounded-lg border border-line bg-paper px-3 text-base text-ink placeholder:text-ink-faint'
+  'h-11 w-full rounded-sm border border-line bg-paper px-3 text-base text-ink placeholder:text-ink-faint'
 
 /** Formulario en línea de crear/editar hábito. Sin modales. */
 export function HabitForm({ initial, onSubmit, onCancel }: HabitFormProps) {
@@ -51,9 +51,9 @@ export function HabitForm({ initial, onSubmit, onCancel }: HabitFormProps) {
   }
 
   return (
-    <form onSubmit={submit} className="rounded-lg border border-line p-4">
+    <form onSubmit={submit} className="rounded-sm border border-line p-4">
       <label className="block">
-        <span className="text-xs font-medium uppercase tracking-widest text-ink-soft">Nombre</span>
+        <span className="font-display text-xs uppercase tracking-widest text-ink-soft">Nombre</span>
         <input
           autoFocus={!editing}
           type="text"
@@ -65,7 +65,7 @@ export function HabitForm({ initial, onSubmit, onCancel }: HabitFormProps) {
       </label>
 
       <label className="mt-3 block">
-        <span className="text-xs font-medium uppercase tracking-widest text-ink-soft">Tipo</span>
+        <span className="font-display text-xs uppercase tracking-widest text-ink-soft">Tipo</span>
         <select
           value={type}
           disabled={editing}
@@ -84,7 +84,7 @@ export function HabitForm({ initial, onSubmit, onCancel }: HabitFormProps) {
       <div className="mt-3 flex gap-3">
         {isCounter && (
           <label className="block flex-1">
-            <span className="text-xs font-medium uppercase tracking-widest text-ink-soft">Objetivo (min)</span>
+            <span className="font-display text-xs uppercase tracking-widest text-ink-soft">Objetivo (min)</span>
             <input
               type="number"
               inputMode="numeric"
@@ -96,7 +96,7 @@ export function HabitForm({ initial, onSubmit, onCancel }: HabitFormProps) {
           </label>
         )}
         <label className="block flex-1">
-          <span className="text-xs font-medium uppercase tracking-widest text-ink-soft">Objetivo semanal</span>
+          <span className="font-display text-xs uppercase tracking-widest text-ink-soft">Objetivo semanal</span>
           <select
             value={weeklyTarget}
             onChange={(event) => setWeeklyTarget(event.currentTarget.value)}
@@ -115,14 +115,14 @@ export function HabitForm({ initial, onSubmit, onCancel }: HabitFormProps) {
         <button
           type="button"
           onClick={onCancel}
-          className="h-11 rounded-lg px-4 text-sm font-medium text-ink-soft transition-colors hover:bg-surface"
+          className="h-11 rounded-sm px-4 text-sm font-medium text-ink-soft transition-colors hover:bg-surface"
         >
           Cancelar
         </button>
         <button
           type="submit"
           disabled={!valid}
-          className="h-11 rounded-lg bg-ink px-5 text-sm font-semibold text-paper transition-opacity disabled:opacity-30"
+          className="h-11 rounded-sm bg-ink px-5 text-sm font-semibold text-paper transition-opacity disabled:opacity-30"
         >
           Guardar
         </button>

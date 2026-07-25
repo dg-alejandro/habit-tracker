@@ -48,7 +48,7 @@ export function AuthSection() {
 
   return (
     <section className="mt-12">
-      <h2 className="text-xs font-medium uppercase tracking-widest text-ink-soft">
+      <h2 className="font-display text-xs uppercase tracking-widest text-streak-lime">
         Cuenta y sincronización
       </h2>
 
@@ -58,7 +58,7 @@ export function AuthSection() {
         <form onSubmit={handleLogin} className="mt-4 flex flex-col gap-3">
           <p className="text-sm text-ink-soft">{STATUS_DETAIL.signedOut}</p>
           <label className="flex flex-col gap-1">
-            <span className="text-xs font-medium uppercase tracking-widest text-ink-soft">
+            <span className="font-display text-xs uppercase tracking-widest text-ink-soft">
               Correo
             </span>
             <input
@@ -67,11 +67,11 @@ export function AuthSection() {
               required
               value={email}
               onChange={(event) => setEmail(event.target.value)}
-              className="h-11 w-full rounded-lg border border-line bg-paper px-3 text-base text-ink placeholder:text-ink-faint"
+              className="h-11 w-full rounded-sm border border-line bg-paper px-3 text-base text-ink placeholder:text-ink-faint"
             />
           </label>
           <label className="flex flex-col gap-1">
-            <span className="text-xs font-medium uppercase tracking-widest text-ink-soft">
+            <span className="font-display text-xs uppercase tracking-widest text-ink-soft">
               Contraseña
             </span>
             <input
@@ -80,14 +80,14 @@ export function AuthSection() {
               required
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              className="h-11 w-full rounded-lg border border-line bg-paper px-3 text-base text-ink placeholder:text-ink-faint"
+              className="h-11 w-full rounded-sm border border-line bg-paper px-3 text-base text-ink placeholder:text-ink-faint"
             />
           </label>
           {authError !== null && <p className="text-sm font-semibold text-ink">{authError}</p>}
           <button
             type="submit"
             disabled={submitting}
-            className="h-11 rounded-lg bg-ink px-5 text-sm font-semibold text-paper disabled:opacity-30"
+            className="h-11 rounded-sm bg-ink px-5 text-sm font-semibold text-paper disabled:opacity-30"
           >
             {submitting ? 'Entrando…' : 'Iniciar sesión'}
           </button>
@@ -108,7 +108,7 @@ export function AuthSection() {
               <button
                 type="button"
                 onClick={retry}
-                className="h-11 rounded-lg bg-ink px-5 text-sm font-semibold text-paper"
+                className="h-11 rounded-sm bg-ink px-5 text-sm font-semibold text-paper"
               >
                 Reintentar
               </button>
@@ -118,7 +118,7 @@ export function AuthSection() {
               onClick={() => {
                 void signOut()
               }}
-              className="h-11 rounded-lg px-4 text-sm text-ink-soft transition-colors hover:bg-surface hover:text-ink"
+              className="h-11 rounded-sm px-4 text-sm text-ink-soft transition-colors hover:bg-surface hover:text-ink"
             >
               Cerrar sesión
             </button>

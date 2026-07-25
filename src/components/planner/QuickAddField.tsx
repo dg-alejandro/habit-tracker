@@ -48,7 +48,7 @@ export function QuickAddField({ placeholder, label, onSubmit }: QuickAddFieldPro
         aria-label={label}
         enterKeyHint="done"
         autoCapitalize="sentences"
-        className="h-11 w-full rounded-lg border border-line bg-paper px-3 text-base text-ink placeholder:text-ink-faint"
+        className="h-11 w-full rounded-sm border border-line bg-paper px-3 text-base text-ink placeholder:text-ink-faint"
       />
     </form>
   )

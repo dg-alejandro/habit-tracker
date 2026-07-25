@@ -7,7 +7,9 @@ Es lo que permite que una instancia nueva sepa dónde estamos sin releer todo el
 
 ## Estado actual
 
-**Fase en curso:** Fase 4 — Planificador semanal: **construida al completo** (299 tests en verde, build limpio, verificada en navegador a 375 y 1280, ambos revisores pasados y sus hallazgos aplicados). Pendiente de la **prueba de aceptación del propietario** (ROADMAP: planificar una semana entera desde el iPhone sin abrir el PC).
+**Fase en curso:** Fase 4 — Planificador semanal: construida y después **rehecha a petición del propietario** (2026-07-25) en modelo y en estética. 290 tests en verde, build limpio, verificada en navegador. Pendiente de la **prueba de aceptación del propietario**.
+
+**Ojo al criterio de aceptación del ROADMAP para esta fase** («planifico una semana completa desde el iPhone sin abrir el PC»): el propietario ha aclarado que su uso real es **montar la semana en el PC** y usar el iPhone para consultar y marcar. El criterio está pendiente de reescribirse.
 **También pendiente:** la aceptación de la Fase 3 (sus cifras contra el historial real). Las dos pruebas son independientes.
 **Última fase cerrada:** Fase 2 — Supabase y sincronización (2026-07-24)
 **Última actualización:** 2026-07-25
@@ -24,7 +26,7 @@ Es lo que permite que una instancia nueva sepa dónde estamos sin releer todo el
 | 1 — Registro diario en local | **Cerrada** | 2026-07-23 | Probada y dada por buena por el propietario el mismo día de su construcción (decisión suya, sin esperar las tres noches) |
 | 2 — Supabase y sincronización | **Cerrada** | 2026-07-24 | El propietario confirma completado su checklist de *Bloqueos* («mi parte está hecha»): verificación autenticada, Vercel y prueba PC ↔ iPhone |
 | 3 — Rachas y estadísticas | En curso (construida; aceptación pendiente) | | Código completo y en GitHub; falta que el propietario compruebe sus cifras reales |
-| 4 — Planificador semanal | En curso (construida; aceptación pendiente) | | Código completo; falta planificar una semana de verdad desde el iPhone |
+| 4 — Planificador semanal | En curso (rehecha; aceptación pendiente) | | Modelo nuevo sin bandeja ni arrastre, y pasada de estética sobre toda la app |
 | 5 — Pulido y PWA | Pendiente | | |
 | 6 — Notificación (opcional) | Pendiente | | |
 
@@ -131,6 +133,22 @@ Toda decisión no especificada en `CLAUDE.md` se anota aquí con una línea de j
 - **(Fase 4) La vista móvil de un día se decide en JS (`useIsDesktop`), no con `hidden md:`** — renderizar los dos árboles duplicaría las zonas de soltado, y dnd-kit no admite dos con el mismo identificador. Por lo mismo, las letras del selector móvil son zonas de soltado salvo la del día ya montado abajo.
 - **(Fase 4) El alta rápida atiende el Enter a mano** además del submit del formulario — el envío implícito de un formulario sin botón no es fiable, y en iOS la tecla del teclado virtual menos aún; y aquí no cabe un botón «Añadir» sin estropear el gesto de volcar ideas seguidas.
 
+
+### Rediseño del 2026-07-25 (petición del propietario)
+
+El planificador de la mañana no le servía: no entendía la bandeja, el modelo de tareas fijas no admitía que la hora cambiara según el día, y la estética le pareció fea y poco cuadrada. `CLAUDE.md` §4 se reescribió entera y §6 se extendió.
+
+- **Fuera la bandeja de entrada.** Toda tarea vive dentro de un día; el campo de crear está en cada día. Sin limbo, sin concepto que explicar. La hora sigue siendo opcional, que es lo que él pedía: «crear tareas sin depender de fijar el tiempo».
+- **Fuera el arrastre entre semanas y la alarma roja de las 3 semanas.** Cada semana empieza limpia.
+- **Las tareas breves no hechas se BORRAN al cambiar de semana** (elección explícita del propietario sobre la alternativa no destructiva). Lo completado se conserva como historial, y las tareas fijas no hechas también: son el registro de que ese jueves no fue al gimnasio. El borrado se encola para que el otro dispositivo también las pierda.
+- **Una tarea fija = una ficha con varios días, cada uno con su hora.** «Gimnasio: jueves 19:00, sábado 11:00». El grupo viaja DENTRO del `id` de la fila (`grp:<grupo>:<día>`) porque la tabla remota no tiene columna de grupo y añadirla exigiría que el propietario ejecutase SQL a mano. Agrupar por el texto habría sido más simple pero se rompe al renombrar. Las fichas antiguas de un solo día, con `id` de uuid suelto, hacen de grupo de sí mismas: nada del planificador viejo se pierde.
+- **Ruta renombrada a `/planificador/fijas`** («plantilla» era jerga que no significaba nada para el propietario).
+- **Fuera «duplicar la semana anterior»**: con las fijas generándose solas y las breves muriendo cada semana, ya no tenía trabajo que hacer.
+- **Dos tipografías, las dos del sistema.** `font-display` es la monoespaciada del sistema y se usa en títulos, rótulos, horas y cifras. Se descartó una fuente de píxeles real (Silkscreen, Press Start 2P) porque exigía meter un archivo en el repo: el propietario eligió no descargar nada. Si algún día cambia de idea, es cambiar un token.
+- **Esquinas casi rectas en toda la app** (`rounded-sm`) y rótulos en versalitas espaciadas: es lo que responde al «no parece cuadrado del todo».
+- **Los chillones salen de las estadísticas**, con un trabajo asignado a cada uno (tabla en §6). `streak-lime` señala «estás aquí» y estructura; `streak-red` sigue siendo solo ruptura.
+
+
 ---
 
 ## Deuda técnica
@@ -147,7 +165,9 @@ Lo que se ha dejado a medias a propósito, para no olvidarlo.
 - (Fase 3) La animación `streak-fall` (el 0 cayendo) no se pudo ver en el navegador de verificación: reporta `prefers-reduced-motion: reduce` y la animación se desactiva a propósito, como las micro-animaciones de la Fase 1. Queda comprobada por CSS computado y pendiente de verse en el iPhone.
 - (Fase 3) Los tooltips de las celdas del heatmap usan `title` + `aria-label` — en iOS no hay hover, así que al toque no se consultan. El color ya cuenta la historia; revisar en la Fase 5 solo si molesta.
 - (Fase 3) Con umbral < 50 % algún tramo intermedio del heatmap quedaría sin uso; irrelevante porque el select de Ajustes limita a 50–100 %.
-- (Fase 4) **Editar una plantilla no toca las semanas futuras que ya se materializaron.** §4 dice que afecta a las futuras; con el marcador derivado, «futura» significa «aún no abierta». Si se curioseó la semana que viene, se quedó con el texto viejo. Se arregla borrando esa tarea a mano, o se revisa si molesta.
+- (Fase 4) **Editar una tarea fija no toca las semanas futuras que ya se abrieron.** «Futura» significa «aún no abierta». Si se curioseó la semana que viene, se quedó con el texto viejo. Se arregla borrando esa tarea a mano, o se revisa si molesta.
+- (Rediseño) `carriedOverCount` queda como columna muerta en el esquema local y remoto: vale siempre cero. Quitarla exigiría SQL a mano y no aporta nada.
+- (Rediseño) La estética se ha verificado por estilos computados, no por captura: el panel del navegador no compone imagen en este entorno. El juicio visual final es del propietario.
 - (Fase 4) Cada pulsación de la flecha derecha materializa esa semana: veinte pulsaciones son veinte semanas de tareas fijas creadas y sincronizadas. Sin tope, por ahora.
 - (Fase 4) 252 celdas de soltado en escritorio (36 filas × 7 días). Solo se miden al empezar un arrastre (`MeasuringStrategy.WhileDragging`), así que no se ha notado. Vía de escape si algún día molesta: siete zonas de columna y calcular el bloque desde la posición del puntero — aritmética pura y testeable, pero más frágil.
 - (Fase 4) El gesto táctil del arrastre sigue sin poderse simular (misma deuda que la Fase 1). Sí se han verificado con eventos de ratón reales los tres caminos: inbox → día, día → bloque y bloque → inbox. El gesto con el dedo lo prueba el propietario en el iPhone.
@@ -160,7 +180,14 @@ Lo que se ha dejado a medias a propósito, para no olvidarlo.
 
 Una entrada por sesión: fecha, fase, qué se hizo, qué quedó pendiente.
 
-### 2026-07-25 — Fase 4 construida (esta sesión)
+### 2026-07-25 — Rediseño del planificador y pasada de estética (esta sesión)
+- El propietario prueba la Fase 4 recién construida y pide cambiarla: la bandeja no le dice nada, las tareas fijas necesitan hora distinta por día, y la estética le parece fea y poco cuadrada. Se reescribe `CLAUDE.md` §4 y se extiende §6 antes de tocar código.
+- **Modelo nuevo**: toda tarea nace en un día, tareas fijas agrupadas en fichas con varios días y su hora, tareas breves que se borran al cambiar de semana. Fuera la bandeja, el arrastre semanal, la alarma de las 3 semanas y el duplicado de semana.
+- **Estética**: dos tipografías (la de máquina es la monoespaciada del sistema, sin descargar nada), esquinas casi rectas en toda la app, rótulos en versalitas y los chillones repartidos con un trabajo asignado a cada uno.
+- 290 tests en verde tras rehacer los del planificador; verificado en navegador que una ficha «Gimnasio» con jueves 19:00 y sábado 11:00 genera sus dos tareas con horas distintas.
+- Aclaración del propietario que cambia las prioridades: **monta las semanas en el PC**, no en el iPhone. Anotado en memoria; el criterio de aceptación del ROADMAP se queda desfasado y hay que reescribirlo.
+
+### 2026-07-25 — Fase 4 construida
 - **La Fase 4 empezaba con la mitad del trabajo hecho** y nadie lo recordaba: la Fase 1 ya había definido `PlannerTask` y `TaskTemplate` enteros y declarado sus tablas Dexie, y la Fase 2 ya había escrito sus codecs de sincronización, sus tablas remotas con RLS y su validación de respaldo. **No se ha tocado ni `sync.ts` ni el SQL**, así que la fase no ha generado ningún paso manual del propietario.
 - Comprobado que la rama `fase-4` de la nota anterior nunca existió: se ha construido sobre `main`.
 - **Calendario de semanas** en `logic/dates.ts`: `mondayOfWeekId` (ancla del 4 de enero, con comprobación de ida y vuelta para que un año sin W53 proteste), `addWeeksToWeekId`, `daysOfWeekId`, `dateOfWeekday`, `weeksBetweenWeekIds`, `formatWeekRangeEs`, `isoWeekdayOf` y los nombres de día. `IsoWeekday` se muda aquí. Solo añadidos: la Fase 3 queda intacta.

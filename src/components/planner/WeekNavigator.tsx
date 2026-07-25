@@ -19,7 +19,7 @@ export function WeekNavigator({ weekId, currentWeekId, onChange }: WeekNavigator
         type="button"
         aria-label="Semana anterior"
         onClick={() => onChange(addWeeksToWeekId(weekId, -1))}
-        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-line text-ink transition-colors hover:bg-surface active:bg-surface"
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-sm border border-line text-ink transition-colors hover:bg-surface active:bg-surface"
       >
         <Chevron direction="left" />
       </button>
@@ -43,7 +43,7 @@ export function WeekNavigator({ weekId, currentWeekId, onChange }: WeekNavigator
         type="button"
         aria-label="Semana siguiente"
         onClick={() => onChange(addWeeksToWeekId(weekId, 1))}
-        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-line text-ink transition-colors hover:bg-surface active:bg-surface"
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-sm border border-line text-ink transition-colors hover:bg-surface active:bg-surface"
       >
         <Chevron direction="right" />
       </button>

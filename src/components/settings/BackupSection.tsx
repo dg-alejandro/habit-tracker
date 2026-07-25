@@ -76,7 +76,7 @@ export function BackupSection() {
 
   return (
     <section className="mt-12">
-      <h2 className="text-xs font-medium uppercase tracking-widest text-ink-soft">
+      <h2 className="font-display text-xs uppercase tracking-widest text-streak-lime">
         Copia de seguridad
       </h2>
       <p className="mt-1 text-sm text-ink-soft">
@@ -92,11 +92,11 @@ export function BackupSection() {
           onClick={() => {
             void handleExport()
           }}
-          className="h-11 rounded-lg bg-ink px-5 text-sm font-semibold text-paper disabled:opacity-30"
+          className="h-11 rounded-sm bg-ink px-5 text-sm font-semibold text-paper disabled:opacity-30"
         >
           Exportar copia
         </button>
-        <label className="flex h-11 cursor-pointer items-center rounded-lg px-4 text-sm text-ink-soft transition-colors hover:bg-surface hover:text-ink">
+        <label className="flex h-11 cursor-pointer items-center rounded-sm px-4 text-sm text-ink-soft transition-colors hover:bg-surface hover:text-ink">
           Importar copia…
           <input
             type="file"
@@ -111,7 +111,7 @@ export function BackupSection() {
       </div>
 
       {pending !== null && (
-        <div className="mt-4 rounded-lg border border-line bg-surface px-4 py-3">
+        <div className="mt-4 rounded-sm border border-line bg-surface px-4 py-3">
           <p className="text-sm font-semibold text-ink">
             Esto reemplaza TODOS los datos de este dispositivo.
           </p>
@@ -127,7 +127,7 @@ export function BackupSection() {
               onClick={() => {
                 void confirmImport()
               }}
-              className="h-11 rounded-lg bg-ink px-5 text-sm font-semibold text-paper disabled:opacity-30"
+              className="h-11 rounded-sm bg-ink px-5 text-sm font-semibold text-paper disabled:opacity-30"
             >
               Restaurar la copia
             </button>
@@ -135,7 +135,7 @@ export function BackupSection() {
               type="button"
               disabled={busy}
               onClick={() => setPending(null)}
-              className="h-11 rounded-lg px-4 text-sm text-ink-soft transition-colors hover:bg-surface hover:text-ink"
+              className="h-11 rounded-sm px-4 text-sm text-ink-soft transition-colors hover:bg-surface hover:text-ink"
             >
               Cancelar
             </button>

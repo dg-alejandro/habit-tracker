@@ -46,7 +46,7 @@ export function SyncIndicator({ variant }: { variant: 'aside' | 'tab' }) {
   return (
     <Link
       to="/ajustes"
-      className={`mt-auto rounded-md px-3 py-2 text-xs transition-colors hover:bg-surface hover:text-ink ${
+      className={`mt-auto rounded-sm px-3 py-2 text-xs transition-colors hover:bg-surface hover:text-ink ${
         emphasis ? 'font-semibold text-ink' : 'text-ink-soft'
       }`}
     >

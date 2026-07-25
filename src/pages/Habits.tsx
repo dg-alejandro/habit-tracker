@@ -22,12 +22,12 @@ export function Habits() {
   return (
     <div className="mx-auto max-w-xl px-5 py-6 md:px-10 md:py-10">
       <div className="flex items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight text-ink">Hábitos</h1>
+        <h1 className="font-display text-2xl uppercase tracking-widest text-ink">Hábitos</h1>
         {!creating && (
           <button
             type="button"
             onClick={() => setCreating(true)}
-            className="h-11 shrink-0 rounded-lg bg-ink px-4 text-sm font-semibold text-paper"
+            className="h-11 shrink-0 rounded-sm bg-ink px-4 text-sm font-semibold text-paper"
           >
             Nuevo hábito
           </button>

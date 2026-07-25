@@ -10,8 +10,8 @@ interface WeeklyHeaderProps {
 export function WeeklyHeader({ percent }: WeeklyHeaderProps) {
   return (
     <header>
-      <p className="text-xs font-medium uppercase tracking-widest text-ink-soft">Semana en curso</p>
-      <p className="mt-1 text-7xl font-extrabold leading-none tracking-tighter text-streak-orange tabular-nums">
+      <p className="font-display text-xs uppercase tracking-widest text-ink-soft">Semana en curso</p>
+      <p className="mt-1 font-display text-7xl font-bold leading-none tracking-tighter text-streak-orange tabular-nums">
         {typeof percent === 'number' ? `${percent} %` : '—'}
       </p>
     </header>

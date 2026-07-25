@@ -28,29 +28,29 @@ export function FrozenRangesSection() {
 
   return (
     <section className="mt-12">
-      <h2 className="text-xs font-medium uppercase tracking-widest text-ink-soft">Días congelados</h2>
+      <h2 className="font-display text-xs uppercase tracking-widest text-streak-lime">Días congelados</h2>
       <p className="mt-1 text-sm text-ink-soft">
         Un día congelado ni suma ni rompe: se salta en las rachas y se excluye de los porcentajes.
       </p>
 
-      <form onSubmit={submit} className="mt-3 rounded-lg border border-line p-4">
+      <form onSubmit={submit} className="mt-3 rounded-sm border border-line p-4">
         <div className="flex flex-wrap gap-3">
           <label className="block min-w-36 flex-1">
-            <span className="text-xs font-medium uppercase tracking-widest text-ink-soft">Desde</span>
+            <span className="font-display text-xs uppercase tracking-widest text-ink-soft">Desde</span>
             <input
               type="date"
               value={startDate}
               onChange={(event) => setStartDate(event.currentTarget.value)}
-              className="mt-1 h-11 w-full rounded-lg border border-line bg-paper px-3 text-base text-ink"
+              className="mt-1 h-11 w-full rounded-sm border border-line bg-paper px-3 text-base text-ink"
             />
           </label>
           <label className="block min-w-36 flex-1">
-            <span className="text-xs font-medium uppercase tracking-widest text-ink-soft">Hasta</span>
+            <span className="font-display text-xs uppercase tracking-widest text-ink-soft">Hasta</span>
             <input
               type="date"
               value={endDate}
               onChange={(event) => setEndDate(event.currentTarget.value)}
-              className="mt-1 h-11 w-full rounded-lg border border-line bg-paper px-3 text-base text-ink"
+              className="mt-1 h-11 w-full rounded-sm border border-line bg-paper px-3 text-base text-ink"
             />
           </label>
         </div>
@@ -59,7 +59,7 @@ export function FrozenRangesSection() {
           value={note}
           onChange={(event) => setNote(event.currentTarget.value)}
           placeholder="Nota (opcional: vacaciones, enfermedad…)"
-          className="mt-3 h-11 w-full rounded-lg border border-line bg-paper px-3 text-base text-ink placeholder:text-ink-faint"
+          className="mt-3 h-11 w-full rounded-sm border border-line bg-paper px-3 text-base text-ink placeholder:text-ink-faint"
         />
         {invalidRange && (
           <p className="mt-2 text-sm font-semibold text-ink">El final no puede ser anterior al inicio.</p>
@@ -68,7 +68,7 @@ export function FrozenRangesSection() {
           <button
             type="submit"
             disabled={!canSubmit}
-            className="h-11 rounded-lg bg-ink px-5 text-sm font-semibold text-paper transition-opacity disabled:opacity-30"
+            className="h-11 rounded-sm bg-ink px-5 text-sm font-semibold text-paper transition-opacity disabled:opacity-30"
           >
             Congelar rango
           </button>
@@ -86,7 +86,7 @@ export function FrozenRangesSection() {
               <button
                 type="button"
                 onClick={() => void deleteFrozenRange(range.id)}
-                className="h-11 shrink-0 rounded-lg px-2 text-sm text-ink-soft transition-colors hover:bg-surface hover:text-ink"
+                className="h-11 shrink-0 rounded-sm px-2 text-sm text-ink-soft transition-colors hover:bg-surface hover:text-ink"
               >
                 Eliminar
               </button>

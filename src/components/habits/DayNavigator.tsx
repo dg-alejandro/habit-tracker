@@ -20,7 +20,7 @@ export function DayNavigator({ date, today, onChange }: DayNavigatorProps) {
         type="button"
         aria-label="Día anterior"
         onClick={() => onChange(addDaysIso(date, -1))}
-        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-line text-ink transition-colors hover:bg-surface active:bg-surface"
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-sm border border-line text-ink transition-colors hover:bg-surface active:bg-surface"
       >
         <Chevron direction="left" />
       </button>
@@ -35,7 +35,7 @@ export function DayNavigator({ date, today, onChange }: DayNavigatorProps) {
         aria-label="Día siguiente"
         disabled={atToday}
         onClick={() => onChange(addDaysIso(date, 1))}
-        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-line text-ink transition-colors hover:bg-surface active:bg-surface disabled:opacity-30 disabled:hover:bg-paper"
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-sm border border-line text-ink transition-colors hover:bg-surface active:bg-surface disabled:opacity-30 disabled:hover:bg-paper"
       >
         <Chevron direction="right" />
       </button>

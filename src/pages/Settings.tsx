@@ -9,7 +9,7 @@ import { BackupSection } from '../components/settings/BackupSection'
 export function Settings() {
   return (
     <div className="mx-auto max-w-xl px-5 py-6 md:px-10 md:py-10">
-      <h1 className="text-2xl font-semibold tracking-tight text-ink">Ajustes</h1>
+      <h1 className="font-display text-2xl uppercase tracking-widest text-ink">Ajustes</h1>
       <AuthSection />
       <GlobalThresholdSection />
       <BackupSection />

@@ -21,7 +21,7 @@ export function GlobalThresholdSection() {
 
   return (
     <section className="mt-12">
-      <h2 className="text-xs font-medium uppercase tracking-widest text-ink-soft">Racha global</h2>
+      <h2 className="font-display text-xs uppercase tracking-widest text-streak-lime">Racha global</h2>
       <div className="mt-3 flex items-center justify-between gap-3">
         <label htmlFor="global-threshold" className="text-sm text-ink">
           Umbral del día cumplido
@@ -30,7 +30,7 @@ export function GlobalThresholdSection() {
           id="global-threshold"
           value={percent}
           onChange={(event) => void setGlobalThreshold(Number(event.target.value) / 100)}
-          className="h-11 rounded-lg border border-line bg-paper px-3 text-sm text-ink"
+          className="h-11 rounded-sm border border-line bg-paper px-3 text-sm text-ink"
         >
           {OPTIONS.map((option) => (
             <option key={option} value={option}>

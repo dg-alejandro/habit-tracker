@@ -1,3 +1,4 @@
+import type { CSSProperties, ReactNode } from 'react'
 import { toggleTaskDone } from '../../data/repositories/plannerTasksRepo'
 import { weekdayShortEs } from '../../logic/dates'
 import {
@@ -18,6 +19,7 @@ interface HourGridProps {
   days: readonly IsoWeekday[]
   /** Tareas CON hora, por día. */
   tasksByDay: ReadonlyMap<IsoWeekday, PlannerTask[]>
+  todayWeekday: IsoWeekday | null
   nightOpen: boolean
   onToggleNight: () => void
   onOpenTask: (id: string) => void
@@ -29,10 +31,10 @@ interface HourGridProps {
     day: IsoWeekday,
     block: number,
     className: string,
-    style: React.CSSProperties,
-  ) => React.ReactNode
+    style: CSSProperties,
+  ) => ReactNode
   /** Envoltura arrastrable del chip. */
-  renderTask?: (task: PlannerTask, chip: React.ReactNode) => React.ReactNode
+  renderTask?: (task: PlannerTask, chip: ReactNode) => ReactNode
 }
 
 /**
@@ -49,6 +51,7 @@ interface HourGridProps {
 export function HourGrid({
   days,
   tasksByDay,
+  todayWeekday,
   nightOpen,
   onToggleNight,
   onOpenTask,
@@ -66,19 +69,20 @@ export function HourGrid({
   )
 
   return (
-    <section className="mt-8">
-      <h2 className="text-xs font-medium uppercase tracking-widest text-ink-soft">Horario</h2>
-
-      <button
-        type="button"
-        onClick={onToggleNight}
-        className="mt-2 flex h-11 w-full items-center gap-2 rounded-lg border border-line px-3 text-sm text-ink-soft transition-colors hover:bg-surface hover:text-ink"
-      >
-        <span>{nightOpen ? 'Ocultar la madrugada' : 'Mostrar 00:00 – 06:00'}</span>
-        {!nightOpen && hiddenNight > 0 && (
-          <span className="text-ink">· {hiddenNight} sin ver</span>
-        )}
-      </button>
+    <section className="mt-10">
+      <div className="flex items-baseline justify-between gap-3 border-b border-line pb-2">
+        <h2 className="font-display text-xs uppercase tracking-widest text-streak-lime">Horario</h2>
+        <button
+          type="button"
+          onClick={onToggleNight}
+          className="flex h-11 items-center gap-2 font-display text-xs uppercase tracking-widest text-ink-soft transition-colors hover:text-ink"
+        >
+          <span>{nightOpen ? '— madrugada' : '+ 00:00–06:00'}</span>
+          {!nightOpen && hiddenNight > 0 && (
+            <span className="text-streak-orange">· {hiddenNight} sin ver</span>
+          )}
+        </button>
+      </div>
 
       <div className="mt-3 overflow-x-auto">
         <div
@@ -90,7 +94,11 @@ export function HourGrid({
           {days.map((day) => (
             <div
               key={`head-${day}`}
-              className="border-b border-l border-line pb-1 text-center text-xs capitalize text-ink-soft"
+              className={`border-b border-l pb-1 text-center font-display text-xs uppercase ${
+                day === todayWeekday
+                  ? 'border-b-streak-lime border-l-line text-streak-lime'
+                  : 'border-line text-ink-soft'
+              }`}
             >
               {weekdayShortEs(day)}
             </div>
@@ -102,7 +110,7 @@ export function HourGrid({
               block % 2 === 0 ? (
                 <span
                   key={block}
-                  className="absolute right-2 -translate-y-1/2 text-[10px] tabular-nums text-ink-faint"
+                  className="absolute right-2 -translate-y-1/2 font-display text-[10px] tabular-nums text-ink-faint"
                   style={{ top: (block - firstBlock) * CELL_PX }}
                 >
                   {blockLabel(block)}

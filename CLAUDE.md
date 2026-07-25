@@ -109,6 +109,8 @@ Con el umbral del 80 %, un día cuenta con **12 de 14** cumplidos.
 
 El planificador es **independiente de los hábitos**: no los muestra ni interactúa con ellos.
 
+**Regla que ordena todo lo demás: toda tarea vive dentro de un día.** No hay bandeja intermedia ni limbo. La hora sí es opcional, y lo normal es que lo sea: los horarios varían y un jueves no se parece a un sábado.
+
 ### Modelo de tarea
 
 | Campo | Descripción |
@@ -116,47 +118,36 @@ El planificador es **independiente de los hábitos**: no los muestra ni interact
 | `text` | Título. Obligatorio. |
 | `estimatedMinutes` | Duración estimada. Opcional. Determina cuántos bloques ocupa al colocarla. |
 | `weekId` | Semana ISO a la que pertenece (`2026-W31`). |
-| `day` | Día de la semana, o `null` si está en el inbox. |
-| `startBlock` | Bloque horario de inicio, o `null` si no tiene hora asignada. |
+| `day` | Día de la semana. Toda tarea tiene uno. |
+| `startBlock` | Bloque horario de inicio, o `null` si ese día no tiene hora fijada. |
 | `done` | Completada o no. |
-| `templateId` | Referencia a la plantilla que la generó, o `null` si es ocasional. |
-| `carriedOverCount` | Número de semanas que lleva arrastrándose. |
+| `templateId` | La tarea fija que la generó, o `null` si es breve. |
+| `carriedOverCount` | **En desuso.** Vale siempre cero; la columna sigue en el esquema remoto, que no se toca. |
 
-### Tareas fijas (plantillas)
+### Las dos clases de tarea
 
-Existe un catálogo de **plantillas de tarea recurrente**: texto, día de la semana, hora opcional y duración opcional.
+**Tareas fijas.** Lo que se repite cada semana. Una ficha —«Gimnasio»— tiene un nombre y **varios días, cada uno con su propia hora**, que puede quedarse vacía. Al abrir una semana nueva, cada día de cada ficha genera su tarea.
 
-- Al crear una semana nueva, las plantillas **generan sus tareas automáticamente**.
-- Editar o borrar la tarea generada en una semana concreta **no afecta a la plantilla**.
-- Editar la plantilla afecta solo a las semanas futuras.
-- Las plantillas se gestionan desde una pantalla propia dentro del planificador.
+- Editar o borrar la tarea generada en una semana concreta **no afecta a la ficha**.
+- Editar la ficha afecta solo a las semanas que aún no se han abierto.
+- Se gestionan desde una pantalla propia dentro del planificador.
 
-### Tareas ocasionales
+**Tareas breves.** Lo que solo importa esta semana. Se escriben directamente sobre un día. **Al cambiar de semana, las que quedaron sin hacer se borran**: no te siguen ni se acumulan. Lo que sí completaste se queda como historial de esa semana, igual que las tareas fijas no hechas, que son el registro de que ese jueves no fuiste al gimnasio.
 
-Se crean directamente sobre un día o sobre el inbox. No tienen plantilla.
-
-### Inbox semanal
-
-Zona en la parte superior del planificador con las tareas de la semana **sin día asignado**. Es donde se vuelcan las ideas antes de colocarlas. Se arrastra desde el inbox a un día, y de un día a un bloque horario.
+**No hay arrastre entre semanas.** Cada semana empieza limpia.
 
 ### Creación y edición
 
-- **Creación rápida:** campo de texto en el inbox y en cada día. Escribir y Enter. Sin modales ni formularios.
-- **Editar:** al tocar la tarea se abre en línea para cambiar texto, duración, día, hora o borrarla.
+- **Creación rápida:** un campo de texto en cada día. Escribir y Enter. Sin modales ni formularios.
+- **Editar:** al tocar la tarea se abre en línea para cambiar texto, día, hora, duración o borrarla.
 - **Completar:** casilla durante la semana. La tarea hecha se queda visible, tachada y atenuada.
-
-### Arrastre semanal
-
-Al pasar a una semana nueva, las tareas **no completadas** pasan automáticamente al **inbox** de la semana siguiente, con `carriedOverCount` incrementado en uno. A partir de la **tercera** semana arrastrada, la tarea se marca en rojo: o se hace, o se borra.
-
-Las tareas generadas por plantilla **no se arrastran**: si no se hicieron, desaparecen y se regeneran la semana siguiente.
 
 ### Cuadrícula horaria
 
-- Cobertura **00:00 a 24:00**, en bloques de **30 minutos**.
-- Por defecto la franja **00:00–06:00 aparece plegada**, con un botón para desplegarla.
-- Una tarea con duración estimada ocupa los bloques proporcionales al colocarla.
-- **Duplicar la semana anterior:** copia las tareas sin su estado de completado.
+- Cobertura **00:00 a 24:00**, en bloques de **30 minutos**. Es donde se ven las tareas que sí tienen hora; las que no, viven en la lista de su día.
+- Por defecto la franja **00:00–06:00 aparece plegada**, con un botón para desplegarla y el recuento de lo que esconde.
+- Una tarea con duración estimada ocupa los bloques proporcionales al colocarla. Solaparlas es legítimo: se reparten a media anchura.
+- Se arrastra de un día a otro y de un día a un bloque horario. **Todo lo que hace el arrastre se puede hacer también desde los selectores del editor**, porque el gesto táctil no es verificable desde aquí.
 - En móvil: un día visible cada vez, scroll vertical, navegación entre días.
 
 ---
@@ -194,11 +185,22 @@ Según §4. Incluye pantalla de gestión de plantillas.
 
 ## 6. Diseño
 
-**Base: negro y blanco —fondo negro—, minimalista, tipo Notion en oscuro.** Mucho espacio vacío, tipografía limpia, bordes sutiles, cero adornos, cero sombras decorativas. Registro diario, gestión de hábitos y planificador son estrictamente monocromos. (Hasta el 2026-07-23 el fondo era blanco; se invirtió a petición del propietario: la app se usa de noche.)
+**Base: negro y blanco —fondo negro—, minimalista, con aire de terminal.** Mucho espacio vacío, bordes sutiles, esquinas casi rectas, cero sombras decorativas. El grueso de cada pantalla sigue siendo monocromo. (Hasta el 2026-07-23 el fondo era blanco; se invirtió a petición del propietario: la app se usa de noche.)
 
-**Excepción deliberada:** las **rachas y todos los datos estadísticos** van en colores chillones y saturados — naranja, verde ácido, magenta. Deben destacar violentamente sobre el fondo neutro. Son el único color de la app, y por eso funcionan.
+**Dos tipografías** (2026-07-25, petición del propietario). El cuerpo va en la sans del sistema, para leer. Títulos, etiquetas de sección, horas, cifras y todo lo destacado van en **`font-display`**, que es la monoespaciada del sistema: de ahí sale el aire retro. No es un archivo descargado — cero bytes, cero dependencias y funciona sin red desde el primer día.
 
-**Segunda excepción, la del rojo:** el rojo de ruptura aparece también en el planificador, en las tareas arrastradas tres semanas o más (§4). Se reduce a un filete a la izquierda y a una insignia diminuta —el texto de la tarea sigue en blanco—, así que la pantalla se sigue leyendo monocroma y el rojo solo salta cuando hay algo podrido. Escrito aquí para que no se lea como una infracción de la regla anterior.
+**El color señala, no adorna.** Los chillones —naranja, verde ácido, magenta— ya no viven solo en las estadísticas, pero cada uno tiene un trabajo y ninguno decora:
+
+| Color | Significa |
+|---|---|
+| `streak-lime` | «Estás aquí» y «esto es estructura»: sección activa de la navegación, día de hoy, rótulos de sección, tareas fijas |
+| `streak-orange` | Cifras que miden: el % semanal, los pendientes, las series |
+| `streak-magenta` | Récords |
+| `streak-red` | **Solo ruptura.** La racha rota, y los botones que borran de verdad |
+
+Un color que no signifique nada de eso no entra. El fondo, el texto y los bordes siguen siendo neutros siempre: sobre negro, un filete de dos píxeles ya grita bastante.
+
+Los tokens de color y de tipografía viven en `src/styles/tokens.css`. Ningún componente escribe un color ni una familia a mano.
 
 - Números de racha **enormes**, desproporcionados a propósito.
 - **Al romper una racha: que duela.** Rojo, aviso claro, el número cayendo a cero de forma visible. No lo suavices ni lo escondas: es el mecanismo que hace funcionar la app.
@@ -206,7 +208,6 @@ Según §4. Incluye pantalla de gestión de plantillas.
 - Objetivos táctiles grandes. Se usa de noche, con una mano, medio dormido.
 - Interfaz **en español**.
 
-Los tokens de color viven en `src/styles/tokens.css`. Ningún componente escribe un color a mano.
 
 ---
 

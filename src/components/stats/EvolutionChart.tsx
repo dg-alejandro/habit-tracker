@@ -32,7 +32,7 @@ export function EvolutionChart({ input }: EvolutionChartProps) {
   return (
     <section className="mt-12">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="text-xs font-medium uppercase tracking-widest text-ink-soft">Evolución</h2>
+        <h2 className="font-display text-xs uppercase tracking-widest text-streak-lime">Evolución</h2>
         <div className="flex gap-1" role="group" aria-label="Granularidad de la gráfica">
           {GRANULARITIES.map(({ key, label }) => (
             <button
@@ -40,7 +40,7 @@ export function EvolutionChart({ input }: EvolutionChartProps) {
               type="button"
               aria-pressed={granularity === key}
               onClick={() => setGranularity(key)}
-              className={`h-11 rounded-lg px-3 text-sm ${
+              className={`h-11 rounded-sm px-3 text-sm ${
                 granularity === key
                   ? 'bg-surface font-semibold text-ink'
                   : 'text-ink-soft hover:text-ink'

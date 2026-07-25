@@ -1,14 +1,13 @@
 import type { ReactNode } from 'react'
 import { CheckToggle } from '../habits/CheckToggle'
-import { blockRangeLabel, carryLabel, carryLevel, durationLabel } from '../../logic/planner'
+import { blockRangeLabel, durationLabel } from '../../logic/planner'
 import type { PlannerTask } from '../../data/types'
 
 interface TaskChipProps {
   task: PlannerTask
   /**
-   * 'row' donde hay ancho de sobra (inbox, y las listas de día en móvil);
-   * 'grid' donde no lo hay: dentro de la cuadrícula y en las siete columnas de
-   * escritorio, donde una fila cómoda dejaría el texto en tres caracteres.
+   * 'row' donde hay ancho (los días en móvil); 'grid' donde no lo hay: dentro
+   * de la cuadrícula y en las siete columnas de escritorio.
    */
   density: 'row' | 'grid'
   onToggle: () => void
@@ -18,23 +17,20 @@ interface TaskChipProps {
 }
 
 /**
- * La tarea, vista. Monocroma salvo una excepción escrita en §4: a partir de la
- * tercera semana arrastrada se marca en rojo — o se hace, o se borra. El rojo
- * se reduce a un filete y a la insignia; el texto sigue en blanco.
- * La completada se queda visible, tachada y atenuada (§4).
+ * La tarea, vista. Las FIJAS llevan un filete lima a la izquierda: son el
+ * esqueleto de la semana y se distinguen de un vistazo de las breves, que solo
+ * viven esta semana. La completada se queda visible, tachada y atenuada (§4).
  */
 export function TaskChip({ task, density, onToggle, onOpen, handle }: TaskChipProps) {
-  const level = carryLevel(task.carriedOverCount)
-  const carry = carryLabel(task.carriedOverCount)
-  const alarm = level === 'alarm'
+  const fixed = task.templateId !== null
   const time = blockRangeLabel(task.startBlock, task.estimatedMinutes)
   const duration = durationLabel(task.estimatedMinutes)
 
   if (density === 'grid') {
     return (
       <div
-        className={`flex h-full w-full overflow-hidden rounded-md border border-line bg-surface ${
-          alarm ? 'border-l-2 border-l-streak-red' : ''
+        className={`flex h-full w-full overflow-hidden rounded-sm border border-line bg-surface ${
+          fixed ? 'border-l-2 border-l-streak-lime' : ''
         }`}
       >
         <button
@@ -46,8 +42,8 @@ export function TaskChip({ task, density, onToggle, onOpen, handle }: TaskChipPr
         >
           <span
             aria-hidden="true"
-            className={`h-3 w-3 rounded-sm border ${
-              task.done ? 'border-ink bg-ink' : 'border-ink-faint'
+            className={`h-3 w-3 border ${
+              task.done ? 'border-streak-lime bg-streak-lime' : 'border-ink-faint'
             }`}
           />
         </button>
@@ -58,13 +54,15 @@ export function TaskChip({ task, density, onToggle, onOpen, handle }: TaskChipPr
           className="min-w-0 flex-1 py-0.5 pr-1 text-left"
         >
           <span
-            className={`block truncate text-xs leading-tight ${
+            className={`block truncate font-display text-xs leading-tight ${
               task.done ? 'text-ink-faint line-through' : 'text-ink'
             }`}
           >
             {task.text}
           </span>
-          {time !== null && <span className="block truncate text-[10px] text-ink-faint">{time}</span>}
+          {time !== null && (
+            <span className="block truncate font-display text-[10px] text-ink-faint">{time}</span>
+          )}
         </button>
       </div>
     )
@@ -73,7 +71,7 @@ export function TaskChip({ task, density, onToggle, onOpen, handle }: TaskChipPr
   return (
     <div
       className={`flex min-h-14 items-center gap-1 py-2 ${
-        alarm ? 'border-l-2 border-l-streak-red pl-2' : ''
+        fixed ? 'border-l-2 border-l-streak-lime pl-2' : ''
       }`}
     >
       {handle}
@@ -95,15 +93,10 @@ export function TaskChip({ task, density, onToggle, onOpen, handle }: TaskChipPr
         >
           {task.text}
         </span>
-        {(time !== null || duration !== null || carry !== null) && (
-          <span className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs">
-            {time !== null && <span className="text-ink-soft">{time}</span>}
-            {time === null && duration !== null && <span className="text-ink-soft">{duration}</span>}
-            {carry !== null && (
-              <span className={alarm ? 'font-semibold text-streak-red' : 'text-ink-soft'}>
-                {carry}
-              </span>
-            )}
+        {(time !== null || duration !== null) && (
+          <span className="mt-0.5 flex flex-wrap items-center gap-x-2 font-display text-xs text-ink-soft">
+            {time !== null && <span>{time}</span>}
+            {time === null && duration !== null && <span>{duration}</span>}
           </span>
         )}
       </button>

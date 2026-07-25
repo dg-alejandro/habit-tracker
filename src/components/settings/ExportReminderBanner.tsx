@@ -6,7 +6,7 @@ import { Link } from 'react-router'
  */
 export function ExportReminderBanner() {
   return (
-    <div className="mt-6 rounded-lg border border-line bg-surface px-4 py-3">
+    <div className="mt-6 rounded-sm border border-line bg-surface px-4 py-3">
       <p className="text-sm font-semibold text-ink">Más de 30 días sin copia de seguridad</p>
       <p className="mt-1 text-sm text-ink-soft">La exportación JSON es el único respaldo de tus datos.</p>
       <Link

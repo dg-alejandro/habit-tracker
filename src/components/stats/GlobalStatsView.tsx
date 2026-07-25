@@ -44,7 +44,7 @@ export function GlobalStatsView({ data, today, onSelectHabit }: GlobalStatsViewP
   if (habits.length === 0) {
     return (
       <>
-        <h1 className="text-2xl font-semibold tracking-tight text-ink">Rachas y estadísticas</h1>
+        <h1 className="font-display text-2xl uppercase tracking-widest text-ink">Rachas y estadísticas</h1>
         <p className="mt-6 text-sm text-ink-soft">
           Sin hábitos todavía. Crea el primero en la pestaña Hábitos.
         </p>
@@ -54,7 +54,7 @@ export function GlobalStatsView({ data, today, onSelectHabit }: GlobalStatsViewP
 
   return (
     <>
-      <h1 className="text-2xl font-semibold tracking-tight text-ink">Rachas y estadísticas</h1>
+      <h1 className="font-display text-2xl uppercase tracking-widest text-ink">Rachas y estadísticas</h1>
       <div className="mt-8">
         <StreakHero label="Racha global" streak={streak} />
       </div>

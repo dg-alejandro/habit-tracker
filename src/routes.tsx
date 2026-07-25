@@ -4,7 +4,7 @@ import { DailyLog } from './pages/DailyLog'
 import { Habits } from './pages/Habits'
 import { Planner } from './pages/Planner'
 import { Settings } from './pages/Settings'
-import { TaskTemplates } from './pages/TaskTemplates'
+import { FixedTasks } from './pages/FixedTasks'
 
 /*
  * Las rutas están en español: la URL también es interfaz de usuario.
@@ -28,7 +28,7 @@ export function AppRoutes() {
       />
       <Route path="/planificador" element={<Planner />} />
       {/* Subruta y no estado local: el botón atrás del iPhone tiene que servir. */}
-      <Route path="/planificador/plantillas" element={<TaskTemplates />} />
+      <Route path="/planificador/fijas" element={<FixedTasks />} />
       <Route path="/ajustes" element={<Settings />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

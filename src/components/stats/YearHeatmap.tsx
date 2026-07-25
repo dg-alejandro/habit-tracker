@@ -64,7 +64,7 @@ export function YearHeatmap({ year, years, onYearChange, cells }: YearHeatmapPro
   return (
     <section className="mt-12">
       <div className="flex items-center justify-between">
-        <h2 className="text-xs font-medium uppercase tracking-widest text-ink-soft">
+        <h2 className="font-display text-xs uppercase tracking-widest text-streak-lime">
           Mapa del año
         </h2>
         <div className="flex items-center gap-1">
@@ -73,7 +73,7 @@ export function YearHeatmap({ year, years, onYearChange, cells }: YearHeatmapPro
             aria-label="Año anterior"
             disabled={!canPrev}
             onClick={() => onYearChange(year - 1)}
-            className="h-11 w-11 rounded-lg text-ink-soft hover:bg-surface hover:text-ink disabled:opacity-30"
+            className="h-11 w-11 rounded-sm text-ink-soft hover:bg-surface hover:text-ink disabled:opacity-30"
           >
             ←
           </button>
@@ -83,7 +83,7 @@ export function YearHeatmap({ year, years, onYearChange, cells }: YearHeatmapPro
             aria-label="Año siguiente"
             disabled={!canNext}
             onClick={() => onYearChange(year + 1)}
-            className="h-11 w-11 rounded-lg text-ink-soft hover:bg-surface hover:text-ink disabled:opacity-30"
+            className="h-11 w-11 rounded-sm text-ink-soft hover:bg-surface hover:text-ink disabled:opacity-30"
           >
             →
           </button>

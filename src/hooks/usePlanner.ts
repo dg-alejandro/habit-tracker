@@ -1,11 +1,12 @@
 import { useEffect, useRef, useSyncExternalStore } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { ensureWeekReady, listWeekTasks } from '../data/repositories/plannerTasksRepo'
-import { listTaskTemplates } from '../data/repositories/taskTemplatesRepo'
+import { listFixedTasks } from '../data/repositories/taskTemplatesRepo'
 import { isSupabaseConfigured } from '../data/supabase'
 import { syncStore } from '../data/sync'
 import type { WeekId } from '../logic/dates'
-import type { PlannerTask, TaskTemplate } from '../data/types'
+import type { FixedTask } from '../logic/planner'
+import type { PlannerTask } from '../data/types'
 import { useSession } from './useSession'
 
 /** Tareas de una semana; undefined mientras carga. */
@@ -13,9 +14,9 @@ export function useWeekTasks(weekId: WeekId): PlannerTask[] | undefined {
   return useLiveQuery(() => listWeekTasks(weekId), [weekId])
 }
 
-/** Catálogo de plantillas por día y hora; undefined mientras carga. */
-export function useTaskTemplates(): TaskTemplate[] | undefined {
-  return useLiveQuery(listTaskTemplates, [])
+/** Catálogo de tareas fijas, ya agrupadas; undefined mientras carga. */
+export function useFixedTasks(): FixedTask[] | undefined {
+  return useLiveQuery(listFixedTasks, [])
 }
 
 /**

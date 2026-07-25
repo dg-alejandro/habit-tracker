@@ -11,7 +11,7 @@ interface FrozenDayBannerProps {
 /** Estado de día congelado: ni suma ni rompe. */
 export function FrozenDayBanner({ date, canQuickUnfreeze }: FrozenDayBannerProps) {
   return (
-    <div className="mt-4 rounded-lg border border-line bg-surface px-4 py-3">
+    <div className="mt-4 rounded-sm border border-line bg-surface px-4 py-3">
       <p className="text-sm font-semibold text-ink">Día congelado</p>
       <p className="mt-0.5 text-sm text-ink-soft">
         Ni suma ni rompe: no cuenta para rachas ni porcentajes.
