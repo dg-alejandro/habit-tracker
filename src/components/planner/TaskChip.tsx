@@ -1,15 +1,22 @@
 import type { ReactNode } from 'react'
 import { CheckToggle } from '../habits/CheckToggle'
-import { blockRangeLabel, durationLabel, isFromBank } from '../../logic/planner'
+import {
+  blockRangeLabel,
+  durationLabel,
+  isFromBank,
+  shortDurationLabel,
+} from '../../logic/planner'
 import type { PlannerTask } from '../../data/types'
 
 interface TaskChipProps {
   task: PlannerTask
-  /**
-   * 'row' donde hay ancho (los días en móvil); 'grid' donde no lo hay: dentro
-   * de la cuadrícula y en las siete columnas de escritorio.
-   */
+  /** 'row' en las listas; 'grid' dentro de la cuadrícula. */
   density: 'row' | 'grid'
+  /**
+   * Solo en la cuadrícula: el chip es demasiado bajo para dos líneas. Pasa con
+   * las tareas de menos de media hora, y sin esto su duración no se vería.
+   */
+  compact?: boolean
   onToggle: () => void
   onOpen: () => void
   /** Asa de arrastre; solo la pone la envoltura arrastrable en densidad 'row'. */
@@ -22,7 +29,7 @@ interface TaskChipProps {
  * cuadrícula llena, el color es lo que deja leerla de un vistazo.
  * La completada se queda visible, tachada y atenuada (§4).
  */
-export function TaskChip({ task, density, onToggle, onOpen, handle }: TaskChipProps) {
+export function TaskChip({ task, density, compact, onToggle, onOpen, handle }: TaskChipProps) {
   const fromBank = isFromBank(task)
   // Tailwind no ve nombres de clase construidos por interpolación: enteros.
   const doneBox = fromBank
@@ -30,6 +37,7 @@ export function TaskChip({ task, density, onToggle, onOpen, handle }: TaskChipPr
     : 'border-streak-orange bg-streak-orange'
   const time = blockRangeLabel(task.startBlock, task.estimatedMinutes)
   const duration = durationLabel(task.estimatedMinutes)
+  const hint = time === null ? task.text : `${task.text} · ${time}`
 
   if (density === 'grid') {
     return (
@@ -53,18 +61,37 @@ export function TaskChip({ task, density, onToggle, onOpen, handle }: TaskChipPr
         <button
           type="button"
           onClick={onOpen}
-          title={task.text}
-          className="min-w-0 flex-1 py-1 pr-1.5 text-left"
+          title={hint}
+          className="flex min-w-0 flex-1 flex-col justify-center py-1 pr-1.5 text-left"
         >
-          <span
-            className={`block truncate text-sm leading-tight ${
-              task.done ? 'text-ink-faint line-through' : 'text-ink'
-            }`}
-          >
-            {task.text}
-          </span>
-          {time !== null && (
-            <span className="block truncate font-display text-xs text-ink-faint">{time}</span>
+          {compact === true ? (
+            // Una sola línea: el nombre se recorta, la duración NUNCA — es
+            // justo el dato que no cabía en las tareas de menos de media hora.
+            <span className="flex items-baseline gap-1">
+              <span
+                className={`min-w-0 truncate text-xs leading-tight ${
+                  task.done ? 'text-ink-faint line-through' : 'text-ink'
+                }`}
+              >
+                {task.text}
+              </span>
+              <span className="shrink-0 font-display text-xs tabular-nums text-ink-faint">
+                {shortDurationLabel(task.estimatedMinutes)}
+              </span>
+            </span>
+          ) : (
+            <>
+              <span
+                className={`block truncate text-sm leading-tight ${
+                  task.done ? 'text-ink-faint line-through' : 'text-ink'
+                }`}
+              >
+                {task.text}
+              </span>
+              {time !== null && (
+                <span className="block truncate font-display text-xs text-ink-faint">{time}</span>
+              )}
+            </>
           )}
         </button>
       </div>

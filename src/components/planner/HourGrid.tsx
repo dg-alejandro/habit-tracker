@@ -15,8 +15,14 @@ import type { IsoWeekday, PlannerTask } from '../../data/types'
 /** Alto de un bloque de 30 min. Con la madrugada plegada el día mide 36 filas. */
 export const CELL_PX = 42
 
-/** Ancho del raíl de horas. Lo comparte la fila de días para que las dos rejillas cuadren. */
+/** Ancho del raíl de horas. */
 export const HOUR_RAIL_WIDTH = '4.25rem'
+
+/** Alto mínimo de un chip: por debajo deja de poder pulsarse con el dedo. */
+const COMPACT_CHIP_PX = 26
+
+/** A partir de aquí caben dos líneas (nombre y hora); por debajo, solo una. */
+const TWO_LINE_CHIP_PX = 38
 
 /** Bloque en el que estamos ahora, para pintar la raya de la hora actual. */
 export interface NowMarker {
@@ -184,10 +190,15 @@ export function HourGrid({
                 )}
 
                 {placements.map((placement) => {
+                  const height = Math.max(
+                    COMPACT_CHIP_PX,
+                    (placement.minutes / BLOCK_MINUTES) * CELL_PX - 3,
+                  )
                   const chip = (
                     <TaskChip
                       task={placement.task}
                       density="grid"
+                      compact={height < TWO_LINE_CHIP_PX}
                       onToggle={() => void toggleTaskDone(placement.task.id)}
                       onOpen={() => onOpenTask(placement.task.id)}
                     />
@@ -200,11 +211,7 @@ export function HourGrid({
                         top: (placement.startBlock - firstBlock) * CELL_PX,
                         // Alto proporcional a los MINUTOS reales: una tarea de
                         // 20 min ocupa dos tercios de una casilla, no una entera.
-                        // Con un mínimo para que siga siendo pulsable.
-                        height: Math.max(
-                          24,
-                          (placement.minutes / BLOCK_MINUTES) * CELL_PX - 3,
-                        ),
+                        height,
                         left: `${(placement.lane / placement.lanes) * 100}%`,
                         width: `${100 / placement.lanes}%`,
                         // Un chip que empieza en la madrugada plegada no se pinta.

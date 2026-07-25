@@ -106,6 +106,18 @@ export function blockRangeLabel(
   return `${blockLabel(startBlock)}–${minuteLabel(start + taskMinutes(estimatedMinutes))}`
 }
 
+/**
+ * '20m' · '1h' · '1h30'. La versión que cabe en un chip de menos de media hora,
+ * donde el rango completo no entra y la duración se perdería.
+ */
+export function shortDurationLabel(estimatedMinutes?: number): string {
+  const total = taskMinutes(estimatedMinutes)
+  const hours = Math.floor(total / 60)
+  const minutes = total % 60
+  if (hours === 0) return `${minutes}m`
+  return minutes === 0 ? `${hours}h` : `${hours}h${minutes}`
+}
+
 /** '30 min' · '1 h' · '1 h 30'; null si no hay duración estimada. */
 export function durationLabel(estimatedMinutes?: number): string | null {
   if (estimatedMinutes === undefined || estimatedMinutes <= 0) return null

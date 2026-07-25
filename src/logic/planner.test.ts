@@ -24,6 +24,7 @@ import {
   parseDropTargetId,
   placementFor,
   planEphemeralPurge,
+  shortDurationLabel,
   sortTasksForDisplay,
   taskFromBank,
   unplacedTasks,
@@ -138,6 +139,16 @@ describe('duracion de una tarea', () => {
     expect(isValidEstimatedMinutes(999999999999)).toBe(false)
     expect(isValidEstimatedMinutes(0)).toBe(false)
     expect(isValidEstimatedMinutes(Number.NaN)).toBe(false)
+  })
+
+  it('shortDurationLabel cabe donde no cabe el rango: es lo que salva a las tareas cortas', () => {
+    // Un chip de menos de media hora solo tiene una línea; sin esta etiqueta,
+    // su duración no se vería en ningún sitio.
+    expect(shortDurationLabel(20)).toBe('20m')
+    expect(shortDurationLabel(45)).toBe('45m')
+    expect(shortDurationLabel(60)).toBe('1h')
+    expect(shortDurationLabel(90)).toBe('1h30')
+    expect(shortDurationLabel(undefined)).toBe('30m')
   })
 
   it('durationLabel se lee en español y desaparece si no hay estimación', () => {
