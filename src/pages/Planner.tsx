@@ -197,7 +197,7 @@ export function Planner() {
       onDragCancel={() => setDragging(null)}
     >
       <div className="mx-auto max-w-xl px-5 py-6 md:max-w-6xl md:px-10 md:py-10">
-        <h1 className="border-b border-line pb-3 font-display text-2xl uppercase tracking-widest text-ink">
+        <h1 className="border-b border-line pb-4 font-display text-3xl uppercase tracking-[0.2em] text-ink">
           Planificador
         </h1>
 

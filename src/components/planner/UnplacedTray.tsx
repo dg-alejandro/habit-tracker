@@ -55,9 +55,9 @@ export function UnplacedTray({ weekId, tasks, editingId, onEdit }: UnplacedTrayP
   const pending = tasks.filter((task) => !task.done).length
 
   return (
-    <section className="mt-6">
+    <section className="mt-8">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 border-b border-line pb-2">
-        <h2 className="font-display text-xs uppercase tracking-widest text-streak-lime">
+        <h2 className="font-display text-sm uppercase tracking-[0.2em] text-streak-lime">
           Sueltas de esta semana{' '}
           {pending > 0 && <span className="tabular-nums text-streak-orange">· {pending}</span>}
         </h2>
@@ -66,7 +66,7 @@ export function UnplacedTray({ weekId, tasks, editingId, onEdit }: UnplacedTrayP
         </p>
       </div>
 
-      <form onSubmit={submit} className="mt-2 flex flex-wrap items-center gap-2">
+      <form onSubmit={submit} className="mt-3 flex flex-wrap items-center gap-2">
         <input
           type="text"
           value={text}
@@ -100,7 +100,7 @@ export function UnplacedTray({ weekId, tasks, editingId, onEdit }: UnplacedTrayP
 
       <DropZone target={{ kind: 'unplaced' }} className="mt-2 min-h-14 rounded-sm">
         {tasks.length === 0 ? (
-          <p className="py-3 text-sm text-ink-faint">
+          <p className="py-4 text-base text-ink-faint">
             Nada suelto. Lo que escribas aquí aparecerá hasta que lo arrastres a un hueco.
           </p>
         ) : (

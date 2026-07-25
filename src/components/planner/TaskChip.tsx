@@ -43,28 +43,28 @@ export function TaskChip({ task, density, onToggle, onOpen, handle }: TaskChipPr
           onClick={onToggle}
           aria-pressed={task.done}
           aria-label={`Completar ${task.text}`}
-          className="flex w-6 shrink-0 items-center justify-center"
+          className="flex w-7 shrink-0 items-center justify-center"
         >
           <span
             aria-hidden="true"
-            className={`h-3 w-3 border ${task.done ? doneBox : 'border-ink-faint'}`}
+            className={`h-3.5 w-3.5 border ${task.done ? doneBox : 'border-ink-faint'}`}
           />
         </button>
         <button
           type="button"
           onClick={onOpen}
           title={task.text}
-          className="min-w-0 flex-1 py-0.5 pr-1 text-left"
+          className="min-w-0 flex-1 py-1 pr-1.5 text-left"
         >
           <span
-            className={`block truncate font-display text-xs leading-tight ${
+            className={`block truncate text-sm leading-tight ${
               task.done ? 'text-ink-faint line-through' : 'text-ink'
             }`}
           >
             {task.text}
           </span>
           {time !== null && (
-            <span className="block truncate font-display text-[10px] text-ink-faint">{time}</span>
+            <span className="block truncate font-display text-xs text-ink-faint">{time}</span>
           )}
         </button>
       </div>
@@ -90,14 +90,14 @@ export function TaskChip({ task, density, onToggle, onOpen, handle }: TaskChipPr
       {/* self-stretch: la fila mide 56 px y el objetivo táctil debe medir lo mismo. */}
       <button type="button" onClick={onOpen} className="min-w-0 flex-1 self-stretch py-1 text-left">
         <span
-          className={`block truncate text-base ${
+          className={`block truncate text-lg ${
             task.done ? 'text-ink-faint line-through' : 'text-ink'
           }`}
         >
           {task.text}
         </span>
         {(time !== null || duration !== null) && (
-          <span className="mt-0.5 flex flex-wrap items-center gap-x-2 font-display text-xs text-ink-soft">
+          <span className="mt-1 flex flex-wrap items-center gap-x-2 font-display text-sm text-ink-soft">
             {time !== null && <span>{time}</span>}
             {time === null && duration !== null && <span>{duration}</span>}
           </span>

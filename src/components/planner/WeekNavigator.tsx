@@ -14,18 +14,18 @@ export function WeekNavigator({ weekId, currentWeekId, onChange }: WeekNavigator
   const isCurrent = weekId === currentWeekId
 
   return (
-    <nav aria-label="Cambiar de semana" className="mt-6 flex items-center justify-between gap-3">
+    <nav aria-label="Cambiar de semana" className="mt-8 flex items-center justify-between gap-3">
       <button
         type="button"
         aria-label="Semana anterior"
         onClick={() => onChange(addWeeksToWeekId(weekId, -1))}
-        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-sm border border-line text-ink transition-colors hover:bg-surface active:bg-surface"
+        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-sm border border-line text-ink transition-colors hover:bg-surface active:bg-surface"
       >
         <Chevron direction="left" />
       </button>
 
       <div className="min-w-0 text-center">
-        <p className="truncate font-display text-base text-ink">{formatWeekRangeEs(weekId)}</p>
+        <p className="truncate font-display text-xl tracking-wide text-ink">{formatWeekRangeEs(weekId)}</p>
         {isCurrent ? (
           <p className="font-display text-xs text-ink-soft">Esta semana</p>
         ) : (
@@ -43,7 +43,7 @@ export function WeekNavigator({ weekId, currentWeekId, onChange }: WeekNavigator
         type="button"
         aria-label="Semana siguiente"
         onClick={() => onChange(addWeeksToWeekId(weekId, 1))}
-        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-sm border border-line text-ink transition-colors hover:bg-surface active:bg-surface"
+        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-sm border border-line text-ink transition-colors hover:bg-surface active:bg-surface"
       >
         <Chevron direction="right" />
       </button>

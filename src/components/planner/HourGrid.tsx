@@ -13,10 +13,10 @@ import { TaskChip } from './TaskChip'
 import type { IsoWeekday, PlannerTask } from '../../data/types'
 
 /** Alto de un bloque de 30 min. Con la madrugada plegada el día mide 36 filas. */
-export const CELL_PX = 32
+export const CELL_PX = 42
 
 /** Ancho del raíl de horas. Lo comparte la fila de días para que las dos rejillas cuadren. */
-export const HOUR_RAIL_WIDTH = '3.25rem'
+export const HOUR_RAIL_WIDTH = '4.25rem'
 
 /** Bloque en el que estamos ahora, para pintar la raya de la hora actual. */
 export interface NowMarker {
@@ -87,9 +87,9 @@ export function HourGrid({
   )
 
   return (
-    <section className="mt-10">
+    <section className="mt-12">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 border-b border-line pb-2">
-        <h2 className="font-display text-xs uppercase tracking-widest text-streak-lime">
+        <h2 className="font-display text-sm uppercase tracking-[0.2em] text-streak-lime">
           La semana
         </h2>
         <button
@@ -105,7 +105,7 @@ export function HourGrid({
         </button>
       </div>
 
-      <div className="mt-3 overflow-x-auto">
+      <div className="mt-4 overflow-x-auto">
         <div
           className="grid min-w-full border-r border-b border-line"
           style={{ gridTemplateColumns: `${HOUR_RAIL_WIDTH} repeat(${days.length}, minmax(0, 1fr))` }}
@@ -121,8 +121,8 @@ export function HourGrid({
                   : 'border-b-line border-l-line text-ink-soft'
               }`}
             >
-              <span className="block text-sm tracking-widest">{weekdayShortEs(day)}</span>
-              <span className="block truncate text-[11px] normal-case tracking-normal text-ink-faint">
+              <span className="block text-base tracking-[0.2em]">{weekdayShortEs(day)}</span>
+              <span className="block truncate text-xs normal-case tracking-normal text-ink-faint">
                 {formatDateShortEs(dates[day - 1] ?? '')}
               </span>
             </div>
@@ -134,7 +134,7 @@ export function HourGrid({
               block % 2 === 0 ? (
                 <span
                   key={block}
-                  className={`absolute right-2 -translate-y-1/2 font-display text-[11px] tabular-nums ${
+                  className={`absolute right-3 -translate-y-1/2 font-display text-sm tabular-nums ${
                     block % 4 === 0 ? 'text-ink-soft' : 'text-ink-faint'
                   }`}
                   style={{ top: (block - firstBlock) * CELL_PX }}
@@ -202,8 +202,8 @@ export function HourGrid({
                         // 20 min ocupa dos tercios de una casilla, no una entera.
                         // Con un mínimo para que siga siendo pulsable.
                         height: Math.max(
-                          18,
-                          (placement.minutes / BLOCK_MINUTES) * CELL_PX - 2,
+                          24,
+                          (placement.minutes / BLOCK_MINUTES) * CELL_PX - 3,
                         ),
                         left: `${(placement.lane / placement.lanes) * 100}%`,
                         width: `${100 / placement.lanes}%`,

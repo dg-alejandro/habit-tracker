@@ -150,7 +150,8 @@ Lo que el propietario quería, y que costó cuatro intentos entender: **un banco
 - **`day` y `startBlock` van juntos**: no hay día sin hora ni hora sin día. Una tarea con día pero sin hora no se vería en ningún sitio.
 - **Anuncios del arrastre en español** (dnd-kit los trae en inglés hablando de «draggable items»).
 - **El color dice de dónde salió cada tarea**: lima si vino del banco, naranja si es suelta. Con la cuadrícula llena, el color es lo que deja leerla de un vistazo.
-- **Cuadrícula más legible**: filas de 32 px, bandas alternas por hora, cabeceras de día más grandes con su fecha, columna de hoy teñida de lima y raya magenta en la hora actual, que se mueve sola cada minuto.
+- **Cuadrícula más legible**: filas de 42 px, bandas alternas por hora, cabeceras de día más grandes con su fecha, columna de hoy teñida de lima y raya magenta en la hora actual, que se mueve sola cada minuto.
+- **Escala general subida** («hazlo más legible y grande», 2026-07-25): título a 30 px, semana a 20 px, cabeceras de día a 16 px, raíl horario a 14 px, texto de las tareas a 14 px en la rejilla y 18 px en las listas, raíl de horas más ancho y más aire entre secciones. La cuadrícula pasa a medir ~1500 px de alto: es scroll vertical, como cualquier calendario semanal.
 - Fuera el contador «N pendientes» de la cabecera, a petición del propietario.
 - **La duración es libre en minutos y no se redondea al bloque** (petición del propietario: «quiero poder poner tareas de 20 minutos»). Antes, 20 se guardaba bien pero se etiquetaba y se pintaba como 30, porque todo se cuantizaba a bloques de media hora. Ahora el bloque solo decide a qué HORA empieza una tarea; el alto del chip es proporcional a los minutos reales y los solapes se calculan en minutos. **La hora de inicio sigue en la media hora**: afinarla exigiría cambiar el `check (start_block between 0 and 47)` del esquema remoto, o sea, SQL a mano del propietario.
 

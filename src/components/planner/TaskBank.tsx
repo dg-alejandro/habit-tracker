@@ -33,17 +33,17 @@ export function TaskBank({ bank }: TaskBankProps) {
   const [editingId, setEditingId] = useState<string | null>(null)
 
   return (
-    <section className="mt-6">
+    <section className="mt-8">
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
-        className="flex h-11 w-full items-center gap-2 border-b border-streak-magenta/60 font-display text-xs uppercase tracking-widest text-streak-magenta transition-colors hover:bg-surface"
+        className="flex h-12 w-full items-center gap-3 border-b border-streak-magenta/60 font-display text-sm uppercase tracking-[0.2em] text-streak-magenta transition-colors hover:bg-surface"
       >
         <span aria-hidden="true">{open ? '▾' : '▸'}</span>
         <span>Banco de tareas</span>
         <span className="tabular-nums text-ink-faint">· {bank.length}</span>
-        <span className="ml-auto normal-case tracking-normal text-ink-faint">
+        <span className="ml-auto text-xs normal-case tracking-normal text-ink-faint">
           {open ? 'arrastra una a la cuadrícula' : 'lo que se repite cada semana'}
         </span>
       </button>
@@ -56,7 +56,7 @@ export function TaskBank({ bank }: TaskBankProps) {
               cuando toque.
             </p>
           ) : (
-            <ul className="flex flex-wrap gap-2">
+            <ul className="flex flex-wrap gap-3">
               {bank.map((item) =>
                 editingId === item.id ? (
                   <li key={item.id} className="w-full">
@@ -108,14 +108,14 @@ function BankChip({ item, onEdit }: { item: BankTask; onEdit: () => void }) {
         aria-label={`Arrastrar ${item.text} a la semana`}
         {...attributes}
         {...listeners}
-        className="flex w-8 shrink-0 cursor-grab touch-none items-center justify-center text-streak-magenta active:cursor-grabbing"
+        className="flex w-10 shrink-0 cursor-grab touch-none items-center justify-center text-streak-magenta active:cursor-grabbing"
       >
         <GripIcon />
       </button>
-      <button type="button" onClick={onEdit} className="min-h-11 py-1 pr-3 text-left">
-        <span className="block text-sm text-ink">{item.text}</span>
+      <button type="button" onClick={onEdit} className="min-h-12 py-2 pr-4 text-left">
+        <span className="block text-base text-ink">{item.text}</span>
         {duration !== null && (
-          <span className="block font-display text-xs text-ink-faint">{duration}</span>
+          <span className="block font-display text-sm text-ink-faint">{duration}</span>
         )}
       </button>
     </div>
