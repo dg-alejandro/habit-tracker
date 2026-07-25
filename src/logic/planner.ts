@@ -65,35 +65,45 @@ export function blockLabel(block: number): string {
 }
 
 /**
- * Bloques que ocupa una tarea al colocarla. Sin duración estimada ocupa uno:
- * una tarea siempre marca al menos su hora de inicio en la rejilla.
+ * Minutos que dura una tarea. Sin duración estimada se le supone un bloque:
+ * una tarea siempre ocupa al menos su hueco en la rejilla.
+ *
+ * La duración NO se redondea al bloque de 30 min. La rejilla marca a qué hora
+ * EMPIEZA una tarea; cuánto dura es un número de minutos suyo, y una de 20 min
+ * tiene que decir 20 y pintarse como 20 (petición del propietario).
  */
-export function blockSpan(estimatedMinutes?: number): number {
-  if (estimatedMinutes === undefined || !Number.isFinite(estimatedMinutes)) return 1
-  const blocks = Math.ceil(estimatedMinutes / BLOCK_MINUTES)
-  if (blocks < 1) return 1
-  return Math.min(blocks, BLOCKS_PER_DAY)
+export function taskMinutes(estimatedMinutes?: number): number {
+  if (estimatedMinutes === undefined || !Number.isFinite(estimatedMinutes) || estimatedMinutes <= 0) {
+    return BLOCK_MINUTES
+  }
+  return Math.min(estimatedMinutes, BLOCKS_PER_DAY * BLOCK_MINUTES)
 }
 
 /**
- * Bloques que se PINTAN, recortados a medianoche. Una tarea de 3 h a las 23:30
+ * Minutos que se PINTAN, recortados a medianoche. Una tarea de 3 h a las 23:30
  * se guarda tal cual (el usuario mandó) y se dibuja recortada: moverle la hora
  * de inicio a algo que nadie pidió sería peor.
  */
-export function visibleSpan(startBlock: number, estimatedMinutes?: number): number {
-  return Math.max(1, Math.min(blockSpan(estimatedMinutes), BLOCKS_PER_DAY - startBlock))
+export function visibleMinutes(startBlock: number, estimatedMinutes?: number): number {
+  const untilMidnight = (BLOCKS_PER_DAY - startBlock) * BLOCK_MINUTES
+  return Math.max(1, Math.min(taskMinutes(estimatedMinutes), untilMidnight))
 }
 
-/** '09:00–10:30'; null si la tarea no está colocada. */
+/** 'HH:mm' de un minuto del día; '24:00' a partir de medianoche. */
+function minuteLabel(minuteOfDay: number): string {
+  if (minuteOfDay >= BLOCKS_PER_DAY * BLOCK_MINUTES) return '24:00'
+  const hours = Math.floor(minuteOfDay / 60)
+  return `${String(hours).padStart(2, '0')}:${String(minuteOfDay % 60).padStart(2, '0')}`
+}
+
+/** '09:00–09:20'; null si la tarea no está colocada. El final es el REAL. */
 export function blockRangeLabel(
   startBlock: number | null,
   estimatedMinutes?: number,
 ): string | null {
   if (startBlock === null) return null
-  const end = startBlock + blockSpan(estimatedMinutes)
-  // El bloque 48 sería '24:00': a medianoche se etiqueta como el final del día.
-  const endLabel = end >= BLOCKS_PER_DAY ? '24:00' : blockLabel(end)
-  return `${blockLabel(startBlock)}–${endLabel}`
+  const start = blockToMinutes(startBlock)
+  return `${blockLabel(startBlock)}–${minuteLabel(start + taskMinutes(estimatedMinutes))}`
 }
 
 /** '30 min' · '1 h' · '1 h 30'; null si no hay duración estimada. */
@@ -187,8 +197,8 @@ export function planEphemeralPurge(input: EphemeralPurgeInput): string[] {
 export interface ScheduledPlacement {
   task: PlannerTask
   startBlock: number
-  /** Bloques que se pintan, ya recortados a medianoche (>= 1). */
-  span: number
+  /** Minutos que se pintan, ya recortados a medianoche (>= 1). */
+  minutes: number
   /** Carril 0..lanes-1 dentro de su grupo conexo de solapes. */
   lane: number
   /** Carriles del grupo: el ancho del chip es 1/lanes. */
@@ -207,14 +217,15 @@ export function layoutDayTasks(tasks: readonly PlannerTask[]): ScheduledPlacemen
     .filter((task) => task.startBlock !== null && isValidBlock(task.startBlock))
     .map((task) => {
       const startBlock = task.startBlock ?? 0
-      return { task, startBlock, span: visibleSpan(startBlock, task.estimatedMinutes) }
+      return { task, startBlock, minutes: visibleMinutes(startBlock, task.estimatedMinutes) }
     })
     .sort(
-      (a, b) => a.startBlock - b.startBlock || b.span - a.span || a.task.id.localeCompare(b.task.id),
+      (a, b) =>
+        a.startBlock - b.startBlock || b.minutes - a.minutes || a.task.id.localeCompare(b.task.id),
     )
 
   const placements: ScheduledPlacement[] = []
-  /** Fin (exclusivo) de la última tarea de cada carril del grupo en curso. */
+  /** Fin (exclusivo, en minutos del día) de la última tarea de cada carril. */
   let laneEnds: number[] = []
   /** Índices dentro de `placements` que pertenecen al grupo conexo en curso. */
   let group: number[] = []
@@ -230,14 +241,17 @@ export function layoutDayTasks(tasks: readonly PlannerTask[]): ScheduledPlacemen
   }
 
   for (const item of scheduled) {
+    // Los solapes se calculan en MINUTOS, no en bloques: dos tareas de 20 min
+    // seguidas a las 09:00 y 09:30 no se pisan, y hay que verlo.
+    const start = blockToMinutes(item.startBlock)
     // Un hueco sin solape cierra el grupo: a partir de ahí los carriles se recuentan.
-    if (item.startBlock >= groupEnd) closeGroup()
-    let lane = laneEnds.findIndex((end) => end <= item.startBlock)
+    if (start >= groupEnd) closeGroup()
+    let lane = laneEnds.findIndex((end) => end <= start)
     if (lane === -1) {
       lane = laneEnds.length
       laneEnds.push(0)
     }
-    const end = item.startBlock + item.span
+    const end = start + item.minutes
     laneEnds[lane] = end
     groupEnd = Math.max(groupEnd, end)
     group.push(placements.length)

@@ -86,7 +86,7 @@ export function UnplacedTray({ weekId, tasks, editingId, onEdit }: UnplacedTrayP
             inputMode="numeric"
             min={1}
             max={MAX_ESTIMATED_MINUTES}
-            step={5}
+            step={1}
             value={minutes}
             onChange={(event) => setMinutes(event.currentTarget.value)}
             onKeyDown={keyDown}

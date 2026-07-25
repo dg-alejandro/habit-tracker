@@ -3,6 +3,7 @@ import { toggleTaskDone } from '../../data/repositories/plannerTasksRepo'
 import { formatDateShortEs, weekdayShortEs, type IsoDate } from '../../logic/dates'
 import {
   BLOCKS_PER_DAY,
+  BLOCK_MINUTES,
   NIGHT_END_BLOCK,
   blockLabel,
   countNightTasks,
@@ -197,7 +198,13 @@ export function HourGrid({
                       className="absolute px-px"
                       style={{
                         top: (placement.startBlock - firstBlock) * CELL_PX,
-                        height: placement.span * CELL_PX - 2,
+                        // Alto proporcional a los MINUTOS reales: una tarea de
+                        // 20 min ocupa dos tercios de una casilla, no una entera.
+                        // Con un mínimo para que siga siendo pulsable.
+                        height: Math.max(
+                          18,
+                          (placement.minutes / BLOCK_MINUTES) * CELL_PX - 2,
+                        ),
                         left: `${(placement.lane / placement.lanes) * 100}%`,
                         width: `${100 / placement.lanes}%`,
                         // Un chip que empieza en la madrugada plegada no se pinta.

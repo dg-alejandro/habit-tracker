@@ -178,7 +178,7 @@ function BankTaskForm({ initial, onSubmit, onCancel, onDelete }: BankTaskFormPro
           inputMode="numeric"
           min={1}
           max={MAX_ESTIMATED_MINUTES}
-          step={5}
+          step={1}
           value={minutes}
           onChange={(event) => setMinutes(event.currentTarget.value)}
           onKeyDown={keyDown}

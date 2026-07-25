@@ -154,7 +154,8 @@ El banco vive en la tabla `taskTemplates`. Su columna `weekday` es `not null` en
 - Cobertura **00:00 a 24:00**, en bloques de **30 minutos**, con los siete dias en columnas y bandas alternas por hora para poder seguirla con la vista.
 - Por defecto la franja **00:00-06:00 aparece plegada**, con el recuento de lo que esconde.
 - **El color dice de donde salio cada tarea**: lima si vino del banco, naranja si es suelta. La columna de hoy va tenida de lima y una raya magenta marca la hora actual.
-- Una tarea con duracion ocupa los bloques proporcionales. Solaparlas es legitimo: se reparten a media anchura.
+- **La duracion es libre, en minutos, y NO se redondea al bloque**: una tarea de 20 min dice «09:00-09:20» y se pinta con dos tercios de la altura de una casilla. Los bloques de 30 min solo marcan a que HORA puede empezar una tarea. Los solapes se calculan en minutos reales, asi que dos tareas de 20 min a las 09:00 y las 09:30 no se pisan.
+- Solapar es legitimo: las que se pisan se reparten a media anchura.
 - **Todo lo que hace el arrastre se puede hacer tambien desde los selectores del editor**, porque el gesto tactil no es verificable desde el entorno de desarrollo.
 - En movil: un dia visible cada vez, con una tira para elegir cual.
 

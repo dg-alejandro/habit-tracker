@@ -7,7 +7,7 @@ Es lo que permite que una instancia nueva sepa dónde estamos sin releer todo el
 
 ## Estado actual
 
-**Fase en curso:** Fase 4 — Planificador semanal. El modelo se ha rehecho **cuatro veces** el 2026-07-25 hasta dar con lo que el propietario quería; el de ahora es el bueno y está descrito entero en `CLAUDE.md` §4. **No inventes variantes: lee §4 y respétala.** 275 tests en verde, build limpio, verificado en navegador. Pendiente de la **prueba de aceptación del propietario**.
+**Fase en curso:** Fase 4 — Planificador semanal. El modelo se ha rehecho **cuatro veces** el 2026-07-25 hasta dar con lo que el propietario quería; el de ahora es el bueno y está descrito entero en `CLAUDE.md` §4. **No inventes variantes: lee §4 y respétala.** 276 tests en verde, build limpio, verificado en navegador. Pendiente de la **prueba de aceptación del propietario**.
 
 **El planificador, en una frase:** un banco de tareas reutilizables del que se tira arrastrando, una caja para lo suelto de la semana, y una cuadrícula donde se coloca todo. El banco no recuerda posiciones y ninguna semana hereda nada de la anterior.
 
@@ -28,7 +28,7 @@ Es lo que permite que una instancia nueva sepa dónde estamos sin releer todo el
 | 1 — Registro diario en local | **Cerrada** | 2026-07-23 | Probada y dada por buena por el propietario el mismo día de su construcción (decisión suya, sin esperar las tres noches) |
 | 2 — Supabase y sincronización | **Cerrada** | 2026-07-24 | El propietario confirma completado su checklist de *Bloqueos* («mi parte está hecha»): verificación autenticada, Vercel y prueba PC ↔ iPhone |
 | 3 — Rachas y estadísticas | En curso (construida; aceptación pendiente) | | Código completo y en GitHub; falta que el propietario compruebe sus cifras reales |
-| 4 — Planificador semanal | En curso (rehecha; aceptación pendiente) | | Caja + cuadrícula, tareas persistentes y puntuales, y pasada de estética sobre toda la app |
+| 4 — Planificador semanal | En curso (rehecha; aceptación pendiente) | | Banco de tareas + cuadrícula, y pasada de estética sobre toda la app |
 | 5 — Pulido y PWA | Pendiente | | |
 | 6 — Notificación (opcional) | Pendiente | | |
 
@@ -152,6 +152,7 @@ Lo que el propietario quería, y que costó cuatro intentos entender: **un banco
 - **El color dice de dónde salió cada tarea**: lima si vino del banco, naranja si es suelta. Con la cuadrícula llena, el color es lo que deja leerla de un vistazo.
 - **Cuadrícula más legible**: filas de 32 px, bandas alternas por hora, cabeceras de día más grandes con su fecha, columna de hoy teñida de lima y raya magenta en la hora actual, que se mueve sola cada minuto.
 - Fuera el contador «N pendientes» de la cabecera, a petición del propietario.
+- **La duración es libre en minutos y no se redondea al bloque** (petición del propietario: «quiero poder poner tareas de 20 minutos»). Antes, 20 se guardaba bien pero se etiquetaba y se pintaba como 30, porque todo se cuantizaba a bloques de media hora. Ahora el bloque solo decide a qué HORA empieza una tarea; el alto del chip es proporcional a los minutos reales y los solapes se calculan en minutos. **La hora de inicio sigue en la media hora**: afinarla exigiría cambiar el `check (start_block between 0 and 47)` del esquema remoto, o sea, SQL a mano del propietario.
 
 ---
 

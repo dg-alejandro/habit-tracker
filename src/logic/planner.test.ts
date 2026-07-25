@@ -9,7 +9,6 @@ import {
   applyTaskMove,
   blockLabel,
   blockRangeLabel,
-  blockSpan,
   blockToMinutes,
   countNightTasks,
   countPendingByDay,
@@ -28,7 +27,8 @@ import {
   sortTasksForDisplay,
   taskFromBank,
   unplacedTasks,
-  visibleSpan,
+  taskMinutes,
+  visibleMinutes,
 } from './planner'
 import type { IsoWeekday, PlannerTask, WeekId } from '../data/types'
 
@@ -92,37 +92,40 @@ describe('bloques ↔ minutos ↔ etiqueta', () => {
   })
 })
 
-describe('duración de una tarea en bloques', () => {
-  it('sin duración estimada ocupa un bloque: marca su hora de inicio', () => {
-    expect(blockSpan(undefined)).toBe(1)
+describe('duracion de una tarea', () => {
+  it('la duracion NO se redondea al bloque: 20 minutos son 20 minutos', () => {
+    // La rejilla marca a que hora EMPIEZA; cuanto dura es un numero suyo.
+    expect(taskMinutes(20)).toBe(20)
+    expect(taskMinutes(45)).toBe(45)
+    expect(taskMinutes(90)).toBe(90)
   })
 
-  it('redondea al alza al siguiente bloque de 30 min', () => {
-    expect(blockSpan(30)).toBe(1)
-    expect(blockSpan(45)).toBe(2)
-    expect(blockSpan(60)).toBe(2)
-    expect(blockSpan(90)).toBe(3)
+  it('sin duracion estimada se le supone un bloque', () => {
+    expect(taskMinutes(undefined)).toBe(30)
   })
 
   it('duraciones absurdas no rompen la rejilla', () => {
-    expect(blockSpan(0)).toBe(1)
-    expect(blockSpan(-30)).toBe(1)
-    expect(blockSpan(60 * 40)).toBe(BLOCKS_PER_DAY)
+    expect(taskMinutes(0)).toBe(30)
+    expect(taskMinutes(-30)).toBe(30)
+    expect(taskMinutes(60 * 40)).toBe(BLOCKS_PER_DAY * 30)
   })
 
-  it('visibleSpan recorta a medianoche sin mover la hora de inicio', () => {
+  it('visibleMinutes recorta a medianoche sin mover la hora de inicio', () => {
     // Una tarea de 3 h a las 23:00 se guarda tal cual y se pinta hasta las 24:00.
-    expect(visibleSpan(46, 180)).toBe(2)
-    expect(visibleSpan(47, 180)).toBe(1)
-    expect(visibleSpan(18, 90)).toBe(3)
+    expect(visibleMinutes(46, 180)).toBe(60)
+    expect(visibleMinutes(47, 180)).toBe(30)
+    expect(visibleMinutes(18, 90)).toBe(90)
+    expect(visibleMinutes(18, 20)).toBe(20)
   })
 
   it('blockRangeLabel devuelve null si la tarea no está colocada', () => {
     expect(blockRangeLabel(null, 90)).toBeNull()
   })
 
-  it('blockRangeLabel etiqueta el tramo, con 24:00 como final del día', () => {
+  it('blockRangeLabel dice la hora de fin REAL, no la del bloque redondeado', () => {
     expect(blockRangeLabel(18, 90)).toBe('09:00–10:30')
+    expect(blockRangeLabel(18, 20)).toBe('09:00–09:20')
+    expect(blockRangeLabel(18, 45)).toBe('09:00–09:45')
     expect(blockRangeLabel(20)).toBe('10:00–10:30')
     expect(blockRangeLabel(46, 180)).toBe('23:00–24:00')
   })
@@ -230,7 +233,7 @@ describe('layoutDayTasks — carriles de la cuadrícula', () => {
     expect(result).toHaveLength(1)
     expect(result[0]?.lane).toBe(0)
     expect(result[0]?.lanes).toBe(1)
-    expect(result[0]?.span).toBe(2)
+    expect(result[0]?.minutes).toBe(60)
   })
 
   it('dos que no se solapan comparten carril y ancho completo', () => {
@@ -289,7 +292,14 @@ describe('layoutDayTasks — carriles de la cuadrícula', () => {
   })
 
   it('una tarea que desborda medianoche se pinta recortada', () => {
-    expect(layoutDayTasks([scheduled('a', 46, 180)])[0]?.span).toBe(2)
+    expect(layoutDayTasks([scheduled('a', 46, 180)])[0]?.minutes).toBe(60)
+  })
+
+  it('dos tareas cortas seguidas NO se pisan: el solape se mide en minutos', () => {
+    // 09:00–09:20 y 09:30–09:50 caben en el mismo carril.
+    const result = layoutDayTasks([scheduled('a', 18, 20), scheduled('b', 19, 20)])
+    expect(result.map((placement) => placement.lane)).toEqual([0, 0])
+    expect(result.map((placement) => placement.lanes)).toEqual([1, 1])
   })
 
   it('es determinista con la entrada desordenada', () => {
