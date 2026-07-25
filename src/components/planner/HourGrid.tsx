@@ -58,8 +58,10 @@ export function HourGrid({
   const firstBlock = nightOpen ? 0 : NIGHT_END_BLOCK
   const blocks = Array.from({ length: BLOCKS_PER_DAY - firstBlock }, (_, i) => firstBlock + i)
   const height = blocks.length * CELL_PX
-  const hiddenNight = [...tasksByDay.values()].reduce(
-    (total, tasks) => total + countNightTasks(tasks),
+  // Solo los días que se PINTAN: en móvil se ve uno, y anunciar lo que hay el
+  // martes mientras miras el lunes sería mentir sobre una franja vacía.
+  const hiddenNight = days.reduce(
+    (total, day) => total + countNightTasks(tasksByDay.get(day) ?? []),
     0,
   )
 

@@ -27,8 +27,14 @@ import { moveTask } from '../data/repositories/plannerTasksRepo'
 import { useIsDesktop, useWeekPreparation, useWeekTasks } from '../hooks/usePlanner'
 import { useLogicalToday } from '../hooks/useLogicalToday'
 import { daysOfWeekId, isoWeekIdOf, isoWeekdayOf, type WeekId } from '../logic/dates'
-import { parseDropTargetId } from '../logic/planner'
-import type { IsoWeekday, PlannerTask } from '../data/types'
+import {
+  applyTaskMove,
+  countPendingByDay,
+  groupTasksByDay,
+  parseDropTargetId,
+  scheduledTasksByDay,
+} from '../logic/planner'
+import type { IsoWeekday } from '../data/types'
 
 const WEEKDAYS: IsoWeekday[] = [1, 2, 3, 4, 5, 6, 7]
 
@@ -80,7 +86,10 @@ export function Planner() {
     useSensor(TouchSensor, { activationConstraint: { delay: 220, tolerance: 6 } }),
   )
 
-  const tasks = useMemo(() => applyPendingMove(liveTasks, pendingMove), [liveTasks, pendingMove])
+  const tasks = useMemo(
+    () => (liveTasks === undefined ? undefined : applyTaskMove(liveTasks, pendingMove)),
+    [liveTasks, pendingMove],
+  )
 
   // El optimismo se retira en cuanto la fila viva ya dice lo mismo.
   useEffect(() => {
@@ -101,9 +110,9 @@ export function Planner() {
   const editing = (tasks ?? []).find((task) => task.id === editingId)
   const draggingTask = (tasks ?? []).find((task) => task.id === dragging)
   const inboxTasks = (tasks ?? []).filter((task) => task.day === null)
-  const byDay = useMemo(() => groupByDay(tasks ?? []), [tasks])
+  const byDay = useMemo(() => groupTasksByDay(tasks ?? []), [tasks])
   const pendingByDay = useMemo(() => countPendingByDay(byDay), [byDay])
-  const scheduledByDay = useMemo(() => filterScheduled(byDay), [byDay])
+  const scheduledByDay = useMemo(() => scheduledTasksByDay(byDay), [byDay])
 
   const closeEdit = () => setEditingId(null)
 
@@ -185,6 +194,7 @@ export function Planner() {
             tasks={(byDay.get(day) ?? []).filter((task) => task.startBlock === null)}
             editingId={editingId}
             onEdit={setEditingId}
+            density={isDesktop ? 'grid' : 'row'}
           />
         ))}
       </div>
@@ -226,50 +236,4 @@ export function Planner() {
     </div>
     </DndContext>
   )
-}
-
-/** Superpone el movimiento optimista sobre la foto viva de Dexie. */
-function applyPendingMove(
-  tasks: PlannerTask[] | undefined,
-  pending: PendingMove | null,
-): PlannerTask[] | undefined {
-  if (tasks === undefined || pending === null) return tasks
-  return tasks.map((task) =>
-    task.id === pending.id
-      ? { ...task, day: pending.day, startBlock: pending.startBlock }
-      : task,
-  )
-}
-
-function groupByDay(tasks: readonly PlannerTask[]): Map<IsoWeekday, PlannerTask[]> {
-  const byDay = new Map<IsoWeekday, PlannerTask[]>()
-  for (const task of tasks) {
-    if (task.day === null) continue
-    const list = byDay.get(task.day)
-    if (list === undefined) byDay.set(task.day, [task])
-    else list.push(task)
-  }
-  return byDay
-}
-
-/** Las que tienen hora viven en la cuadrícula; las que no, en el carril del día. */
-function filterScheduled(
-  byDay: ReadonlyMap<IsoWeekday, PlannerTask[]>,
-): Map<IsoWeekday, PlannerTask[]> {
-  const scheduled = new Map<IsoWeekday, PlannerTask[]>()
-  for (const [day, tasks] of byDay) {
-    scheduled.set(
-      day,
-      tasks.filter((task) => task.startBlock !== null),
-    )
-  }
-  return scheduled
-}
-
-function countPendingByDay(byDay: ReadonlyMap<IsoWeekday, PlannerTask[]>): Map<IsoWeekday, number> {
-  const counts = new Map<IsoWeekday, number>()
-  for (const [day, tasks] of byDay) {
-    counts.set(day, tasks.filter((task) => !task.done).length)
-  }
-  return counts
 }

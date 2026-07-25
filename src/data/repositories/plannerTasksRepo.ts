@@ -7,8 +7,10 @@ import { db } from '../db'
 import { enqueueDelete, enqueueUpsert, enqueueUpsertMany } from '../outbox'
 import { addWeeksToWeekId } from '../../logic/dates'
 import {
+  MAX_ESTIMATED_MINUTES,
   generateWeekTasks,
   isValidBlock,
+  isValidEstimatedMinutes,
   planCarryOver,
   planDuplicateWeek,
   type PlannerTaskDraft,
@@ -38,14 +40,18 @@ export function listWeekTasks(weekId: WeekId): Promise<PlannerTask[]> {
   return db.plannerTasks.where('weekId').equals(weekId).toArray()
 }
 
-export function createTask(input: CreateTaskInput): Promise<PlannerTask> {
+// `async` y no una función que devuelve la transacción: así un valor inválido
+// llega como promesa rechazada y no como excepción síncrona, que un llamador
+// con `void createTask(...)` no podría capturar.
+export async function createTask(input: CreateTaskInput): Promise<PlannerTask> {
   const text = input.text.trim()
   if (text === '') throw new Error('La tarea necesita un texto')
   const day = input.day ?? null
   // Sin día no puede haber hora: una tarea del inbox no vive en la cuadrícula.
   const startBlock = day === null ? null : (input.startBlock ?? null)
   assertBlock(startBlock)
-  return db.transaction('rw', db.plannerTasks, db.outbox, async () => {
+  assertMinutes(input.estimatedMinutes)
+  return await db.transaction('rw', db.plannerTasks, db.outbox, async () => {
     const row: PlannerTask = {
       id: crypto.randomUUID(),
       text,
@@ -74,6 +80,7 @@ export function createTask(input: CreateTaskInput): Promise<PlannerTask> {
  */
 export async function updateTask(id: string, patch: UpdateTaskPatch): Promise<void> {
   if (patch.day !== undefined) assertBlock(patch.day === null ? null : (patch.startBlock ?? null))
+  if (patch.estimatedMinutes !== null) assertMinutes(patch.estimatedMinutes)
   await writeTask(id, (current) => {
     const next: PlannerTask = { ...current }
     if (patch.text !== undefined) {
@@ -205,5 +212,12 @@ async function writeTask(
 function assertBlock(block: number | null): void {
   if (block !== null && !isValidBlock(block)) {
     throw new Error(`Bloque horario inválido: ${block}`)
+  }
+}
+
+/** La columna remota es `integer`: un número disparatado atascaría la subida. */
+function assertMinutes(minutes: number | undefined): void {
+  if (minutes !== undefined && !isValidEstimatedMinutes(minutes)) {
+    throw new Error(`Duración inválida: ${minutes} (máximo ${MAX_ESTIMATED_MINUTES} min)`)
   }
 }

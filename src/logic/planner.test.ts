@@ -12,19 +12,21 @@ import {
   blockToMinutes,
   carryLabel,
   carryLevel,
+  applyTaskMove,
   countNightTasks,
+  countPendingByDay,
   dropTargetId,
   durationLabel,
-  firstOccupiedBlock,
   generateWeekTasks,
   generatedTaskId,
-  hasNightTasks,
+  groupTasksByDay,
   isValidBlock,
+  isValidEstimatedMinutes,
   layoutDayTasks,
-  minutesToBlock,
   parseDropTargetId,
   planCarryOver,
   planDuplicateWeek,
+  scheduledTasksByDay,
   sortTasksForDisplay,
   visibleSpan,
 } from './planner'
@@ -83,17 +85,10 @@ describe('bloques ↔ minutos ↔ etiqueta', () => {
     }
   })
 
-  it('blockToMinutes y minutesToBlock son inversas en los 48 bloques', () => {
-    for (let block = 0; block < BLOCKS_PER_DAY; block += 1) {
-      expect(minutesToBlock(blockToMinutes(block))).toBe(block)
-    }
-  })
-
-  it('minutesToBlock redondea hacia abajo (el minuto 29 sigue en el primer bloque)', () => {
-    expect(minutesToBlock(0)).toBe(0)
-    expect(minutesToBlock(29)).toBe(0)
-    expect(minutesToBlock(30)).toBe(1)
-    expect(minutesToBlock(59)).toBe(1)
+  it('blockToMinutes cuenta los minutos desde medianoche', () => {
+    expect(blockToMinutes(0)).toBe(0)
+    expect(blockToMinutes(18)).toBe(540)
+    expect(blockToMinutes(47)).toBe(1410)
   })
 
   it('isValidBlock acota a 0–47 (el esquema remoto lo exige)', () => {
@@ -138,6 +133,16 @@ describe('duración de una tarea en bloques', () => {
     expect(blockRangeLabel(18, 90)).toBe('09:00–10:30')
     expect(blockRangeLabel(20)).toBe('10:00–10:30')
     expect(blockRangeLabel(46, 180)).toBe('23:00–24:00')
+  })
+
+  it('la duración tiene tope: sin él, un número disparatado atascaría la subida', () => {
+    // La columna remota es `integer`; un desbordamiento dejaría la cola parada.
+    expect(isValidEstimatedMinutes(30)).toBe(true)
+    expect(isValidEstimatedMinutes(24 * 60)).toBe(true)
+    expect(isValidEstimatedMinutes(24 * 60 + 1)).toBe(false)
+    expect(isValidEstimatedMinutes(999999999999)).toBe(false)
+    expect(isValidEstimatedMinutes(0)).toBe(false)
+    expect(isValidEstimatedMinutes(Number.NaN)).toBe(false)
   })
 
   it('durationLabel se lee en español y desaparece si no hay estimación', () => {
@@ -310,6 +315,15 @@ describe('planCarryOver — arrastre al inbox de la semana nueva', () => {
     expect(planCarryOver({ staleTasks: [], targetWeek: TARGET })).toEqual([])
   })
 
+  it('un weekId corrupto no lanza: arrastra contando una semana', () => {
+    // Si lanzara, abortaría la transacción de preparación entera y el
+    // planificador dejaría de generar y arrastrar en silencio y para siempre.
+    const stale = task({ id: 'a', weekId: '2026-W00' })
+    expect(planCarryOver({ staleTasks: [stale], targetWeek: TARGET })).toEqual([
+      { id: 'a', weekId: TARGET, day: null, startBlock: null, carriedOverCount: 1 },
+    ])
+  })
+
   it('un contador corrupto (negativo) parte de cero en vez de propagarse', () => {
     const stale = task({ id: 'a', weekId: WEEK, carriedOverCount: -5 })
     expect(planCarryOver({ staleTasks: [stale], targetWeek: TARGET })[0]?.carriedOverCount).toBe(1)
@@ -320,7 +334,14 @@ describe('planDuplicateWeek — duplicar la semana anterior', () => {
   const TARGET: WeekId = '2026-W31'
 
   it('copia texto, día, bloque y duración', () => {
-    const source = task({ id: 'a', text: 'Informe', day: 2, startBlock: 20, estimatedMinutes: 90 })
+    const source = task({
+      id: 'a',
+      text: 'Informe',
+      day: 2,
+      startBlock: 20,
+      estimatedMinutes: 90,
+      done: true,
+    })
     expect(planDuplicateWeek({ sourceTasks: [source], targetWeek: TARGET })).toEqual([
       {
         text: 'Informe',
@@ -343,18 +364,36 @@ describe('planDuplicateWeek — duplicar la semana anterior', () => {
   })
 
   it('excluye las generadas por plantilla: la semana destino genera las suyas', () => {
-    const source = task({ id: 'a', templateId: 't1' })
+    const source = task({ id: 'a', templateId: 't1', done: true })
     expect(planDuplicateWeek({ sourceTasks: [source], targetWeek: TARGET })).toEqual([])
   })
 
+  it('NO copia las pendientes: esas ya viajan solas con el arrastre', () => {
+    // Copiarlas dejaría cada tarea dos veces en la semana destino: la copia con
+    // su día y su hora, y el original al arrastrarse al inbox.
+    expect(planDuplicateWeek({ sourceTasks: [task({ id: 'a' })], targetWeek: TARGET })).toEqual([])
+  })
+
+  it('duplicar y arrastrar sobre la misma semana destino no deja duplicados', () => {
+    const hecha = task({ id: 'a', text: 'Informe', day: 2, done: true })
+    const pendiente = task({ id: 'b', text: 'Llamada', day: 3 })
+    const copias = planDuplicateWeek({ sourceTasks: [hecha, pendiente], targetWeek: TARGET })
+    const arrastres = planCarryOver({ staleTasks: [hecha, pendiente], targetWeek: TARGET })
+    expect(copias.map((copia) => copia.text)).toEqual(['Informe'])
+    expect(arrastres.map((patch) => patch.id)).toEqual(['b'])
+  })
+
   it('la copia nace ocasional, así que sí se arrastrará si no se hace', () => {
-    const [draft] = planDuplicateWeek({ sourceTasks: [task({ id: 'a' })], targetWeek: TARGET })
+    const [draft] = planDuplicateWeek({
+      sourceTasks: [task({ id: 'a', done: true })],
+      targetWeek: TARGET,
+    })
     expect(draft?.templateId).toBeNull()
   })
 
   it('copia también las del inbox conservando su falta de día', () => {
     const [draft] = planDuplicateWeek({
-      sourceTasks: [task({ id: 'a', day: null, startBlock: null })],
+      sourceTasks: [task({ id: 'a', day: null, startBlock: null, done: true })],
       targetWeek: TARGET,
     })
     expect(draft?.day).toBeNull()
@@ -435,23 +474,51 @@ describe('layoutDayTasks — carriles de la cuadrícula', () => {
 })
 
 describe('franja nocturna', () => {
-  it('detecta una tarea que empieza de madrugada', () => {
-    expect(hasNightTasks([scheduled('a', 4, 30)])).toBe(true)
+  it('cuenta las tareas que empiezan de madrugada', () => {
     expect(countNightTasks([scheduled('a', 4, 30), scheduled('b', 20, 30)])).toBe(1)
   })
 
   it('las 05:30 siguen siendo madrugada; las 06:00 ya no', () => {
-    expect(hasNightTasks([scheduled('a', 11, 60)])).toBe(true)
-    expect(hasNightTasks([scheduled('a', 12, 60)])).toBe(false)
+    expect(countNightTasks([scheduled('a', 11, 60)])).toBe(1)
+    expect(countNightTasks([scheduled('a', 12, 60)])).toBe(0)
   })
 
-  it('sin tareas con hora no hay primer bloque ocupado ni madrugada', () => {
-    expect(firstOccupiedBlock([task({ id: 'a', startBlock: null })])).toBeNull()
-    expect(hasNightTasks([task({ id: 'a', startBlock: null })])).toBe(false)
+  it('las tareas sin hora nunca cuentan como nocturnas', () => {
+    expect(countNightTasks([task({ id: 'a', startBlock: null })])).toBe(0)
+  })
+})
+
+describe('agrupación por día para la pantalla', () => {
+  it('groupTasksByDay deja fuera las del inbox', () => {
+    const byDay = groupTasksByDay([task({ id: 'a', day: 3 }), task({ id: 'b', day: null })])
+    expect([...byDay.keys()]).toEqual([3])
+    expect(byDay.get(3)?.map((row) => row.id)).toEqual(['a'])
   })
 
-  it('firstOccupiedBlock devuelve el más temprano', () => {
-    expect(firstOccupiedBlock([scheduled('a', 30), scheduled('b', 14), scheduled('c', 22)])).toBe(14)
+  it('scheduledTasksByDay separa las que tienen hora de las que no', () => {
+    const byDay = groupTasksByDay([scheduled('a', 20), task({ id: 'b', day: 1 })])
+    expect(scheduledTasksByDay(byDay).get(1)?.map((row) => row.id)).toEqual(['a'])
+  })
+
+  it('countPendingByDay no cuenta las completadas', () => {
+    const byDay = groupTasksByDay([
+      task({ id: 'a', day: 1 }),
+      task({ id: 'b', day: 1, done: true }),
+    ])
+    expect(countPendingByDay(byDay).get(1)).toBe(1)
+  })
+
+  it('applyTaskMove superpone el movimiento sin mutar la entrada', () => {
+    const tasks = [task({ id: 'a', day: null, startBlock: null })]
+    const moved = applyTaskMove(tasks, { id: 'a', day: 3, startBlock: 20 })
+    expect(moved[0]?.day).toBe(3)
+    expect(moved[0]?.startBlock).toBe(20)
+    expect(tasks[0]?.day).toBeNull()
+  })
+
+  it('applyTaskMove sin movimiento devuelve una copia intacta', () => {
+    const tasks = [task({ id: 'a', day: 2 })]
+    expect(applyTaskMove(tasks, null)).toEqual(tasks)
   })
 })
 
@@ -507,10 +574,11 @@ describe('carryLevel y carryLabel — la alarma de §4', () => {
     expect(carryLevel(-1)).toBe('none')
   })
 
-  it('la etiqueta cuenta la semana en la que va, no las veces que se movió', () => {
+  it('la etiqueta cuenta arrastres, así que marca 3 justo cuando entra el rojo', () => {
     expect(carryLabel(0)).toBeNull()
-    expect(carryLabel(1)).toBe('2ª semana')
-    expect(carryLabel(3)).toBe('4ª semana')
+    expect(carryLabel(1)).toBe('Arrastrada 1 semana')
+    expect(carryLabel(3)).toBe('Arrastrada 3 semanas')
+    expect(carryLevel(3)).toBe('alarm')
   })
 })
 

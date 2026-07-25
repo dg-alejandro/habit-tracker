@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { useEffect, useRef, useSyncExternalStore } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { ensureWeekReady, listWeekTasks } from '../data/repositories/plannerTasksRepo'
 import { listTaskTemplates } from '../data/repositories/taskTemplatesRepo'
@@ -19,31 +19,27 @@ export function useTaskTemplates(): TaskTemplate[] | undefined {
 }
 
 /**
- * true cuando ya no cabe esperar una bajada que cambie lo que vemos: sin
- * Supabase o sin sesión, de inmediato; con sesión, al cerrar el primer ciclo de
- * esta ejecución o, como mucho, pasado el plazo. Sin conexión la bajada no
- * llegará nunca y el planificador tiene que funcionar igual (CLAUDE.md §2).
+ * true cuando la foto local ya es de fiar para ESCRIBIR sola: sin Supabase o
+ * sin sesión, de inmediato; con sesión, solo tras cerrar una bajada completa.
+ *
+ * Sin plazo de espera a propósito. La preparación de la semana genera y mueve
+ * filas sin que el usuario toque nada, y la resolución de conflictos es por
+ * última escritura: si se adelantara a la bajada, un dispositivo desactualizado
+ * regeneraría una tarea fija que el otro había editado o borrado, y ganaría.
+ * Sin conexión el planificador sigue siendo usable a mano; lo automático espera.
  */
-export function useSyncSettled(timeoutMs = 4000): boolean {
+export function useSyncSettled(): boolean {
   const snapshot = useSyncExternalStore(syncStore.subscribe, syncStore.getSnapshot)
   const session = useSession()
-  const [expired, setExpired] = useState(false)
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => setExpired(true), timeoutMs)
-    return () => window.clearTimeout(timer)
-  }, [timeoutMs])
 
   if (!isSupabaseConfigured()) return true
   if (session === null) return true
-  return snapshot.lastSyncedAt !== null || expired
+  return snapshot.lastSyncedAt !== null
 }
 
 /**
  * Genera las tareas fijas de la semana visitada y arrastra las pendientes a la
- * semana actual, una sola vez por par de semanas. Espera a que la bajada se
- * asiente para no materializar sobre una foto anterior al pull; si aun así se
- * adelantara, el id determinista de las generadas impide el duplicado.
+ * semana actual, una sola vez por par de semanas.
  */
 export function useWeekPreparation(weekId: WeekId, currentWeekId: WeekId): void {
   const settled = useSyncSettled()
@@ -56,7 +52,9 @@ export function useWeekPreparation(weekId: WeekId, currentWeekId: WeekId): void 
     const key = `${weekId}|${currentWeekId}`
     if (done.current.has(key)) return
     done.current.add(key)
-    void ensureWeekReady(weekId, currentWeekId)
+    // Si falla, se desmarca: un error transitorio no puede dejar el
+    // planificador sin generar ni arrastrar para el resto de la sesión.
+    void ensureWeekReady(weekId, currentWeekId).catch(() => done.current.delete(key))
   }, [settled, weekId, currentWeekId])
 }
 

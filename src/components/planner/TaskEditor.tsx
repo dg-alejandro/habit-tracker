@@ -1,7 +1,8 @@
 import { useState, type FormEvent } from 'react'
-import { deleteTask, updateTask } from '../../data/repositories/plannerTasksRepo'
+import { deleteTask, toggleTaskDone, updateTask } from '../../data/repositories/plannerTasksRepo'
 import { weekdayLongEs } from '../../logic/dates'
-import { BLOCKS_PER_DAY, blockLabel } from '../../logic/planner'
+import { BLOCKS_PER_DAY, MAX_ESTIMATED_MINUTES, blockLabel, isValidEstimatedMinutes } from '../../logic/planner'
+import { CheckToggle } from '../habits/CheckToggle'
 import type { IsoWeekday, PlannerTask } from '../../data/types'
 
 interface TaskEditorProps {
@@ -28,8 +29,7 @@ export function TaskEditor({ task, onClose }: TaskEditorProps) {
   const [confirmingDelete, setConfirmingDelete] = useState(false)
 
   const parsedMinutes = Number(minutes)
-  const minutesValid =
-    minutes.trim() === '' || (Number.isFinite(parsedMinutes) && parsedMinutes > 0)
+  const minutesValid = minutes.trim() === '' || isValidEstimatedMinutes(parsedMinutes)
   const valid = text.trim() !== '' && minutesValid
 
   const submit = (event: FormEvent) => {
@@ -110,6 +110,7 @@ export function TaskEditor({ task, onClose }: TaskEditorProps) {
             type="number"
             inputMode="numeric"
             min={1}
+            max={MAX_ESTIMATED_MINUTES}
             step={5}
             value={minutes}
             onChange={(event) => setMinutes(event.currentTarget.value)}
@@ -124,6 +125,18 @@ export function TaskEditor({ task, onClose }: TaskEditorProps) {
           Una tarea del inbox no tiene hora: asígnale un día para poder colocarla.
         </p>
       )}
+
+      {/* Completar desde aquí también: en la cuadrícula el chip de un bloque
+          mide 26 px de alto y no es objetivo táctil para el pulgar de noche. */}
+      <button
+        type="button"
+        onClick={() => void toggleTaskDone(task.id)}
+        aria-pressed={task.done}
+        className="mt-3 flex h-11 w-full items-center gap-3 rounded-lg border border-line px-3 text-sm text-ink transition-colors hover:bg-surface"
+      >
+        <CheckToggle checked={task.done} />
+        <span>{task.done ? 'Completada' : 'Marcar como completada'}</span>
+      </button>
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
         {confirmingDelete ? (

@@ -5,7 +5,11 @@ import type { PlannerTask } from '../../data/types'
 
 interface TaskChipProps {
   task: PlannerTask
-  /** 'row' en el inbox y en las listas de día; 'grid' dentro de la cuadrícula. */
+  /**
+   * 'row' donde hay ancho de sobra (inbox, y las listas de día en móvil);
+   * 'grid' donde no lo hay: dentro de la cuadrícula y en las siete columnas de
+   * escritorio, donde una fila cómoda dejaría el texto en tres caracteres.
+   */
   density: 'row' | 'grid'
   onToggle: () => void
   onOpen: () => void
@@ -36,7 +40,8 @@ export function TaskChip({ task, density, onToggle, onOpen, handle }: TaskChipPr
         <button
           type="button"
           onClick={onToggle}
-          aria-label={task.done ? `Marcar ${task.text} como pendiente` : `Completar ${task.text}`}
+          aria-pressed={task.done}
+          aria-label={`Completar ${task.text}`}
           className="flex w-6 shrink-0 items-center justify-center"
         >
           <span
@@ -63,19 +68,21 @@ export function TaskChip({ task, density, onToggle, onOpen, handle }: TaskChipPr
   return (
     <div
       className={`flex min-h-14 items-center gap-1 py-2 ${
-        alarm ? 'border-l-2 border-streak-red pl-2' : ''
+        alarm ? 'border-l-2 border-l-streak-red pl-2' : ''
       }`}
     >
       {handle}
       <button
         type="button"
         onClick={onToggle}
-        aria-label={task.done ? `Marcar ${task.text} como pendiente` : `Completar ${task.text}`}
+        aria-pressed={task.done}
+        aria-label={`Completar ${task.text}`}
         className="flex h-11 w-11 shrink-0 items-center justify-center"
       >
         <CheckToggle checked={task.done} />
       </button>
-      <button type="button" onClick={onOpen} className="min-w-0 flex-1 py-1 text-left">
+      {/* self-stretch: la fila mide 56 px y el objetivo táctil debe medir lo mismo. */}
+      <button type="button" onClick={onOpen} className="min-w-0 flex-1 self-stretch py-1 text-left">
         <span
           className={`block truncate text-base ${
             task.done ? 'text-ink-faint line-through' : 'text-ink'

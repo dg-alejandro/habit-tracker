@@ -2,6 +2,8 @@ import { useState, type FormEvent, type KeyboardEvent } from 'react'
 
 interface QuickAddFieldProps {
   placeholder: string
+  /** Nombre accesible: en escritorio hay siete campos con el mismo texto visible. */
+  label: string
   onSubmit: (text: string) => void
 }
 
@@ -14,7 +16,7 @@ interface QuickAddFieldProps {
  * teclado virtual menos aún—, y aquí no cabe un botón «Añadir» sin estropear
  * el gesto de volcar ideas seguidas.
  */
-export function QuickAddField({ placeholder, onSubmit }: QuickAddFieldProps) {
+export function QuickAddField({ placeholder, label, onSubmit }: QuickAddFieldProps) {
   const [text, setText] = useState('')
 
   const commit = () => {
@@ -43,6 +45,7 @@ export function QuickAddField({ placeholder, onSubmit }: QuickAddFieldProps) {
         onChange={(event) => setText(event.currentTarget.value)}
         onKeyDown={keyDown}
         placeholder={placeholder}
+        aria-label={label}
         enterKeyHint="done"
         autoCapitalize="sentences"
         className="h-11 w-full rounded-lg border border-line bg-paper px-3 text-base text-ink placeholder:text-ink-faint"

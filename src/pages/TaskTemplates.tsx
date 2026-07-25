@@ -9,7 +9,7 @@ import {
 import { useTaskTemplates } from '../hooks/usePlanner'
 import { weekdayLongEs } from '../logic/dates'
 import { blockLabel, durationLabel } from '../logic/planner'
-import type { IsoWeekday, TaskTemplate } from '../data/types'
+import type { TaskTemplate } from '../data/types'
 
 /*
  * Catálogo de tareas fijas (CLAUDE.md §4). Cada plantilla genera su tarea al
@@ -154,7 +154,7 @@ function isFirstOfDay(templates: readonly TaskTemplate[], index: number): boolea
 }
 
 function templateMeta(template: TaskTemplate): string {
-  const parts: string[] = [capitalize(weekdayLongEs(template.weekday as IsoWeekday))]
+  const parts: string[] = [capitalize(weekdayLongEs(template.weekday))]
   if (template.startBlock !== null) parts.push(blockLabel(template.startBlock))
   const duration = durationLabel(template.estimatedMinutes)
   if (duration !== null) parts.push(duration)

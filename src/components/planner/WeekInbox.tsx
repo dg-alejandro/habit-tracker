@@ -27,6 +27,7 @@ export function WeekInbox({ weekId, tasks, editingId, onEdit }: WeekInboxProps) 
       <div className="mt-2">
         <QuickAddField
           placeholder="Añadir al inbox y Enter"
+          label="Añadir tarea al inbox de la semana"
           onSubmit={(text) => void createTask({ text, weekId })}
         />
       </div>

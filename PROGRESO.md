@@ -7,11 +7,12 @@ Es lo que permite que una instancia nueva sepa dónde estamos sin releer todo el
 
 ## Estado actual
 
-**Fase en curso:** Fase 3 — Rachas y estadísticas: **construida al completo** (179 tests en verde, build limpio, verificada en navegador, ambos revisores pasados y sus hallazgos aplicados). Pendiente solo de la **prueba de aceptación del propietario** (ROADMAP: los tests cubren los casos raros y las cifras cuadran con su historial real).
+**Fase en curso:** Fase 4 — Planificador semanal: **construida al completo** (299 tests en verde, build limpio, verificada en navegador a 375 y 1280, ambos revisores pasados y sus hallazgos aplicados). Pendiente de la **prueba de aceptación del propietario** (ROADMAP: planificar una semana entera desde el iPhone sin abrir el PC).
+**También pendiente:** la aceptación de la Fase 3 (sus cifras contra el historial real). Las dos pruebas son independientes.
 **Última fase cerrada:** Fase 2 — Supabase y sincronización (2026-07-24)
 **Última actualización:** 2026-07-25
 
-**Fase 4 en paralelo (decisión del propietario, 2026-07-24):** el propietario puede estar construyendo la Fase 4 en una sesión aparte, en un worktree con la rama `fase-4` (segunda excepción a «una fase tras otra»). Esa rama NO se fusiona hasta que la Fase 3 esté en `main`; conflictos previstos al fusionar: este archivo (seguro), `src/logic/dates.ts` + test y `src/routes.tsx` (posibles), `package-lock.json` (improbable).
+**La rama `fase-4` nunca existió.** La sesión paralela que preveía la nota del 2026-07-24 no llegó a producir nada (`git branch -a` y `git worktree list` solo muestran `main`), así que la Fase 4 se ha construido sobre `main`, encima de la Fase 3. No hay nada que fusionar.
 
 ---
 
@@ -23,7 +24,7 @@ Es lo que permite que una instancia nueva sepa dónde estamos sin releer todo el
 | 1 — Registro diario en local | **Cerrada** | 2026-07-23 | Probada y dada por buena por el propietario el mismo día de su construcción (decisión suya, sin esperar las tres noches) |
 | 2 — Supabase y sincronización | **Cerrada** | 2026-07-24 | El propietario confirma completado su checklist de *Bloqueos* («mi parte está hecha»): verificación autenticada, Vercel y prueba PC ↔ iPhone |
 | 3 — Rachas y estadísticas | En curso (construida; aceptación pendiente) | | Código completo y en GitHub; falta que el propietario compruebe sus cifras reales |
-| 4 — Planificador semanal | Pendiente | | |
+| 4 — Planificador semanal | En curso (construida; aceptación pendiente) | | Código completo; falta planificar una semana de verdad desde el iPhone |
 | 5 — Pulido y PWA | Pendiente | | |
 | 6 — Notificación (opcional) | Pendiente | | |
 
@@ -109,7 +110,26 @@ Toda decisión no especificada en `CLAUDE.md` se anota aquí con una línea de j
 - **(Fase 3) Vista por hábito con estado local** (`selectedHabitId`), sin ruta nueva — lo simple; la lista de la vista global es la puerta de entrada.
 - **(Fase 3) `Stats` con `React.lazy`** — Recharts (94 KB gzip) queda en un chunk aparte que no pesa en el arranque del registro diario nocturno.
 - **(Fase 3) Recharts instalado** — ya estaba elegido en el stack de CLAUDE.md §2; no es dependencia nueva.
-- **(Fase 3) Reparto de los chillones** — racha global en `streak-lime`, récords en `streak-magenta`, % semanal, series y rachas por hábito en `streak-orange`, y `streak-red` SOLO para ruptura (número 0 cayendo con `streak-fall`, banner con borde rojo y semana `lost`).
+- **(Fase 3) Reparto de los chillones** — racha global en `streak-lime`, récords en `streak-magenta`, % semanal, series y rachas por hábito en `streak-orange`, y `streak-red` para la ruptura de racha (número 0 cayendo con `streak-fall`, banner con borde rojo y semana `lost`). *Enmendado en la Fase 4:* `streak-red` cubre también las tareas arrastradas 3+ semanas, que §4 pide en rojo explícitamente.
+- **(Fase 4) `IsoWeekday` se muda a `logic/dates.ts`** y `data/types.ts` lo reexporta, como ya hacía con `IsoDate` y `WeekId` — es un concepto de calendario y las firmas de los helpers de semana lo necesitan; al revés habría ciclo de imports.
+- **(Fase 4) `WeekId` se compara como string**, igual que `IsoDate`: `RRRR-'W'II` lleva el año de NUMERACIÓN ISO y la semana con cero, así que el orden lexicográfico es el cronológico incluso cruzando año. Fijado con un test-canario. El lunes de una semana sale del ancla del 4 de enero, que siempre cae en la W01.
+- **(Fase 4) Materialización perezosa con marcador DERIVADO** — no hay cron: al abrir una semana se generan sus tareas fijas, y solo si es presente o futura **y no tiene ninguna tarea**. Cero esquema nuevo y cero SQL (que habría sido un paso manual del propietario). Contrapartidas asumidas: vaciar del todo una semana presente o futura hace que vuelvan sus fijas, y una semana pasada que nunca se abrió se ve vacía para siempre (no se fabrica historia retroactiva).
+- **(Fase 4) Id determinista de la tarea generada: `tpl:<plantilla>:<semana>`** — el `id` remoto es `text`, no uuid. Dos dispositivos que materialicen la misma semana producen la MISMA fila y la guardia LWW la colapsa, en vez de dejar dos copias de cada tarea fija. También hace idempotente el doble efecto de `StrictMode`.
+- **(Fase 4) Generar ANTES de arrastrar, en una sola transacción** — no es preferencia: al revés, las tareas arrastradas dejarían la semana «no vacía» y las plantillas no se generarían nunca más.
+- **(Fase 4) La preparación automática de la semana espera a una bajada completa** cuando hay sesión, sin plazo de gracia. Genera y mueve filas sin que el usuario toque nada, y con resolución por última escritura un dispositivo desactualizado regeneraría una tarea fija que el otro había editado o borrado, y ganaría. Sin conexión el planificador sigue siendo usable a mano; lo automático espera (hallazgo del revisor de lógica).
+- **(Fase 4) `carriedOverCount` sube las semanas REALMENTE transcurridas, no una por evento** — §4 dice «incrementado en uno», pero si no se abre el planificador en cinco semanas la tarea llegaría marcando 1 y no dispararía el rojo, que es justo cuando más tiene que gritar. La etiqueta cuenta arrastres («Arrastrada 3 semanas») para que insignia y umbral digan lo mismo.
+- **(Fase 4) Las tareas de plantilla no completadas se quedan en su semana** (decisión del propietario) — §4 dice «desaparecen», pero lo normativo es «no se arrastran»; la app no borra nada sola. Coste: ~520 filas al año con 10 plantillas, irrelevante.
+- **(Fase 4) Duplicar la semana anterior copia solo las COMPLETADAS** — las pendientes ya viajan solas con el arrastre, así que copiarlas dejaría cada tarea dos veces en la semana destino: la copia con su día y su hora, y el original al arrastrarse al inbox. Es exactamente el caso de uso del domingo (hallazgo del revisor de lógica).
+- **(Fase 4) Solapar tareas es legítimo** — nada se rechaza ni se desplaza: `layoutDayTasks` reparte carriles por grupo conexo y los chips se ven a media anchura. Una tarea que desborda medianoche se guarda tal cual y se pinta recortada, en vez de moverle la hora a algo que nadie pidió.
+- **(Fase 4) El inbox no es reordenable a mano** — no hay columna `order` en `planner_tasks` y no se toca el SQL. El orden es derivado y determinista (pendientes primero, luego las más arrastradas, luego por hora y por texto), que además es lo correcto entre dispositivos.
+- **(Fase 4) Tope de 24 h en la duración estimada** — la columna remota es `integer`: un número disparatado tecleado en el campo se guardaría en local y luego reventaría el push contra Postgres, dejando la cola de subida atascada para siempre (hallazgo del revisor de lógica).
+- **(Fase 4) Ruta propia `/planificador/plantillas`** en vez del estado local que usó la Fase 3 — el botón atrás del iPhone tiene que servir. `NavBar` declara `/planificador` sin `end`, así que la pestaña sigue activa en la subruta.
+- **(Fase 4) La cuadrícula rompe el `max-w-xl` común** (`md:max-w-5xl`): siete columnas no caben. Primera pantalla que lo hace.
+- **(Fase 4) Densidad doble de la fila de tarea** — cómoda (44 px de asa y casilla) en el inbox y en los días de móvil; compacta en las siete columnas de escritorio, donde una fila cómoda dejaba el texto en tres caracteres (hallazgo del revisor de estética). El editor completo vive en una banda a ancho completo de la página, no dentro de la columna, por lo mismo.
+- **(Fase 4) Sensores de arrastre separados** — `MouseSensor` por distancia de 8 px y `TouchSensor` por pulsación larga de 220 ms. Un umbral de distancia con el dedo convertiría cualquier desliz sobre un chip en un arrastre y mataría el scroll del iPhone. Colisión por `pointerWithin` (`closestCenter` engancha la celda equivocada en bloques de 28 px).
+- **(Fase 4) Todo lo que se hace arrastrando se puede hacer sin arrastrar** — el editor lleva selectores de día y de hora. Es la red que salva el criterio de aceptación si el gesto falla en el iPhone, donde no se ha podido verificar.
+- **(Fase 4) La vista móvil de un día se decide en JS (`useIsDesktop`), no con `hidden md:`** — renderizar los dos árboles duplicaría las zonas de soltado, y dnd-kit no admite dos con el mismo identificador. Por lo mismo, las letras del selector móvil son zonas de soltado salvo la del día ya montado abajo.
+- **(Fase 4) El alta rápida atiende el Enter a mano** además del submit del formulario — el envío implícito de un formulario sin botón no es fiable, y en iOS la tecla del teclado virtual menos aún; y aquí no cabe un botón «Añadir» sin estropear el gesto de volcar ideas seguidas.
 
 ---
 
@@ -127,6 +147,12 @@ Lo que se ha dejado a medias a propósito, para no olvidarlo.
 - (Fase 3) La animación `streak-fall` (el 0 cayendo) no se pudo ver en el navegador de verificación: reporta `prefers-reduced-motion: reduce` y la animación se desactiva a propósito, como las micro-animaciones de la Fase 1. Queda comprobada por CSS computado y pendiente de verse en el iPhone.
 - (Fase 3) Los tooltips de las celdas del heatmap usan `title` + `aria-label` — en iOS no hay hover, así que al toque no se consultan. El color ya cuenta la historia; revisar en la Fase 5 solo si molesta.
 - (Fase 3) Con umbral < 50 % algún tramo intermedio del heatmap quedaría sin uso; irrelevante porque el select de Ajustes limita a 50–100 %.
+- (Fase 4) **Editar una plantilla no toca las semanas futuras que ya se materializaron.** §4 dice que afecta a las futuras; con el marcador derivado, «futura» significa «aún no abierta». Si se curioseó la semana que viene, se quedó con el texto viejo. Se arregla borrando esa tarea a mano, o se revisa si molesta.
+- (Fase 4) Cada pulsación de la flecha derecha materializa esa semana: veinte pulsaciones son veinte semanas de tareas fijas creadas y sincronizadas. Sin tope, por ahora.
+- (Fase 4) 252 celdas de soltado en escritorio (36 filas × 7 días). Solo se miden al empezar un arrastre (`MeasuringStrategy.WhileDragging`), así que no se ha notado. Vía de escape si algún día molesta: siete zonas de columna y calcular el bloque desde la posición del puntero — aritmética pura y testeable, pero más frágil.
+- (Fase 4) El gesto táctil del arrastre sigue sin poderse simular (misma deuda que la Fase 1). Sí se han verificado con eventos de ratón reales los tres caminos: inbox → día, día → bloque y bloque → inbox. El gesto con el dedo lo prueba el propietario en el iPhone.
+- (Fase 4) El navegador de verificación no ejecuta el envío nativo de formularios (ni el implícito con Enter, ni el del botón `submit`): los formularios se verificaron despachando el evento `submit`, que es el mismo camino que recorre React. En un navegador real funcionan sin más.
+- (Fase 4) `GripIcon` está duplicado en `components/planner/DropZone.tsx` y en `components/habits/SortableHabitList.tsx`, `CheckToggle` vive en `components/habits/` aunque ya lo use el planificador, y `FIELD_CLASS` va por su tercera copia. §7 los querría en `components/ui/`, pero moverlos toca fases cerradas y §8 pide avisar antes (hallazgo del revisor de estética).
 
 ---
 
@@ -134,7 +160,18 @@ Lo que se ha dejado a medias a propósito, para no olvidarlo.
 
 Una entrada por sesión: fecha, fase, qué se hizo, qué quedó pendiente.
 
-### 2026-07-24/25 — Cierre de la Fase 2 · Fase 3 construida (esta sesión)
+### 2026-07-25 — Fase 4 construida (esta sesión)
+- **La Fase 4 empezaba con la mitad del trabajo hecho** y nadie lo recordaba: la Fase 1 ya había definido `PlannerTask` y `TaskTemplate` enteros y declarado sus tablas Dexie, y la Fase 2 ya había escrito sus codecs de sincronización, sus tablas remotas con RLS y su validación de respaldo. **No se ha tocado ni `sync.ts` ni el SQL**, así que la fase no ha generado ningún paso manual del propietario.
+- Comprobado que la rama `fase-4` de la nota anterior nunca existió: se ha construido sobre `main`.
+- **Calendario de semanas** en `logic/dates.ts`: `mondayOfWeekId` (ancla del 4 de enero, con comprobación de ida y vuelta para que un año sin W53 proteste), `addWeeksToWeekId`, `daysOfWeekId`, `dateOfWeekday`, `weeksBetweenWeekIds`, `formatWeekRangeEs`, `isoWeekdayOf` y los nombres de día. `IsoWeekday` se muda aquí. Solo añadidos: la Fase 3 queda intacta.
+- **`logic/planner.ts` completo**: bloques de 30 min, generación desde plantillas con id determinista, plan de arrastre, duplicado de semana, carriles de solape, orden de presentación, nivel de alarma y zonas de soltado. Todo puro y con tests.
+- **UI**: navegador de semana (sin tope hacia delante), inbox, siete carriles de día, cuadrícula de 00:00 a 24:00 con la madrugada plegada y su recuento, editor en línea a ancho completo, drag & drop con sensores separados, vista móvil de un día con selector que también recibe tareas soltadas, duplicar la semana anterior y pantalla de tareas fijas en subruta propia.
+- **299 tests en verde** (120 nuevos), incluidos 24 de integración de `plannerTasksRepo` contra Dexie real sobre `fake-indexeddb`, que es donde vivía el riesgo de verdad.
+- Verificado en navegador (375 y 1280) con datos sembrados: alta con Enter, completar, editar, navegar semanas, generación automática al abrir una semana futura, que borrar una tarea fija generada NO la resucita, arrastre semanal con su contador real, duplicado, solapes en carriles, madrugada plegada y los tres caminos del arrastre con eventos de ratón reales.
+- **Revisores pasados, y no de adorno.** El de lógica encontró dos fallos graves reales que se han corregido: duplicar la semana el domingo dejaba cada tarea pendiente por duplicado el lunes (ahora se copian solo las completadas), y la materialización podía pisar por última escritura una edición hecha en el otro dispositivo (ahora espera a una bajada completa cuando hay sesión). Más: tope a la duración para no atascar la subida, tolerancia a un `weekId` corrupto que abortaba la preparación en silencio, y reintento si la preparación falla. El de estética encontró dos bloqueantes: no había forma cómoda de completar una tarea con hora (ahora el editor lleva su botón de 44 px) y en escritorio el texto de las columnas quedaba en tres caracteres (ahora la fila es compacta ahí y cómoda en móvil). Sus menores, aplicados.
+- Pendiente para cerrar la fase: la prueba de aceptación del propietario.
+
+### 2026-07-24/25 — Cierre de la Fase 2 · Fase 3 construida
 - El propietario confirma completado su checklist de *Bloqueos* de la Fase 2 («mi parte está hecha»): Fase 2 → **Cerrada** sobre esa confirmación, sin re-verificación autenticada del agente (no maneja su contraseña). Push a `origin/main`.
 - Decide además construir la **Fase 4 en paralelo** en otra sesión (worktree, rama `fase-4`, sin push); guía entregada. La fusión, después de que la Fase 3 llegue a `main`.
 - **Fase 3 construida al completo.** Lógica pura con contratos diseñados por agente arquitecto: `logic/streaks.ts` (racha por hábito estricta, global por umbral con barrido de elegibles por `createdOn`, semanal tri-estado, récords recalculados, aviso `recentlyBroken` con ventana de días abiertos), `logic/stats.ts` (núcleo único de celdas que también alimenta el % semanal de la Fase 1 sin cambiar su firma, series semana/mes/año, heatmaps global y por hábito) y helpers nuevos de calendario en `logic/dates.ts`. **179 tests en verde** (81 nuevos) bajo TZ hostil.

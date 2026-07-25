@@ -128,7 +128,11 @@ export function mondayOfWeekId(weekId: WeekId): IsoDate {
   const week = Number(weekText)
   if (week < 1 || week > 53) throw new Error(`Semana ISO inválida: '${weekId}'`)
   const firstWeekMonday = startOfISOWeek(toLocalDate(`${yearText}-01-04`))
-  return format(addDays(firstWeekMonday, (week - 1) * 7), 'yyyy-MM-dd')
+  const monday = format(addDays(firstWeekMonday, (week - 1) * 7), 'yyyy-MM-dd')
+  // No todos los años ISO tienen 53 semanas: sin esta comprobación, '2025-W53'
+  // devolvería el lunes de la W01 de 2026 en vez de protestar.
+  if (isoWeekIdOf(monday) !== weekId) throw new Error(`Semana ISO inválida: '${weekId}'`)
+  return monday
 }
 
 /**
@@ -313,11 +317,6 @@ function isoDateFrom(year: number, month: number, day: number): IsoDate {
   return `${year}-${pad2(month)}-${pad2(day)}`
 }
 
-/**
- * Medianoche LOCAL del día indicado, para la aritmética de calendario de date-fns.
- * Nunca `new Date('YYYY-MM-DD')`: el estándar parsea las fechas sin hora como UTC
- * y desplazaría un día en zonas horarias negativas.
- */
 /** Mediodía local del día indicado: lejos de cualquier borde de medianoche al formatear. */
 function atNoon(date: IsoDate): Date {
   const noon = toLocalDate(date)
@@ -325,6 +324,11 @@ function atNoon(date: IsoDate): Date {
   return noon
 }
 
+/**
+ * Medianoche LOCAL del día indicado, para la aritmética de calendario de date-fns.
+ * Nunca `new Date('YYYY-MM-DD')`: el estándar parsea las fechas sin hora como UTC
+ * y desplazaría un día en zonas horarias negativas.
+ */
 function toLocalDate(date: IsoDate): Date {
   const [year, month, day] = date.split('-').map(Number)
   if (

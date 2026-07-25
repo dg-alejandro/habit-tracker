@@ -46,10 +46,12 @@ export function DraggableTask({ task, density, children }: DraggableTaskProps) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: task.id })
 
   if (density === 'grid') {
+    // Sin `attributes`: pondrían role="button" y tabIndex sobre un contenedor
+    // que ya lleva dentro los dos botones reales del chip. Los `listeners`
+    // bastan para arrastrar, y el teclado sigue llegando a los botones.
     return (
       <div
         ref={setNodeRef}
-        {...attributes}
         {...listeners}
         className={`h-full w-full cursor-grab active:cursor-grabbing ${isDragging ? 'opacity-30' : ''}`}
       >

@@ -5,7 +5,11 @@
  */
 import { db } from '../db'
 import { enqueueDelete, enqueueUpsert } from '../outbox'
-import { isValidBlock } from '../../logic/planner'
+import {
+  MAX_ESTIMATED_MINUTES,
+  isValidBlock,
+  isValidEstimatedMinutes,
+} from '../../logic/planner'
 import type { IsoWeekday, TaskTemplate } from '../types'
 
 export interface CreateTaskTemplateInput {
@@ -38,11 +42,16 @@ export async function listTaskTemplates(): Promise<TaskTemplate[]> {
   )
 }
 
-export function createTaskTemplate(input: CreateTaskTemplateInput): Promise<TaskTemplate> {
+// `async` a propósito: un valor inválido llega como promesa rechazada y no como
+// excepción síncrona que un llamador con `void ...` no podría capturar.
+export async function createTaskTemplate(
+  input: CreateTaskTemplateInput,
+): Promise<TaskTemplate> {
   const text = input.text.trim()
   if (text === '') throw new Error('La plantilla necesita un texto')
   assertBlock(input.startBlock)
-  return db.transaction('rw', db.taskTemplates, db.outbox, async () => {
+  assertMinutes(input.estimatedMinutes)
+  return await db.transaction('rw', db.taskTemplates, db.outbox, async () => {
     const row: TaskTemplate = {
       id: crypto.randomUUID(),
       text,
@@ -67,6 +76,9 @@ export async function updateTaskTemplate(
   patch: UpdateTaskTemplatePatch,
 ): Promise<void> {
   if (patch.startBlock !== undefined) assertBlock(patch.startBlock)
+  if (patch.estimatedMinutes !== null && patch.estimatedMinutes !== undefined) {
+    assertMinutes(patch.estimatedMinutes)
+  }
   await db.transaction('rw', db.taskTemplates, db.outbox, async () => {
     const current = await db.taskTemplates.get(id)
     if (current === undefined) return
@@ -96,5 +108,12 @@ export async function deleteTaskTemplate(id: string): Promise<void> {
 function assertBlock(block: number | null): void {
   if (block !== null && !isValidBlock(block)) {
     throw new Error(`Bloque horario inválido: ${block}`)
+  }
+}
+
+/** La columna remota es `integer`: un número disparatado atascaría la subida. */
+function assertMinutes(minutes: number | undefined): void {
+  if (minutes !== undefined && !isValidEstimatedMinutes(minutes)) {
+    throw new Error(`Duración inválida: ${minutes} (máximo ${MAX_ESTIMATED_MINUTES} min)`)
   }
 }

@@ -32,9 +32,17 @@ export function blockToMinutes(block: number): number {
   return block * BLOCK_MINUTES
 }
 
-/** Bloque que contiene ese minuto del día; redondea hacia abajo. */
-export function minutesToBlock(minutes: number): number {
-  return Math.floor(minutes / BLOCK_MINUTES)
+/**
+ * Tope de la duración estimada: un día entero.
+ * No es cosmético — la columna remota es `integer`, y un número disparatado
+ * tecleado en el campo se guardaría en local y luego reventaría el push contra
+ * Postgres, dejando la cola de subida atascada para siempre.
+ */
+export const MAX_ESTIMATED_MINUTES = 24 * 60
+
+/** true si la duración es un número de minutos utilizable. */
+export function isValidEstimatedMinutes(minutes: number): boolean {
+  return Number.isFinite(minutes) && minutes > 0 && minutes <= MAX_ESTIMATED_MINUTES
 }
 
 /**
@@ -178,7 +186,7 @@ export function planCarryOver(input: CarryOverPlanInput): CarryOverPatch[] {
     if (task.weekId >= input.targetWeek) continue
     if (task.done) continue
     if (task.templateId !== null) continue
-    const weeks = weeksBetweenWeekIds(task.weekId, input.targetWeek)
+    const weeks = weeksElapsed(task.weekId, input.targetWeek)
     patches.push({
       id: task.id,
       weekId: input.targetWeek,
@@ -190,6 +198,21 @@ export function planCarryOver(input: CarryOverPlanInput): CarryOverPatch[] {
   return patches
 }
 
+/**
+ * Semanas transcurridas, tolerante a basura. Un `weekId` corrupto —solo llega
+ * por un import JSON manipulado, que no valida el formato— contaría como una
+ * semana en vez de lanzar: si lanzara, abortaría la transacción entera de
+ * preparación de la semana y el planificador dejaría de generar y arrastrar en
+ * silencio y para siempre.
+ */
+function weeksElapsed(from: WeekId, to: WeekId): number {
+  try {
+    return weeksBetweenWeekIds(from, to)
+  } catch {
+    return 1
+  }
+}
+
 /* ── Duplicar la semana anterior ──────────────────────────────────────────── */
 
 export interface DuplicateWeekInput {
@@ -199,14 +222,19 @@ export interface DuplicateWeekInput {
 
 /**
  * Copia las tareas de la semana origen SIN su estado de completado (§4),
- * conservando texto, día, bloque y duración. Excluye las generadas por
- * plantilla: la semana destino genera las suyas y copiarlas las duplicaría.
- * Las copias nacen ocasionales, así que sí se arrastrarán si no se hacen.
+ * conservando texto, día, bloque y duración.
+ *
+ * Copia solo las COMPLETADAS. Las que quedaron pendientes viajan solas con el
+ * arrastre semanal, así que copiarlas también las dejaría por duplicado en la
+ * semana destino: una con su día y su hora, y otra en el inbox al arrastrarse.
+ * Excluye igualmente las generadas por plantilla: la semana destino genera las
+ * suyas. Las copias nacen ocasionales, así que sí se arrastrarán si no se hacen.
  */
 export function planDuplicateWeek(input: DuplicateWeekInput): PlannerTaskDraft[] {
   const drafts: PlannerTaskDraft[] = []
   for (const task of input.sourceTasks) {
     if (task.templateId !== null) continue
+    if (!task.done) continue
     const draft: PlannerTaskDraft = {
       text: task.text,
       weekId: input.targetWeek,
@@ -288,16 +316,6 @@ export function layoutDayTasks(tasks: readonly PlannerTask[]): ScheduledPlacemen
   return placements
 }
 
-/** Primer bloque ocupado del día, o null si no hay ninguna tarea con hora. */
-export function firstOccupiedBlock(tasks: readonly PlannerTask[]): number | null {
-  let first: number | null = null
-  for (const task of tasks) {
-    if (task.startBlock === null || !isValidBlock(task.startBlock)) continue
-    if (first === null || task.startBlock < first) first = task.startBlock
-  }
-  return first
-}
-
 /**
  * Cuántas tareas caen en la franja nocturna (antes de las 06:00).
  * No es cosmético: la franja va plegada por defecto y no puede esconder tareas
@@ -309,11 +327,6 @@ export function countNightTasks(tasks: readonly PlannerTask[]): number {
     // Cuenta también la que empieza justo antes de las 06:00 y se prolonga después.
     return task.startBlock < NIGHT_END_BLOCK
   }).length
-}
-
-/** true si hay alguna tarea en la franja nocturna. */
-export function hasNightTasks(tasks: readonly PlannerTask[]): boolean {
-  return countNightTasks(tasks) > 0
 }
 
 /* ── Presentación ─────────────────────────────────────────────────────────── */
@@ -335,6 +348,53 @@ export function sortTasksForDisplay(tasks: readonly PlannerTask[]): PlannerTask[
   )
 }
 
+/** Agrupa por día las tareas de una semana; las del inbox (`day: null`) se caen. */
+export function groupTasksByDay(
+  tasks: readonly PlannerTask[],
+): Map<IsoWeekday, PlannerTask[]> {
+  const byDay = new Map<IsoWeekday, PlannerTask[]>()
+  for (const task of tasks) {
+    if (task.day === null) continue
+    const list = byDay.get(task.day)
+    if (list === undefined) byDay.set(task.day, [task])
+    else list.push(task)
+  }
+  return byDay
+}
+
+/** Las que tienen hora viven en la cuadrícula; las que no, en el carril del día. */
+export function scheduledTasksByDay(
+  byDay: ReadonlyMap<IsoWeekday, PlannerTask[]>,
+): Map<IsoWeekday, PlannerTask[]> {
+  return mapValues(byDay, (tasks) => tasks.filter((task) => task.startBlock !== null))
+}
+
+/** Pendientes por día, para el punto indicador del selector móvil. */
+export function countPendingByDay(
+  byDay: ReadonlyMap<IsoWeekday, PlannerTask[]>,
+): Map<IsoWeekday, number> {
+  const counts = new Map<IsoWeekday, number>()
+  for (const [day, tasks] of byDay) counts.set(day, tasks.filter((task) => !task.done).length)
+  return counts
+}
+
+/** Colocación optimista: superpone un movimiento aún sin aterrizar en la base. */
+export function applyTaskMove(
+  tasks: readonly PlannerTask[],
+  move: { id: string; day: IsoWeekday | null; startBlock: number | null } | null,
+): PlannerTask[] {
+  if (move === null) return [...tasks]
+  return tasks.map((task) =>
+    task.id === move.id ? { ...task, day: move.day, startBlock: move.startBlock } : task,
+  )
+}
+
+function mapValues<K, V>(source: ReadonlyMap<K, V>, transform: (value: V) => V): Map<K, V> {
+  const out = new Map<K, V>()
+  for (const [key, value] of source) out.set(key, transform(value))
+  return out
+}
+
 export type CarryLevel = 'none' | 'warn' | 'alarm'
 
 /**
@@ -347,11 +407,14 @@ export function carryLevel(carriedOverCount: number): CarryLevel {
   return 'none'
 }
 
-/** '2ª semana' · '3ª semana'…; null si la tarea nunca se arrastró. */
+/**
+ * 'Arrastrada 1 semana' · 'Arrastrada 3 semanas'; null si nunca se arrastró.
+ * Cuenta arrastres, no semanas de vida, para que la etiqueta y el umbral rojo
+ * digan lo mismo: el rojo entra justo cuando la insignia marca 3.
+ */
 export function carryLabel(carriedOverCount: number): string | null {
   if (carriedOverCount < 1) return null
-  // Arrastrada una vez = va por su segunda semana en el planificador.
-  return `${carriedOverCount + 1}ª semana`
+  return carriedOverCount === 1 ? 'Arrastrada 1 semana' : `Arrastrada ${carriedOverCount} semanas`
 }
 
 /* ── Zonas de soltado del drag & drop ─────────────────────────────────────── */

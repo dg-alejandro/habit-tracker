@@ -1,6 +1,11 @@
 import { useState, type FormEvent } from 'react'
 import { weekdayLongEs } from '../../logic/dates'
-import { BLOCKS_PER_DAY, blockLabel } from '../../logic/planner'
+import {
+  BLOCKS_PER_DAY,
+  MAX_ESTIMATED_MINUTES,
+  blockLabel,
+  isValidEstimatedMinutes,
+} from '../../logic/planner'
 import type { IsoWeekday, TaskTemplate } from '../../data/types'
 
 export interface TemplateFormValues {
@@ -29,7 +34,7 @@ export function TemplateForm({ initial, onSubmit, onCancel }: TemplateFormProps)
   const [minutes, setMinutes] = useState(initial?.estimatedMinutes?.toString() ?? '')
 
   const parsedMinutes = Number(minutes)
-  const minutesValid = minutes.trim() === '' || (Number.isFinite(parsedMinutes) && parsedMinutes > 0)
+  const minutesValid = minutes.trim() === '' || isValidEstimatedMinutes(parsedMinutes)
   const valid = text.trim() !== '' && minutesValid
 
   const submit = (event: FormEvent) => {
@@ -98,6 +103,7 @@ export function TemplateForm({ initial, onSubmit, onCancel }: TemplateFormProps)
             type="number"
             inputMode="numeric"
             min={1}
+            max={MAX_ESTIMATED_MINUTES}
             step={5}
             value={minutes}
             onChange={(event) => setMinutes(event.currentTarget.value)}
