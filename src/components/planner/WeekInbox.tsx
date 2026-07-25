@@ -1,4 +1,5 @@
 import { createTask } from '../../data/repositories/plannerTasksRepo'
+import { DropZone } from './DropZone'
 import { QuickAddField } from './QuickAddField'
 import { TaskList } from './TaskList'
 import type { PlannerTask, WeekId } from '../../data/types'
@@ -29,14 +30,14 @@ export function WeekInbox({ weekId, tasks, editingId, onEdit }: WeekInboxProps) 
           onSubmit={(text) => void createTask({ text, weekId })}
         />
       </div>
-      <div className="mt-1">
+      <DropZone target={{ kind: 'inbox' }} className="mt-1 min-h-14 rounded-lg">
         <TaskList
           tasks={tasks}
           editingId={editingId}
           onEdit={onEdit}
-          emptyLabel="Nada suelto esta semana."
+          emptyLabel="Nada suelto esta semana. Arrastra aquí para quitarle el día a una tarea."
         />
-      </div>
+      </DropZone>
     </section>
   )
 }

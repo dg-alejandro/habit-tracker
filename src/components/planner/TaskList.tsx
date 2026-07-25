@@ -1,5 +1,6 @@
 import { toggleTaskDone } from '../../data/repositories/plannerTasksRepo'
 import { sortTasksForDisplay } from '../../logic/planner'
+import { DraggableTask } from './DropZone'
 import { TaskChip } from './TaskChip'
 import type { PlannerTask } from '../../data/types'
 
@@ -28,12 +29,17 @@ export function TaskList({ tasks, editingId, onEdit, emptyLabel }: TaskListProps
     <ul className="divide-y divide-line">
       {ordered.map((task) => (
         <li key={task.id} className={editingId === task.id ? 'bg-surface' : ''}>
-          <TaskChip
-            task={task}
-            density="row"
-            onToggle={() => void toggleTaskDone(task.id)}
-            onOpen={() => onEdit(task.id)}
-          />
+          <DraggableTask task={task} density="row">
+            {(handle) => (
+              <TaskChip
+                task={task}
+                density="row"
+                handle={handle}
+                onToggle={() => void toggleTaskDone(task.id)}
+                onOpen={() => onEdit(task.id)}
+              />
+            )}
+          </DraggableTask>
         </li>
       ))}
     </ul>

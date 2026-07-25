@@ -1,5 +1,6 @@
 import { createTask } from '../../data/repositories/plannerTasksRepo'
 import { formatDateShortEs, weekdayShortEs, type IsoDate } from '../../logic/dates'
+import { DropZone } from './DropZone'
 import { QuickAddField } from './QuickAddField'
 import { TaskList } from './TaskList'
 import type { IsoWeekday, PlannerTask, WeekId } from '../../data/types'
@@ -39,9 +40,9 @@ export function DayLane({
           onSubmit={(text) => void createTask({ text, weekId, day })}
         />
       </div>
-      <div className="mt-1">
+      <DropZone target={{ kind: 'day', day }} className="mt-1 min-h-14 rounded-lg">
         <TaskList tasks={tasks} editingId={editingId} onEdit={onEdit} />
-      </div>
+      </DropZone>
     </section>
   )
 }

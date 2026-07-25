@@ -21,8 +21,16 @@ interface HourGridProps {
   nightOpen: boolean
   onToggleNight: () => void
   onOpenTask: (id: string) => void
-  /** Envoltura de zona de soltado; sin drag & drop devuelve la celda tal cual. */
-  renderCell?: (day: IsoWeekday, block: number, cell: React.ReactNode) => React.ReactNode
+  /**
+   * Convierte una celda en zona de soltado. Recibe la geometría ya calculada
+   * para que la zona sea EL propio rectángulo del bloque y no un envoltorio.
+   */
+  renderCell?: (
+    day: IsoWeekday,
+    block: number,
+    className: string,
+    style: React.CSSProperties,
+  ) => React.ReactNode
   /** Envoltura arrastrable del chip. */
   renderTask?: (task: PlannerTask, chip: React.ReactNode) => React.ReactNode
 }
@@ -106,16 +114,18 @@ export function HourGrid({
             return (
               <div key={day} className="relative border-l border-line" style={{ height }}>
                 {blocks.map((block) => {
-                  const cell = (
-                    <div
-                      className={`absolute inset-x-0 ${
-                        block % 2 === 0 ? 'border-t border-line' : 'border-t border-line/40'
-                      }`}
-                      style={{ top: (block - firstBlock) * CELL_PX, height: CELL_PX }}
-                    />
-                  )
+                  const className = `absolute inset-x-0 ${
+                    block % 2 === 0 ? 'border-t border-line' : 'border-t border-line/40'
+                  }`
+                  const style = { top: (block - firstBlock) * CELL_PX, height: CELL_PX }
                   return (
-                    <div key={block}>{renderCell === undefined ? cell : renderCell(day, block, cell)}</div>
+                    <div key={block} className="contents">
+                      {renderCell === undefined ? (
+                        <div className={className} style={style} />
+                      ) : (
+                        renderCell(day, block, className, style)
+                      )}
+                    </div>
                   )
                 })}
 
