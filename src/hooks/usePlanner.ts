@@ -1,15 +1,56 @@
-import { useEffect, useRef, useSyncExternalStore } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { ensureWeekReady, listWeekTasks } from '../data/repositories/plannerTasksRepo'
+import { listBankTasks } from '../data/repositories/taskBankRepo'
 import { isSupabaseConfigured } from '../data/supabase'
 import { syncStore } from '../data/sync'
-import type { WeekId } from '../logic/dates'
+import type { IsoWeekday, WeekId } from '../logic/dates'
+import { blockOfWallClock, type BankTask } from '../logic/planner'
+import { madridWallClock } from '../logic/dates'
+import type { NowMarker } from '../components/planner/HourGrid'
 import type { PlannerTask } from '../data/types'
 import { useSession } from './useSession'
 
 /** Tareas de una semana; undefined mientras carga. */
 export function useWeekTasks(weekId: WeekId): PlannerTask[] | undefined {
   return useLiveQuery(() => listWeekTasks(weekId), [weekId])
+}
+
+/** El banco de tareas reutilizables; undefined mientras carga. */
+export function useBankTasks(): BankTask[] | undefined {
+  return useLiveQuery(listBankTasks, [])
+}
+
+/**
+ * Dónde cae la raya de «ahora» en la cuadrícula, o null si la semana visitada
+ * no es la actual. Se recalcula cada minuto: la raya tiene que moverse sola.
+ */
+export function useNowMarker(todayWeekday: IsoWeekday | null): NowMarker | null {
+  const [wall, setWall] = useState(() => madridWallClockNow())
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setWall(madridWallClockNow()), 60_000)
+    const refresh = (): void => setWall(madridWallClockNow())
+    document.addEventListener('visibilitychange', refresh)
+    return () => {
+      window.clearInterval(timer)
+      document.removeEventListener('visibilitychange', refresh)
+    }
+  }, [])
+
+  if (todayWeekday === null) return null
+  const block = blockOfWallClock(wall.hour, wall.minute)
+  return { day: todayWeekday, block, fraction: (wall.minute % 30) / 30 }
+}
+
+function madridWallClockNow(): { hour: number; minute: number } {
+  const now = new Date()
+  const wall = madridWallClock(now)
+  // madridWallClock no devuelve minutos: se leen del reloj con la misma zona.
+  const minute = Number(
+    new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Madrid', minute: '2-digit' }).format(now),
+  )
+  return { hour: wall.hour, minute: Number.isNaN(minute) ? 0 : minute }
 }
 
 /**

@@ -7,9 +7,9 @@ Es lo que permite que una instancia nueva sepa dónde estamos sin releer todo el
 
 ## Estado actual
 
-**Fase en curso:** Fase 4 — Planificador semanal. El modelo se ha rehecho **tres veces** el 2026-07-25 hasta dar con lo que el propietario quería; el de ahora es el bueno y está descrito entero en `CLAUDE.md` §4. 291 tests en verde, build limpio, verificado en navegador. Pendiente de la **prueba de aceptación del propietario**.
+**Fase en curso:** Fase 4 — Planificador semanal. El modelo se ha rehecho **cuatro veces** el 2026-07-25 hasta dar con lo que el propietario quería; el de ahora es el bueno y está descrito entero en `CLAUDE.md` §4. **No inventes variantes: lee §4 y respétala.** 275 tests en verde, build limpio, verificado en navegador. Pendiente de la **prueba de aceptación del propietario**.
 
-**El planificador, en una frase:** una caja donde se escribe y una cuadrícula donde se arrastra. Dos clases de tarea —persistentes, que vuelven solas cada semana a su hueco, y puntuales, que mueren con la semana— creadas en el mismo sitio y con los mismos campos.
+**El planificador, en una frase:** un banco de tareas reutilizables del que se tira arrastrando, una caja para lo suelto de la semana, y una cuadrícula donde se coloca todo. El banco no recuerda posiciones y ninguna semana hereda nada de la anterior.
 
 **Ojo al criterio de aceptación del ROADMAP para esta fase** («planifico una semana completa desde el iPhone sin abrir el PC»): el propietario ha aclarado que su uso real es **montar la semana en el PC** y usar el iPhone para consultar y marcar. El criterio está pendiente de reescribirse.
 **También pendiente:** la aceptación de la Fase 3 (sus cifras contra el historial real). Las dos pruebas son independientes.
@@ -138,19 +138,20 @@ Toda decisión no especificada en `CLAUDE.md` se anota aquí con una línea de j
 
 ### Rediseño del 2026-07-25 (petición del propietario)
 
-**Aviso para quien lea esto en otra sesión: el modelo del planificador se rehízo tres veces el mismo día.** Lo que sigue es el resultado, no el camino. Las dos primeras versiones (catálogo de tareas fijas con varios días; alta dentro de cada día sin bandeja) **ya no existen**; si algo en el código huele a ellas, es un resto que hay que limpiar.
+**Aviso para quien lea esto en otra sesión: el modelo del planificador se rehízo CUATRO veces el mismo día.** Lo que sigue es el resultado, no el camino. Las versiones descartadas —catálogo de tareas fijas con varios días; alta dentro de cada día; tareas «persistentes» que reaparecían solas en el mismo hueco— **ya no existen**; si algo en el código huele a ellas, es un resto que hay que limpiar.
 
-Lo que el propietario quería, y que costó tres intentos entender: **escribir una tarea no debe obligar a decidir cuándo**. Se escribe en una caja y se arrastra al hueco que sea. Y hay cosas que se repiten y cosas que no, pero las dos se crean igual.
+Lo que el propietario quería, y que costó cuatro intentos entender: **un banco de tareas reutilizables**. Escribir no obliga a decidir cuándo, colocar es arrastrar, y lo que se repite se guarda una vez y se saca del banco cada semana **sin que el banco recuerde dónde estuvo**.
 
 - **Caja + cuadrícula, y nada más.** Fuera las listas por día: colocar una tarea es soltarla en una casilla concreta de la rejilla, que es lo único que decide día y hora. Sin bandeja de entrada con nombre raro, sin catálogo aparte, sin siete campos de alta.
-- **Persistentes y puntuales.** La persistencia es una propiedad de la tarea, no un catálogo: un interruptor al crearla (y otro en su editor para cambiar de idea). Las persistentes se recrean solas en la semana siguiente, en el mismo hueco y sin marcar; las puntuales sin hacer se borran al cambiar de semana. Esto sustituye a la pantalla de «tareas fijas», que se ha eliminado.
-- **La marca de persistencia viaja dentro de `templateId`** (`persist:<uuid>`), que es `text` y admite nulo tanto en Dexie como en Postgres. El esquema remoto no tiene columna para esto y añadirla obligaría al propietario a ejecutar SQL a mano. El id de cada copia semanal es `<marca>@<semana>`: determinista, así que dos dispositivos preparando la misma semana producen la misma fila y la guardia LWW la colapsa.
-- **La preparación de la semana busca hacia atrás** hasta la última semana con contenido, no solo a la anterior: si el planificador lleva un mes cerrado, las persistentes vuelven igual.
-- **Duración al crear**, en el mismo gesto, para las dos clases.
-- **Duplicar** desde el editor: poner «leer» en cinco días es colocar una y duplicar cuatro veces, no teclearla cinco. Cada copia lleva su propia marca, así que cada una vuelve a su hueco.
+- **Banco de tareas.** Un catálogo permanente, desplegable desde la cabecera, con lo que se repite. Sacar una ficha NO la gasta: la misma se arrastra tantas veces como haga falta, que es lo que hace llevadero «leer de lunes a viernes». El banco **no guarda la última posición**: cada semana se coloca de nuevo.
+- **Ninguna semana hereda nada.** Se descartó el traspaso automático que recreaba las tareas en su hueco anterior: era justo lo que el propietario no quería.
+- **El banco se guarda en `taskTemplates`**, que ya existía y ya sincronizaba. Su columna `weekday` es `not null` en Postgres y aquí no significa nada: se escribe 1 y no se lee. Quitarla exigiría SQL a mano.
+- **Duración al crear**, tanto en el banco como en las sueltas.
 - **`day` y `startBlock` van juntos**: no hay día sin hora ni hora sin día. Una tarea con día pero sin hora no se vería en ningún sitio.
 - **Anuncios del arrastre en español** (dnd-kit los trae en inglés hablando de «draggable items»).
-- La tabla `taskTemplates` queda **sin uso** en local y en remoto. Vaciarla o quitarla exigiría SQL a mano y no aporta nada.
+- **El color dice de dónde salió cada tarea**: lima si vino del banco, naranja si es suelta. Con la cuadrícula llena, el color es lo que deja leerla de un vistazo.
+- **Cuadrícula más legible**: filas de 32 px, bandas alternas por hora, cabeceras de día más grandes con su fecha, columna de hoy teñida de lima y raya magenta en la hora actual, que se mueve sola cada minuto.
+- Fuera el contador «N pendientes» de la cabecera, a petición del propietario.
 
 ---
 

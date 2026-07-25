@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { CheckToggle } from '../habits/CheckToggle'
-import { blockRangeLabel, durationLabel } from '../../logic/planner'
+import { blockRangeLabel, durationLabel, isFromBank } from '../../logic/planner'
 import type { PlannerTask } from '../../data/types'
 
 interface TaskChipProps {
@@ -17,20 +17,25 @@ interface TaskChipProps {
 }
 
 /**
- * La tarea, vista. Las FIJAS llevan un filete lima a la izquierda: son el
- * esqueleto de la semana y se distinguen de un vistazo de las breves, que solo
- * viven esta semana. La completada se queda visible, tachada y atenuada (§4).
+ * La tarea, vista. El color dice de dónde salió: lima si vino del banco —lo
+ * que se repite—, naranja si es una tarea suelta de esta semana. Con una
+ * cuadrícula llena, el color es lo que deja leerla de un vistazo.
+ * La completada se queda visible, tachada y atenuada (§4).
  */
 export function TaskChip({ task, density, onToggle, onOpen, handle }: TaskChipProps) {
-  const fixed = task.templateId !== null
+  const fromBank = isFromBank(task)
+  // Tailwind no ve nombres de clase construidos por interpolación: enteros.
+  const doneBox = fromBank
+    ? 'border-streak-lime bg-streak-lime'
+    : 'border-streak-orange bg-streak-orange'
   const time = blockRangeLabel(task.startBlock, task.estimatedMinutes)
   const duration = durationLabel(task.estimatedMinutes)
 
   if (density === 'grid') {
     return (
       <div
-        className={`flex h-full w-full overflow-hidden rounded-sm border border-line bg-surface ${
-          fixed ? 'border-l-2 border-l-streak-lime' : ''
+        className={`flex h-full w-full overflow-hidden rounded-sm border border-line border-l-4 bg-surface ${
+          fromBank ? 'border-l-streak-lime' : 'border-l-streak-orange'
         }`}
       >
         <button
@@ -42,9 +47,7 @@ export function TaskChip({ task, density, onToggle, onOpen, handle }: TaskChipPr
         >
           <span
             aria-hidden="true"
-            className={`h-3 w-3 border ${
-              task.done ? 'border-streak-lime bg-streak-lime' : 'border-ink-faint'
-            }`}
+            className={`h-3 w-3 border ${task.done ? doneBox : 'border-ink-faint'}`}
           />
         </button>
         <button
@@ -70,8 +73,8 @@ export function TaskChip({ task, density, onToggle, onOpen, handle }: TaskChipPr
 
   return (
     <div
-      className={`flex min-h-14 items-center gap-1 py-2 ${
-        fixed ? 'border-l-2 border-l-streak-lime pl-2' : ''
+      className={`flex min-h-14 items-center gap-1 border-l-4 py-2 pl-2 ${
+        fromBank ? 'border-l-streak-lime' : 'border-l-streak-orange'
       }`}
     >
       {handle}

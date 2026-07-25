@@ -17,17 +17,14 @@ const FIELD_CLASS =
   'h-11 rounded-sm border border-line bg-paper px-3 text-base text-ink placeholder:text-ink-faint focus:border-streak-lime focus:outline-none'
 
 /**
- * La caja donde se escribe, y el único sitio de la pantalla donde se crea nada.
- * Toda tarea nace aquí —sin día ni hora— y de aquí se arrastra a un hueco de la
- * cuadrícula. Al crearla se elige si es persistente (vuelve sola cada semana) o
- * puntual, y se le puede dar duración.
+ * Las tareas PUNTUALES de la semana que aún no están colocadas, y el campo para
+ * escribirlas. Lo que se repite no vive aquí: eso está en el banco.
  *
  * Es también zona de soltado, así que arrastrar una tarea de vuelta la descoloca
  * sin borrarla.
  */
 export function UnplacedTray({ weekId, tasks, editingId, onEdit }: UnplacedTrayProps) {
   const [text, setText] = useState('')
-  const [persistent, setPersistent] = useState(false)
   const [minutes, setMinutes] = useState('')
 
   const parsedMinutes = Number(minutes)
@@ -36,10 +33,10 @@ export function UnplacedTray({ weekId, tasks, editingId, onEdit }: UnplacedTrayP
 
   const commit = () => {
     if (!canSubmit) return
-    const input = { text: text.trim(), weekId, persistent }
+    const input = { text: text.trim(), weekId }
     void createTask(minutes.trim() === '' ? input : { ...input, estimatedMinutes: parsedMinutes })
     setText('')
-    // El tipo y la duración se conservan: se suelen crear varias seguidas iguales.
+    // La duración se conserva: se suelen crear varias seguidas parecidas.
   }
 
   const submit = (event: FormEvent) => {
@@ -61,10 +58,11 @@ export function UnplacedTray({ weekId, tasks, editingId, onEdit }: UnplacedTrayP
     <section className="mt-6">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 border-b border-line pb-2">
         <h2 className="font-display text-xs uppercase tracking-widest text-streak-lime">
-          Sin colocar {pending > 0 && <span className="text-streak-orange">· {pending}</span>}
+          Sueltas de esta semana{' '}
+          {pending > 0 && <span className="tabular-nums text-streak-orange">· {pending}</span>}
         </h2>
         <p className="font-display text-xs text-ink-faint">
-          escribe aquí y arrastra al hueco que quieras
+          desaparecen al acabar la semana
         </p>
       </div>
 
@@ -97,42 +95,13 @@ export function UnplacedTray({ weekId, tasks, editingId, onEdit }: UnplacedTrayP
           />
         </label>
 
-        {/* Dos botones y no un desplegable: se ve de un vistazo cuál está
-            armado, y es lo que decide si la tarea vuelve la semana que viene. */}
-        <div className="flex" role="group" aria-label="Clase de tarea">
-          {(
-            [
-              { value: false, label: 'Puntual' },
-              { value: true, label: 'Persistente' },
-            ] as const
-          ).map((option) => (
-            <button
-              key={option.label}
-              type="button"
-              onClick={() => setPersistent(option.value)}
-              aria-pressed={persistent === option.value}
-              className={`h-11 border px-3 font-display text-xs uppercase tracking-widest transition-colors first:rounded-l-sm last:rounded-r-sm ${
-                persistent === option.value
-                  ? 'border-streak-lime bg-surface text-streak-lime'
-                  : 'border-line text-ink-faint hover:text-ink-soft'
-              }`}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
       </form>
 
-      <p className="mt-1 font-display text-xs text-ink-faint">
-        {persistent
-          ? 'Persistente: volverá sola cada semana, en el hueco donde la dejes.'
-          : 'Puntual: si acaba la semana sin hacerse, desaparece.'}
-      </p>
 
       <DropZone target={{ kind: 'unplaced' }} className="mt-2 min-h-14 rounded-sm">
         {tasks.length === 0 ? (
           <p className="py-3 text-sm text-ink-faint">
-            Nada suelto. Lo que escribas aparecerá aquí hasta que lo coloques.
+            Nada suelto. Lo que escribas aquí aparecerá hasta que lo arrastres a un hueco.
           </p>
         ) : (
           <TaskList tasks={tasks} editingId={editingId} onEdit={onEdit} />

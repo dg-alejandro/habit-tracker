@@ -105,52 +105,58 @@ Con el umbral del 80 %, un día cuenta con **12 de 14** cumplidos.
 
 ---
 
-## 4. Reglas de negocio — planificador
+## 4. Reglas de negocio - planificador
 
-El planificador es **independiente de los hábitos**: no los muestra ni interactúa con ellos.
+El planificador es **independiente de los habitos**: no los muestra ni interactua con ellos.
 
-Tiene **dos piezas y ninguna más**: la **caja** donde se escribe y la **cuadrícula** donde se coloca. No hay listas por día, ni bandejas, ni catálogos aparte.
+Tiene **tres piezas**: el **banco** de tareas reutilizables, la caja de **sueltas de esta semana**, y la **cuadricula** donde se coloca todo arrastrando.
 
-**La regla que ordena todo: escribir y colocar son dos pasos distintos.** Una tarea nace en la caja, sin día ni hora, y **arrastrarla a una casilla de la cuadrícula es lo que le da día y hora**. Puede quedarse en la caja toda la semana sin colocar. Los horarios varían y un jueves no se parece a un sábado: obligar a decidir el momento al escribir sobra.
+**La regla que ordena todo: escribir y colocar son dos pasos distintos.** Nada nace con dia ni hora - **arrastrar a una casilla de la cuadricula es lo unico que decide cuando**. Los horarios varian y un jueves no se parece a un sabado.
 
-### Las dos clases de tarea
+### El banco de tareas
 
-Se crean **en el mismo sitio, de la misma forma y con los mismos campos** — texto, duración opcional y un interruptor. Lo único que las separa es qué pasa el lunes siguiente:
+Un catalogo permanente de lo que se repite: gimnasio, leer, compra. Cada ficha es un **nombre y, si acaso, una duracion**. Se despliega desde la cabecera del planificador.
 
-- **Persistentes** — lo que se repite (gimnasio, leer). La semana que viene **vuelven solas, al mismo hueco**, sin marcar.
-- **Puntuales** — lo de esta semana. Si acaban sin hacerse, **se borran**.
+- **No pertenece a ninguna semana y no recuerda donde estuvo la tarea.** Cada semana se coloca de nuevo, donde toque.
+- **Sacar una ficha no la gasta:** la misma se arrastra tantas veces como haga falta. «Leer» de lunes a viernes son cinco arrastres de la misma ficha.
+- Quitar una ficha del banco **no toca** las tareas que ya se colocaron con ella: esas son lo que hiciste esa semana.
 
-Lo COMPLETADO nunca se borra: es el historial de lo que sí hiciste. Y una persistente que quedó sin hacer se queda también en su semana, como registro de que ese jueves no fuiste al gimnasio.
+### Las tareas sueltas
 
-Cambiar una tarea de clase es un interruptor en su editor. Para repetir la misma tarea en varios días —«leer» de lunes a viernes— se coloca una y se **duplica**: cada copia es persistente por su cuenta y vuelve a su propio hueco.
+Lo que solo importa esta semana. Se escriben en su caja, se arrastran a la cuadricula, y **si acaban la semana sin hacerse, se borran**. Lo COMPLETADO nunca se borra: es el historial.
+
+**Ninguna semana hereda nada de la anterior.** Cada una empieza vacia y se llena tirando del banco.
 
 ### Modelo de tarea
 
-| Campo | Descripción |
+| Campo | Descripcion |
 |---|---|
-| `text` | Título. Obligatorio. |
-| `estimatedMinutes` | Duración estimada. Opcional, y se puede poner al crearla. Determina cuántos bloques ocupa. |
+| `text` | Titulo. Obligatorio. |
+| `estimatedMinutes` | Duracion estimada. Opcional, y se puede poner al crearla. Determina cuantos bloques ocupa. |
 | `weekId` | Semana ISO a la que pertenece (`2026-W31`). |
-| `day` | Día en el que está colocada, o `null` si sigue en la caja. |
-| `startBlock` | Bloque horario, o `null` si sigue en la caja. Van siempre juntos: no hay día sin hora ni hora sin día. |
+| `day` | Dia en el que esta colocada, o `null` si sigue sin colocar. |
+| `startBlock` | Bloque horario, o `null` si sigue sin colocar. Van siempre juntos: no hay dia sin hora ni hora sin dia. |
 | `done` | Completada o no. |
-| `templateId` | Marca de persistencia (`persist:<uuid>`), o `null` si es puntual. Todas las copias semanales de una misma tarea comparten marca, y es lo que las encadena. |
+| `templateId` | Ficha del banco de la que salio, o `null` si es una tarea suelta. Es lo que la pinta distinta. |
 | `carriedOverCount` | **En desuso.** Vale siempre cero; la columna sigue en el esquema remoto, que no se toca. |
 
-### Creación y edición
+El banco vive en la tabla `taskTemplates`. Su columna `weekday` es `not null` en Postgres y **aqui no significa nada**: se escribe 1 y no se lee. Quitarla exigiria ejecutar SQL a mano.
 
-- **Un solo campo de escritura** en toda la pantalla, en la caja. Escribir y Enter, tantas veces seguidas como haga falta; la clase y la duración se conservan entre una y otra.
-- **Colocar es arrastrar:** de la caja a una casilla, entre casillas, o de vuelta a la caja para descolocar.
-- **Editar:** al tocar la tarea se abre en línea para cambiar texto, clase, día, hora, duración, duplicarla o borrarla.
+### Creacion y edicion
+
+- **Dos campos de escritura y ninguno mas:** uno para anadir al banco, otro para las sueltas de la semana. Escribir y Enter.
+- **Colocar es arrastrar:** del banco o de la caja a una casilla, entre casillas, o de vuelta a la caja para descolocar.
+- **Editar:** al tocar la tarea se abre en linea para cambiar texto, dia, hora, duracion o borrarla. Las fichas del banco se editan tocandolas dentro del banco.
 - **Completar:** casilla durante la semana. La tarea hecha se queda visible, tachada y atenuada.
 
-### Cuadrícula horaria
+### Cuadricula horaria
 
-- Cobertura **00:00 a 24:00**, en bloques de **30 minutos**, con los siete días en columnas.
-- Por defecto la franja **00:00–06:00 aparece plegada**, con un botón para desplegarla y el recuento de lo que esconde.
-- Una tarea con duración estimada ocupa los bloques proporcionales. Solaparlas es legítimo: se reparten a media anchura.
-- **Todo lo que hace el arrastre se puede hacer también desde los selectores del editor**, porque el gesto táctil no es verificable desde el entorno de desarrollo.
-- En móvil: un día visible cada vez, con una tira para elegir cuál.
+- Cobertura **00:00 a 24:00**, en bloques de **30 minutos**, con los siete dias en columnas y bandas alternas por hora para poder seguirla con la vista.
+- Por defecto la franja **00:00-06:00 aparece plegada**, con el recuento de lo que esconde.
+- **El color dice de donde salio cada tarea**: lima si vino del banco, naranja si es suelta. La columna de hoy va tenida de lima y una raya magenta marca la hora actual.
+- Una tarea con duracion ocupa los bloques proporcionales. Solaparlas es legitimo: se reparten a media anchura.
+- **Todo lo que hace el arrastre se puede hacer tambien desde los selectores del editor**, porque el gesto tactil no es verificable desde el entorno de desarrollo.
+- En movil: un dia visible cada vez, con una tira para elegir cual.
 
 ---
 

@@ -15,25 +15,24 @@ import {
   countPendingByDay,
   dropTargetId,
   durationLabel,
+  bankDragId,
   groupTasksByDay,
-  isPersistent,
+  isFromBank,
   isValidBlock,
   isValidEstimatedMinutes,
   layoutDayTasks,
+  parseBankDragId,
   parseDropTargetId,
-  persistentMark,
   placementFor,
   planEphemeralPurge,
-  planWeekRollover,
   sortTasksForDisplay,
+  taskFromBank,
   unplacedTasks,
   visibleSpan,
-  weeklyCopyId,
 } from './planner'
 import type { IsoWeekday, PlannerTask, WeekId } from '../data/types'
 
 const WEEK: WeekId = '2026-W30'
-const NEXT: WeekId = '2026-W31'
 
 function task(overrides: Partial<PlannerTask> & Pick<PlannerTask, 'id'>): PlannerTask {
   return {
@@ -49,12 +48,12 @@ function task(overrides: Partial<PlannerTask> & Pick<PlannerTask, 'id'>): Planne
   }
 }
 
-/** Tarea persistente: la que vuelve sola cada semana. */
-function persistent(
+/** Tarea que salio del banco. */
+function fromBank(
   overrides: Partial<PlannerTask> & Pick<PlannerTask, 'id'>,
-  mark = `persist:${overrides.id}`,
+  bankId = `banco-${overrides.id}`,
 ): PlannerTask {
-  return task({ ...overrides, templateId: mark })
+  return task({ ...overrides, templateId: bankId })
 }
 
 /** Tarea colocada en la rejilla: bloque de inicio y duración en minutos. */
@@ -147,101 +146,47 @@ describe('duración de una tarea en bloques', () => {
   })
 })
 
-describe('persistentes y puntuales', () => {
-  it('la marca de persistencia viaja dentro de templateId', () => {
-    // La tabla remota no tiene columna para esto y añadirla exigiría SQL a mano.
-    expect(persistentMark('abc')).toBe('persist:abc')
-    expect(isPersistent(persistent({ id: 'a' }))).toBe(true)
+describe('banco de tareas', () => {
+  it('la ficha del banco se arrastra con un identificador propio', () => {
+    // Asi el drop distingue «coloca esta tarea» de «saca una copia del banco».
+    expect(bankDragId('abc')).toBe('bank:abc')
+    expect(parseBankDragId('bank:abc')).toBe('abc')
+    expect(parseBankDragId('una-tarea-cualquiera')).toBeNull()
   })
 
-  it('una tarea sin marca es puntual', () => {
-    expect(isPersistent(task({ id: 'a' }))).toBe(false)
-  })
-
-  it('una plantilla del planificador viejo no cuenta como persistente', () => {
-    // Las tareas que generó el catálogo de tareas fijas llevaban otro prefijo.
-    expect(isPersistent(task({ id: 'a', templateId: 'grp:g1:4' }))).toBe(false)
-  })
-
-  it('el id de la copia semanal es determinista: dos dispositivos convergen', () => {
-    expect(weeklyCopyId('persist:abc', WEEK)).toBe('persist:abc@2026-W30')
-    expect(weeklyCopyId('persist:abc', WEEK)).toBe(weeklyCopyId('persist:abc', WEEK))
-    expect(weeklyCopyId('persist:abc', NEXT)).not.toBe(weeklyCopyId('persist:abc', WEEK))
-  })
-})
-
-describe('planWeekRollover — las persistentes vuelven solas', () => {
-  it('recrea la persistente en el mismo hueco, sin marcar', () => {
-    const source = persistent({
-      id: 'gym',
+  it('sacar del banco produce una tarea colocada en su hueco', () => {
+    const draft = taskFromBank(
+      { id: 'gym', text: 'Gimnasio', estimatedMinutes: 60 },
+      '2026-W30',
+      4,
+      38,
+    )
+    expect(draft).toEqual({
       text: 'Gimnasio',
+      weekId: '2026-W30',
       day: 4,
       startBlock: 38,
       estimatedMinutes: 60,
-      done: true,
+      done: false,
+      templateId: 'gym',
+      carriedOverCount: 0,
     })
-    expect(planWeekRollover({ sourceTasks: [source], targetWeek: NEXT })).toEqual([
-      {
-        id: 'persist:gym@2026-W31',
-        text: 'Gimnasio',
-        weekId: NEXT,
-        day: 4,
-        startBlock: 38,
-        estimatedMinutes: 60,
-        done: false,
-        templateId: 'persist:gym',
-        carriedOverCount: 0,
-      },
-    ])
   })
 
-  it('la marca se conserva, así que la cadena sigue semana tras semana', () => {
-    const first = persistent({ id: 'gym', day: 4, startBlock: 38 })
-    const [second] = planWeekRollover({ sourceTasks: [first], targetWeek: NEXT })
-    expect(second).toBeDefined()
-    if (second === undefined) return
-    const [third] = planWeekRollover({
-      sourceTasks: [{ ...second, updatedAt: 0 }],
-      targetWeek: '2026-W32',
-    })
-    expect(third?.templateId).toBe('persist:gym')
-    expect(third?.startBlock).toBe(38)
+  it('sin duracion en la ficha, la propiedad NO existe en la tarea (no es null)', () => {
+    const draft = taskFromBank({ id: 'gym', text: 'Gimnasio' }, '2026-W30', 4, 38)
+    expect('estimatedMinutes' in draft).toBe(false)
   })
 
-  it('las puntuales no viajan', () => {
-    expect(planWeekRollover({ sourceTasks: [task({ id: 'a' })], targetWeek: NEXT })).toEqual([])
+  it('la tarea recuerda de que ficha salio, y eso es lo que la pinta distinta', () => {
+    expect(isFromBank(fromBank({ id: 'a' }))).toBe(true)
+    expect(isFromBank(task({ id: 'a' }))).toBe(false)
   })
 
-  it('una persistente que quedó sin colocar reaparece igual, esperando hueco', () => {
-    const source = persistent({ id: 'leer', day: null, startBlock: null })
-    const [copy] = planWeekRollover({ sourceTasks: [source], targetWeek: NEXT })
-    expect(copy?.day).toBeNull()
-    expect(copy?.startBlock).toBeNull()
-  })
-
-  it('sin duración, la propiedad estimatedMinutes NO existe (no es null)', () => {
-    const [copy] = planWeekRollover({ sourceTasks: [persistent({ id: 'a' })], targetWeek: NEXT })
-    expect(copy === undefined ? true : 'estimatedMinutes' in copy).toBe(false)
-  })
-
-  it('una semana sin persistentes no genera nada', () => {
-    expect(planWeekRollover({ sourceTasks: [], targetWeek: NEXT })).toEqual([])
-  })
-
-  it('la salida es estable e independiente del orden de entrada', () => {
-    const sources = [
-      persistent({ id: 'c', text: 'Cena', day: 5, startBlock: 42 }),
-      persistent({ id: 'a', text: 'Ana', day: 1, startBlock: 20 }),
-      persistent({ id: 'b', text: 'Bici', day: null }),
-    ]
-    const forward = planWeekRollover({ sourceTasks: sources, targetWeek: NEXT }).map((r) => r.text)
-    const backward = planWeekRollover({
-      sourceTasks: [...sources].reverse(),
-      targetWeek: NEXT,
-    }).map((r) => r.text)
-    expect(forward).toEqual(backward)
-    // Por día, y las que no tienen día al final.
-    expect(forward).toEqual(['Ana', 'Cena', 'Bici'])
+  it('tambien se puede sacar del banco sin colocar', () => {
+    const draft = taskFromBank({ id: 'gym', text: 'Gimnasio' }, '2026-W30', null, null)
+    expect(draft.day).toBeNull()
+    expect(draft.startBlock).toBeNull()
   })
 })
 
@@ -259,9 +204,9 @@ describe('planEphemeralPurge — las puntuales solo viven su semana', () => {
     expect(planEphemeralPurge({ staleTasks: [stale], currentWeek: CURRENT })).toEqual([])
   })
 
-  it('NO borra las persistentes, ni sin hacer', () => {
-    // Se quedan como registro de que ese jueves no fuiste al gimnasio.
-    const stale = persistent({ id: 'gym' })
+  it('NO borra lo que salio del banco, ni sin hacer', () => {
+    // Se queda como registro de que ese jueves no fuiste al gimnasio.
+    const stale = fromBank({ id: 'gym' })
     expect(planEphemeralPurge({ staleTasks: [stale], currentWeek: CURRENT })).toEqual([])
   })
 
@@ -420,11 +365,6 @@ describe('sortTasksForDisplay — el orden de la caja', () => {
   it('las pendientes van antes que las hechas', () => {
     const result = sortTasksForDisplay([task({ id: 'a', done: true }), task({ id: 'b' })])
     expect(result.map((row) => row.id)).toEqual(['b', 'a'])
-  })
-
-  it('las persistentes abren la caja: son el esqueleto de la semana', () => {
-    const result = sortTasksForDisplay([task({ id: 'puntual' }), persistent({ id: 'fija' })])
-    expect(result.map((row) => row.id)).toEqual(['fija', 'puntual'])
   })
 
   it('a igualdad de todo, alfabético en español', () => {

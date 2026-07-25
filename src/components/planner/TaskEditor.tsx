@@ -1,17 +1,11 @@
 import { useState, type FormEvent } from 'react'
-import {
-  deleteTask,
-  duplicateTask,
-  toggleTaskDone,
-  updateTask,
-} from '../../data/repositories/plannerTasksRepo'
+import { deleteTask, toggleTaskDone, updateTask } from '../../data/repositories/plannerTasksRepo'
 import { weekdayLongEs } from '../../logic/dates'
 import {
   BLOCKS_PER_DAY,
   DEFAULT_BLOCK,
   MAX_ESTIMATED_MINUTES,
   blockLabel,
-  isPersistent,
   isValidEstimatedMinutes,
 } from '../../logic/planner'
 import { CheckToggle } from '../habits/CheckToggle'
@@ -37,7 +31,6 @@ export function TaskEditor({ task, onClose }: TaskEditorProps) {
   const [minutes, setMinutes] = useState(task.estimatedMinutes?.toString() ?? '')
   const [day, setDay] = useState<IsoWeekday | null>(task.day)
   const [startBlock, setStartBlock] = useState<number | null>(task.startBlock)
-  const [persistent, setPersistent] = useState(isPersistent(task))
   const [confirmingDelete, setConfirmingDelete] = useState(false)
 
   const parsedMinutes = Number(minutes)
@@ -53,7 +46,6 @@ export function TaskEditor({ task, onClose }: TaskEditorProps) {
       estimatedMinutes: minutes.trim() === '' ? null : parsedMinutes,
       day,
       startBlock,
-      persistent,
     })
     onClose()
   }
@@ -73,34 +65,6 @@ export function TaskEditor({ task, onClose }: TaskEditorProps) {
         />
       </label>
 
-      {/* Cambiar de idea sin volver a escribirla. */}
-      <div className="mt-3 flex" role="group" aria-label="Clase de tarea">
-        {(
-          [
-            { value: false, label: 'Puntual' },
-            { value: true, label: 'Persistente' },
-          ] as const
-        ).map((option) => (
-          <button
-            key={option.label}
-            type="button"
-            onClick={() => setPersistent(option.value)}
-            aria-pressed={persistent === option.value}
-            className={`h-11 border px-3 font-display text-xs uppercase tracking-widest transition-colors first:rounded-l-sm last:rounded-r-sm ${
-              persistent === option.value
-                ? 'border-streak-lime bg-surface text-streak-lime'
-                : 'border-line text-ink-faint hover:text-ink-soft'
-            }`}
-          >
-            {option.label}
-          </button>
-        ))}
-      </div>
-      <p className="mt-1 font-display text-xs text-ink-faint">
-        {persistent
-          ? 'Volverá sola cada semana, en el hueco donde la dejes.'
-          : 'Si acaba la semana sin hacerse, desaparece.'}
-      </p>
 
       <div className="mt-3 flex flex-wrap gap-3">
         <label className="block min-w-32 flex-1">
@@ -199,26 +163,13 @@ export function TaskEditor({ task, onClose }: TaskEditorProps) {
             </button>
           </div>
         ) : (
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={() => setConfirmingDelete(true)}
-              className="h-11 rounded-sm px-3 text-sm text-ink-soft transition-colors hover:bg-surface hover:text-ink"
-            >
-              Eliminar
-            </button>
-            {/* Poner «Leer» en cinco días es duplicar cuatro veces, no teclearlo cinco. */}
-            <button
-              type="button"
-              onClick={() => {
-                void duplicateTask(task.id)
-                onClose()
-              }}
-              className="h-11 rounded-sm px-3 text-sm text-ink-soft transition-colors hover:bg-surface hover:text-ink"
-            >
-              Duplicar
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => setConfirmingDelete(true)}
+            className="h-11 rounded-sm px-3 text-sm text-ink-soft transition-colors hover:bg-surface hover:text-ink"
+          >
+            Eliminar
+          </button>
         )}
 
         <div className="flex items-center gap-2">

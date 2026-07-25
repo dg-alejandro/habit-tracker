@@ -3,12 +3,11 @@
  * I/O y sin Date.now() sin inyectar.
  *
  * El modelo, entero, en tres frases:
- * - Una tarea nace SIN colocar y se arrastra a una casilla de la cuadrícula.
- *   Arrastrar es lo que decide su día y su hora.
- * - Hay dos clases: PERSISTENTES (gimnasio, leer) y PUNTUALES. Se crean igual y
- *   en el mismo sitio; lo único que cambia es qué pasa el lunes siguiente.
- * - Las persistentes reaparecen solas la semana que viene, en el mismo hueco.
- *   Las puntuales no: si quedaron sin hacer, se borran.
+ * - Hay un BANCO de tareas reutilizables (gimnasio, leer). No pertenece a
+ *   ninguna semana ni recuerda dónde estuvo: es un catálogo del que se tira.
+ * - Cada semana se arrastra del banco a la cuadrícula tantas veces como haga
+ *   falta, y se escriben además tareas PUNTUALES sueltas.
+ * - Al cambiar de semana, lo puntual sin hacer desaparece. El banco se queda.
  *
  * Los ids que se generan aquí son función DETERMINISTA de sus argumentos: eso
  * es lo que las mantiene puras y, de paso, lo que hace que dos dispositivos
@@ -107,78 +106,59 @@ export function durationLabel(estimatedMinutes?: number): string | null {
   return `${hours} h ${minutes}`
 }
 
-/* ── Persistentes y puntuales ─────────────────────────────────────────────── */
+/* ── Banco de tareas reutilizables ───────────────────────────────────────── */
 
 /**
- * Marca de tarea persistente. Va dentro de `templateId` —que es `text` y
- * admite nulo, tanto en Dexie como en Postgres— porque el esquema remoto no
- * tiene columna para esto y añadirla obligaría al propietario a ejecutar SQL a
- * mano. Todas las copias semanales de una misma tarea comparten esta marca, y
- * es lo que las encadena semana a semana.
+ * Una tarea del banco: un nombre y, si acaso, cuánto suele durar. Nada de día
+ * ni de hora — el banco no recuerda dónde estuvo la tarea la semana pasada.
  */
-const PERSIST_PREFIX = 'persist:'
-
-/** Marca de persistencia a partir de un uuid que genera el repositorio. */
-export function persistentMark(uuid: string): string {
-  return `${PERSIST_PREFIX}${uuid}`
+export interface BankTask {
+  id: string
+  text: string
+  estimatedMinutes?: number
 }
 
-/** true si la tarea vuelve sola la semana que viene. */
-export function isPersistent(task: PlannerTask): boolean {
-  return task.templateId !== null && task.templateId.startsWith(PERSIST_PREFIX)
+/** Identificador de arrastre de una ficha del banco, distinto del de una tarea. */
+export function bankDragId(bankId: string): string {
+  return `bank:${bankId}`
 }
 
-/** Fila lista para insertar salvo `updatedAt`, que estampa el repositorio. */
-export type GeneratedTask = Omit<PlannerTask, 'updatedAt'>
-
-/**
- * Id de la copia de una tarea persistente en una semana concreta.
- * Determinista a propósito: dos dispositivos que preparen la misma semana a la
- * vez producen la MISMA fila y la guardia de última escritura la colapsa, en
- * vez de dejar dos gimnasios el jueves.
- */
-export function weeklyCopyId(mark: string, weekId: WeekId): string {
-  return `${mark}@${weekId}`
+/** Ficha del banco que se está arrastrando; null si lo arrastrado es una tarea. */
+export function parseBankDragId(dragId: string): string | null {
+  return dragId.startsWith('bank:') ? dragId.slice('bank:'.length) : null
 }
 
-export interface WeekRolloverInput {
-  /** Tareas de la semana anterior más reciente que tuviera algo. */
-  sourceTasks: readonly PlannerTask[]
-  targetWeek: WeekId
+/** true si la tarea salió del banco (y no de escribirla suelta). */
+export function isFromBank(task: PlannerTask): boolean {
+  return task.templateId !== null
 }
 
-/**
- * Las persistentes de la semana anterior, recreadas en la nueva: mismo texto,
- * mismo hueco, misma duración, y sin marcar. Lo puntual no viaja.
- *
- * Se copian también las que quedaron SIN colocar: siguen siendo persistentes,
- * así que reaparecen en la caja de arriba esperando un hueco.
- */
-export function planWeekRollover(input: WeekRolloverInput): GeneratedTask[] {
-  const copies: GeneratedTask[] = []
-  for (const task of input.sourceTasks) {
-    if (!isPersistent(task) || task.templateId === null) continue
-    const copy: GeneratedTask = {
-      id: weeklyCopyId(task.templateId, input.targetWeek),
-      text: task.text,
-      weekId: input.targetWeek,
-      day: task.day,
-      startBlock: task.startBlock,
-      done: false,
-      templateId: task.templateId,
-      carriedOverCount: 0,
-    }
-    if (task.estimatedMinutes !== undefined) copy.estimatedMinutes = task.estimatedMinutes
-    copies.push(copy)
+/** Fila lista para insertar salvo `id` y `updatedAt`, que estampa el repositorio. */
+export type PlannerTaskDraft = Omit<PlannerTask, 'id' | 'updatedAt'>
+
+/** Tarea de la semana a partir de una ficha del banco, ya colocada en su hueco. */
+export function taskFromBank(
+  bank: BankTask,
+  weekId: WeekId,
+  day: IsoWeekday | null,
+  startBlock: number | null,
+): PlannerTaskDraft {
+  const draft: PlannerTaskDraft = {
+    text: bank.text,
+    weekId,
+    day,
+    startBlock,
+    done: false,
+    templateId: bank.id,
+    // Ya no se arrastra nada entre semanas; la columna sigue en el esquema
+    // remoto, que no se toca, pero vale siempre cero.
+    carriedOverCount: 0,
   }
-  return copies.sort(
-    (a, b) =>
-      (a.day ?? 8) - (b.day ?? 8) ||
-      blockOrder(a.startBlock) - blockOrder(b.startBlock) ||
-      a.text.localeCompare(b.text, 'es') ||
-      a.id.localeCompare(b.id),
-  )
+  if (bank.estimatedMinutes !== undefined) draft.estimatedMinutes = bank.estimatedMinutes
+  return draft
 }
+
+/* ── Tareas puntuales ─────────────────────────────────────────────────────── */
 
 export interface EphemeralPurgeInput {
   /** Tareas de semanas ANTERIORES a currentWeek; el repositorio ya acota. */
@@ -190,9 +170,9 @@ export interface EphemeralPurgeInput {
  * Ids de las tareas PUNTUALES que se borran al cambiar de semana: las que
  * quedaron sin hacer no te siguen, desaparecen (decisión del propietario).
  *
- * NO toca lo COMPLETADO —eso es el historial de lo que sí hiciste— ni las
- * persistentes, que se quedan en su semana como registro de que ese jueves no
- * fuiste al gimnasio.
+ * NO toca lo COMPLETADO —eso es el historial de lo que sí hiciste— ni lo que
+ * salió del banco, que se queda en su semana como registro de que ese jueves
+ * no fuiste al gimnasio.
  *
  * Idempotente por construcción: borrado el lote, no queda nada que borrar.
  */
@@ -325,17 +305,20 @@ export function applyTaskMove(
 
 /**
  * Orden de la caja de sin colocar. No muta la entrada.
- * Pendientes antes que hechas; dentro de cada grupo, las persistentes primero
- * —son el esqueleto de la semana— y luego alfabético.
+ * Pendientes antes que hechas, y luego alfabético.
  */
 export function sortTasksForDisplay(tasks: readonly PlannerTask[]): PlannerTask[] {
   return [...tasks].sort(
     (a, b) =>
       Number(a.done) - Number(b.done) ||
-      Number(!isPersistent(a)) - Number(!isPersistent(b)) ||
       a.text.localeCompare(b.text, 'es') ||
       a.id.localeCompare(b.id),
   )
+}
+
+/** Bloque de 30 min en el que cae un instante del reloj de pared de Madrid. */
+export function blockOfWallClock(hour: number, minute: number): number {
+  return Math.min(BLOCKS_PER_DAY - 1, hour * 2 + (minute >= 30 ? 1 : 0))
 }
 
 /* ── Zonas de soltado del drag & drop ─────────────────────────────────────── */
@@ -374,7 +357,3 @@ export function parseDropTargetId(id: string): DropTarget | null {
   return null
 }
 
-/** Las tareas sin hora van al final de cualquier ordenación por bloque. */
-function blockOrder(startBlock: number | null): number {
-  return startBlock ?? Number.MAX_SAFE_INTEGER
-}

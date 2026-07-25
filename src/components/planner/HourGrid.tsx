@@ -12,10 +12,18 @@ import { TaskChip } from './TaskChip'
 import type { IsoWeekday, PlannerTask } from '../../data/types'
 
 /** Alto de un bloque de 30 min. Con la madrugada plegada el día mide 36 filas. */
-export const CELL_PX = 28
+export const CELL_PX = 32
 
 /** Ancho del raíl de horas. Lo comparte la fila de días para que las dos rejillas cuadren. */
 export const HOUR_RAIL_WIDTH = '3.25rem'
+
+/** Bloque en el que estamos ahora, para pintar la raya de la hora actual. */
+export interface NowMarker {
+  day: IsoWeekday
+  block: number
+  /** 0–1 dentro del bloque, para que la raya caiga en el minuto exacto. */
+  fraction: number
+}
 
 interface HourGridProps {
   /** Los días que se pintan: los siete en escritorio, uno en móvil. */
@@ -25,6 +33,8 @@ interface HourGridProps {
   /** Tareas colocadas, por día. */
   tasksByDay: ReadonlyMap<IsoWeekday, PlannerTask[]>
   todayWeekday: IsoWeekday | null
+  /** null si la semana visitada no es la actual. */
+  now: NowMarker | null
   nightOpen: boolean
   onToggleNight: () => void
   onOpenTask: (id: string) => void
@@ -58,6 +68,7 @@ export function HourGrid({
   dates,
   tasksByDay,
   todayWeekday,
+  now,
   nightOpen,
   onToggleNight,
   onOpenTask,
@@ -103,14 +114,14 @@ export function HourGrid({
           {days.map((day) => (
             <div
               key={`head-${day}`}
-              className={`border-b border-l pb-1 text-center font-display text-xs uppercase ${
+              className={`border-b-2 border-l pb-2 pt-1 text-center font-display uppercase ${
                 day === todayWeekday
-                  ? 'border-b-streak-lime border-l-line text-streak-lime'
-                  : 'border-line text-ink-soft'
+                  ? 'border-b-streak-lime border-l-line bg-streak-lime/10 text-streak-lime'
+                  : 'border-b-line border-l-line text-ink-soft'
               }`}
             >
-              <span className="block">{weekdayShortEs(day)}</span>
-              <span className="block truncate text-[10px] normal-case text-ink-faint">
+              <span className="block text-sm tracking-widest">{weekdayShortEs(day)}</span>
+              <span className="block truncate text-[11px] normal-case tracking-normal text-ink-faint">
                 {formatDateShortEs(dates[day - 1] ?? '')}
               </span>
             </div>
@@ -122,7 +133,9 @@ export function HourGrid({
               block % 2 === 0 ? (
                 <span
                   key={block}
-                  className="absolute right-2 -translate-y-1/2 font-display text-[10px] tabular-nums text-ink-faint"
+                  className={`absolute right-2 -translate-y-1/2 font-display text-[11px] tabular-nums ${
+                    block % 4 === 0 ? 'text-ink-soft' : 'text-ink-faint'
+                  }`}
                   style={{ top: (block - firstBlock) * CELL_PX }}
                 >
                   {blockLabel(block)}
@@ -134,11 +147,21 @@ export function HourGrid({
           {days.map((day) => {
             const placements = layoutDayTasks(tasksByDay.get(day) ?? [])
             return (
-              <div key={day} className="relative border-l border-line" style={{ height }}>
+              <div
+                key={day}
+                className={`relative border-l border-line ${
+                  day === todayWeekday ? 'bg-streak-lime/5' : ''
+                }`}
+                style={{ height }}
+              >
                 {blocks.map((block) => {
+                  const onTheHour = block % 2 === 0
+                  // Bandas alternas cada hora: sin ellas, 36 filas iguales son
+                  // imposibles de seguir con la vista de izquierda a derecha.
+                  const banded = Math.floor(block / 2) % 2 === 0
                   const className = `absolute inset-x-0 ${
-                    block % 2 === 0 ? 'border-t border-line' : 'border-t border-line/40'
-                  }`
+                    onTheHour ? 'border-t border-line' : 'border-t border-line/30'
+                  } ${banded ? 'bg-surface/40' : ''}`
                   const style = { top: (block - firstBlock) * CELL_PX, height: CELL_PX }
                   return (
                     <div key={block} className="contents">
@@ -150,6 +173,14 @@ export function HourGrid({
                     </div>
                   )
                 })}
+
+                {now !== null && now.day === day && now.block >= firstBlock && (
+                  <div
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-x-0 z-10 border-t-2 border-streak-magenta"
+                    style={{ top: (now.block - firstBlock + now.fraction) * CELL_PX }}
+                  />
+                )}
 
                 {placements.map((placement) => {
                   const chip = (
