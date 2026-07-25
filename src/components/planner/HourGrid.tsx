@@ -14,6 +14,9 @@ import type { IsoWeekday, PlannerTask } from '../../data/types'
 /** Alto de un bloque de 30 min. Con la madrugada plegada el día mide 36 filas. */
 export const CELL_PX = 28
 
+/** Ancho del raíl de horas. Lo comparte la fila de días para que las dos rejillas cuadren. */
+export const HOUR_RAIL_WIDTH = '3.25rem'
+
 interface HourGridProps {
   /** Los días que se pintan: los siete en escritorio, uno en móvil. */
   days: readonly IsoWeekday[]
@@ -75,6 +78,7 @@ export function HourGrid({
         <button
           type="button"
           onClick={onToggleNight}
+          aria-expanded={nightOpen}
           className="flex h-11 items-center gap-2 font-display text-xs uppercase tracking-widest text-ink-soft transition-colors hover:text-ink"
         >
           <span>{nightOpen ? '— madrugada' : '+ 00:00–06:00'}</span>
@@ -86,8 +90,8 @@ export function HourGrid({
 
       <div className="mt-3 overflow-x-auto">
         <div
-          className="grid min-w-full"
-          style={{ gridTemplateColumns: `3.25rem repeat(${days.length}, minmax(0, 1fr))` }}
+          className="grid min-w-full border-r border-b border-line"
+          style={{ gridTemplateColumns: `${HOUR_RAIL_WIDTH} repeat(${days.length}, minmax(0, 1fr))` }}
         >
           {/* Cabecera: esquina vacía sobre el raíl horario, y un día por columna */}
           <div className="border-b border-line" />

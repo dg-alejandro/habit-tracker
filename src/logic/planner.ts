@@ -3,7 +3,8 @@
  * I/O y sin Date.now() sin inyectar.
  *
  * Modelo, en dos frases:
- * - Toda tarea nace dentro de un DÍA. La hora es opcional y se pone después.
+ * - Una tarea nace SIN colocar y se arrastra al día y a la hora que toque.
+ *   Colocarla no es obligatorio: puede quedarse suelta toda la semana.
  * - Hay dos clases: las FIJAS, que salen de una ficha con varios días y su hora
  *   propia en cada uno, y las BREVES, que solo viven la semana en curso.
  *
@@ -322,7 +323,7 @@ export function countNightTasks(tasks: readonly PlannerTask[]): number {
 
 /* ── Presentación ─────────────────────────────────────────────────────────── */
 
-/** Agrupa por día las tareas de una semana. */
+/** Agrupa por día las tareas ya colocadas. Las sueltas salen aparte. */
 export function groupTasksByDay(tasks: readonly PlannerTask[]): Map<IsoWeekday, PlannerTask[]> {
   const byDay = new Map<IsoWeekday, PlannerTask[]>()
   for (const task of tasks) {
@@ -332,6 +333,15 @@ export function groupTasksByDay(tasks: readonly PlannerTask[]): Map<IsoWeekday, 
     else list.push(task)
   }
   return byDay
+}
+
+/**
+ * Las que aún no están colocadas, ya ordenadas. Es la caja donde se escribe:
+ * se vuelcan aquí y se arrastran al día y a la hora que toque, o se quedan
+ * sueltas toda la semana si no hay hora que darles.
+ */
+export function unplacedTasks(tasks: readonly PlannerTask[]): PlannerTask[] {
+  return sortTasksForDisplay(tasks.filter((task) => task.day === null))
 }
 
 /** Las que tienen hora viven en la cuadrícula; las que no, en la lista del día. */
@@ -381,13 +391,25 @@ export function sortTasksForDisplay(tasks: readonly PlannerTask[]): PlannerTask[
 /* ── Zonas de soltado del drag & drop ─────────────────────────────────────── */
 
 export type DropTarget =
+  | { kind: 'unplaced' }
   | { kind: 'day'; day: IsoWeekday }
   | { kind: 'slot'; day: IsoWeekday; block: number }
 
-/** 'day:3' · 'slot:3:20'. */
+/** 'unplaced' · 'day:3' · 'slot:3:20'. */
 export function dropTargetId(target: DropTarget): string {
+  if (target.kind === 'unplaced') return 'unplaced'
   if (target.kind === 'day') return `day:${target.day}`
   return `slot:${target.day}:${target.block}`
+}
+
+/** Día y hora que le tocan a una tarea soltada en esa zona. */
+export function placementFor(target: DropTarget): {
+  day: IsoWeekday | null
+  startBlock: number | null
+} {
+  if (target.kind === 'unplaced') return { day: null, startBlock: null }
+  if (target.kind === 'day') return { day: target.day, startBlock: null }
+  return { day: target.day, startBlock: target.block }
 }
 
 /**
@@ -396,6 +418,7 @@ export function dropTargetId(target: DropTarget): string {
  * split(':') sin cubrir.
  */
 export function parseDropTargetId(id: string): DropTarget | null {
+  if (id === 'unplaced') return { kind: 'unplaced' }
   const parts = id.split(':')
   const [kind, dayText, blockText] = parts
   if (kind === 'day' && parts.length === 2 && dayText !== undefined) {

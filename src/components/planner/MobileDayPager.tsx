@@ -63,14 +63,14 @@ function DayButton({ day, active, isToday, pending, onSelect }: DayButtonProps) 
       className={`flex h-11 w-full flex-col items-center justify-center rounded-sm border text-xs transition-colors ${
         active
           ? 'border-ink bg-ink font-semibold text-paper'
-          : `border-line hover:bg-surface ${isToday ? 'font-semibold text-ink' : 'text-ink-soft'}`
+          : `border-line hover:bg-surface ${isToday ? 'text-streak-lime' : 'text-ink-soft'}`
       }`}
     >
       <span aria-hidden="true">{weekdayInitialEs(day)}</span>
       <span
         aria-hidden="true"
         className={`mt-0.5 h-1 w-1 rounded-full ${
-          pending > 0 ? (active ? 'bg-paper' : 'bg-ink-soft') : 'bg-transparent'
+          pending > 0 ? (active ? 'bg-paper' : 'bg-streak-orange') : 'bg-transparent'
         }`}
       />
     </button>

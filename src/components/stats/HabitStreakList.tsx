@@ -60,7 +60,7 @@ export function HabitStreakList({
       )}
       {archived.length > 0 && (
         <>
-          <h2 className="mt-8 text-xs font-medium uppercase tracking-widest text-ink-faint">
+          <h2 className="mt-8 font-display text-xs uppercase tracking-widest text-streak-lime">
             Archivados
           </h2>
           <ul className="mt-2 divide-y divide-line opacity-50">
@@ -85,14 +85,14 @@ function Row({ row, onSelect }: { row: RowData; onSelect: (id: string) => void }
         <span className="truncate text-sm text-ink">{row.habit.name}</span>
         <span className="flex shrink-0 items-center gap-3">
           <span
-            className={`text-3xl font-extrabold leading-none tabular-nums ${
+            className={`font-display text-3xl font-bold leading-none tabular-nums ${
               row.broken ? 'text-streak-red' : 'text-streak-orange'
             }`}
           >
             {row.current}
           </span>
-          <span className="flex w-16 flex-col items-end text-[11px] leading-tight tabular-nums text-ink-soft">
-            <span>récord {row.record}</span>
+          <span className="flex w-16 flex-col items-end font-display text-[11px] leading-tight tabular-nums text-ink-soft">
+            <span className="text-streak-magenta">récord {row.record}</span>
             <span>{row.weeklyCurrent} sem</span>
           </span>
         </span>

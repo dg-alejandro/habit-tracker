@@ -12,9 +12,9 @@ interface BrokenStreakNoticeProps {
 export function BrokenStreakNotice({ streakBreak }: BrokenStreakNoticeProps) {
   return (
     <div className="mt-4 rounded-sm border-2 border-streak-red px-4 py-3" role="alert">
-      <p className="text-sm font-bold uppercase tracking-widest text-streak-red">Racha rota</p>
+      <p className="font-display text-sm uppercase tracking-widest text-streak-red">Racha rota</p>
       <p className="mt-1 text-sm text-ink">
-        Llevabas <strong className="font-bold text-streak-red">{streakBreak.length} días</strong>; se
+        Llevabas <strong className="font-display font-bold text-streak-red">{streakBreak.length} días</strong>; se
         rompió el {formatDateShortEs(streakBreak.brokenOn)}. Vuelve a empezar hoy.
       </p>
     </div>

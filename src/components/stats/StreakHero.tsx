@@ -13,7 +13,7 @@ interface StreakHeroProps {
  * Número de racha enorme, desproporcionado a propósito (CLAUDE.md §6).
  * Rota de forma reciente: 0 en rojo cayendo + aviso. Viva: color chillón.
  */
-export function StreakHero({ label, streak, accentClass = 'text-streak-lime' }: StreakHeroProps) {
+export function StreakHero({ label, streak, accentClass = 'text-streak-orange' }: StreakHeroProps) {
   const broken = streak.recentlyBroken !== null
   return (
     <section>

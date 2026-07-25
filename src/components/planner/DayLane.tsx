@@ -1,12 +1,9 @@
-import { createTask } from '../../data/repositories/plannerTasksRepo'
 import { formatDateShortEs, weekdayLongEs, weekdayShortEs, type IsoDate } from '../../logic/dates'
 import { DropZone } from './DropZone'
-import { QuickAddField } from './QuickAddField'
 import { TaskList } from './TaskList'
-import type { IsoWeekday, PlannerTask, WeekId } from '../../data/types'
+import type { IsoWeekday, PlannerTask } from '../../data/types'
 
 interface DayLaneProps {
-  weekId: WeekId
   day: IsoWeekday
   date: IsoDate
   isToday: boolean
@@ -19,24 +16,14 @@ interface DayLaneProps {
 }
 
 /**
- * Un día: su cabecera, el campo de crear tareas y sus tareas sin hora.
- * Aquí nace toda tarea breve — no hay bandeja intermedia, se escribe
- * directamente en el día al que pertenece.
+ * Un día: su cabecera y las tareas colocadas ahí que no tienen hora. No hay
+ * campo de escribir — las tareas se crean sueltas arriba y se arrastran aquí.
  */
-export function DayLane({
-  weekId,
-  day,
-  date,
-  isToday,
-  tasks,
-  editingId,
-  onEdit,
-  density,
-}: DayLaneProps) {
+export function DayLane({ day, date, isToday, tasks, editingId, onEdit, density }: DayLaneProps) {
   const pending = tasks.filter((task) => !task.done).length
 
   return (
-    <section className="min-w-0">
+    <section className="min-w-0 border-l border-line px-1.5">
       <h3
         className={`flex items-baseline gap-2 border-b pb-1 ${
           isToday ? 'border-streak-lime' : 'border-line'
@@ -53,19 +40,16 @@ export function DayLane({
           {formatDateShortEs(date)}
         </span>
         {pending > 0 && (
-          <span className="ml-auto font-display text-xs tabular-nums text-ink-faint">
+          <span className="ml-auto font-display text-xs tabular-nums text-streak-orange">
             {pending}
           </span>
         )}
       </h3>
-      <div className="mt-2">
-        <QuickAddField
-          placeholder="Añadir y Enter"
-          label={`Añadir tarea al ${weekdayLongEs(day)}`}
-          onSubmit={(text) => void createTask({ text, weekId, day })}
-        />
-      </div>
-      <DropZone target={{ kind: 'day', day }} className="mt-1 min-h-14 rounded-sm">
+      <DropZone
+        target={{ kind: 'day', day }}
+        className="mt-1 min-h-20 rounded-sm"
+        label={`Soltar en ${weekdayLongEs(day)}`}
+      >
         <TaskList tasks={tasks} editingId={editingId} onEdit={onEdit} density={density} />
       </DropZone>
     </section>

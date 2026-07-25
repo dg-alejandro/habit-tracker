@@ -17,8 +17,8 @@ import type { IsoWeekday, PlannerTask, WeekId } from '../types'
 export interface CreateTaskInput {
   text: string
   weekId: WeekId
-  /** Obligatorio: toda tarea nace dentro de un día. La hora es lo opcional. */
-  day: IsoWeekday
+  /** Ausente = nace sin colocar, para arrastrarla después al día que toque. */
+  day?: IsoWeekday | null
   startBlock?: number | null
   estimatedMinutes?: number
 }
@@ -27,8 +27,8 @@ export interface CreateTaskInput {
 export interface UpdateTaskPatch {
   text?: string
   estimatedMinutes?: number | null
-  /** Colocación. `startBlock: null` = ese día, pero sin hora. */
-  day?: IsoWeekday
+  /** Colocación. `day: null` la devuelve a la caja de sin colocar. */
+  day?: IsoWeekday | null
   startBlock?: number | null
 }
 
@@ -43,7 +43,9 @@ export function listWeekTasks(weekId: WeekId): Promise<PlannerTask[]> {
 export async function createTask(input: CreateTaskInput): Promise<PlannerTask> {
   const text = input.text.trim()
   if (text === '') throw new Error('La tarea necesita un texto')
-  const startBlock = input.startBlock ?? null
+  const day = input.day ?? null
+  // Sin día no hay hora: una tarea sin colocar no vive en la cuadrícula.
+  const startBlock = day === null ? null : (input.startBlock ?? null)
   assertBlock(startBlock)
   assertMinutes(input.estimatedMinutes)
   return await db.transaction('rw', db.plannerTasks, db.outbox, async () => {
@@ -51,7 +53,7 @@ export async function createTask(input: CreateTaskInput): Promise<PlannerTask> {
       id: crypto.randomUUID(),
       text,
       weekId: input.weekId,
-      day: input.day,
+      day,
       startBlock,
       done: false,
       templateId: null,
@@ -87,20 +89,29 @@ export async function updateTask(id: string, patch: UpdateTaskPatch): Promise<vo
     }
     if (patch.estimatedMinutes === null) delete next.estimatedMinutes
     else if (patch.estimatedMinutes !== undefined) next.estimatedMinutes = patch.estimatedMinutes
-    if (patch.day !== undefined) next.day = patch.day
-    if (patch.startBlock !== undefined) next.startBlock = patch.startBlock
+    if (patch.day !== undefined) {
+      next.day = patch.day
+      // Devolverla a la caja de sin colocar le quita también la hora.
+      next.startBlock = patch.day === null ? null : (patch.startBlock ?? next.startBlock)
+    } else if (patch.startBlock !== undefined) {
+      next.startBlock = next.day === null ? null : patch.startBlock
+    }
     return next
   })
 }
 
-/** Mueve la tarea a un día y, si se indica, a un bloque horario. */
+/**
+ * Coloca la tarea: en un día, en un bloque horario, o de vuelta a la caja de
+ * sin colocar (`day: null`). Es lo que llama el drop del drag & drop.
+ */
 export async function moveTask(
   id: string,
-  day: IsoWeekday,
+  day: IsoWeekday | null,
   startBlock: number | null,
 ): Promise<void> {
-  assertBlock(startBlock)
-  await writeTask(id, (current) => ({ ...current, day, startBlock }))
+  const block = day === null ? null : startBlock
+  assertBlock(block)
+  await writeTask(id, (current) => ({ ...current, day, startBlock: block }))
 }
 
 /** Completar o descompletar. La tarea hecha se queda visible y tachada (§4). */

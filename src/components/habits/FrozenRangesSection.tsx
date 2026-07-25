@@ -80,12 +80,13 @@ export function FrozenRangesSection() {
           {ranges.map((range) => (
             <li key={range.id} className="flex min-h-12 items-center justify-between gap-3 py-2">
               <div className="min-w-0">
-                <p className="text-sm text-ink">{formatRange(range)}</p>
+                <p className="font-display text-sm text-ink">{formatRange(range)}</p>
                 {range.note !== undefined && <p className="truncate text-xs text-ink-soft">{range.note}</p>}
               </div>
               <button
                 type="button"
                 onClick={() => void deleteFrozenRange(range.id)}
+                aria-label={`Eliminar el rango ${formatRange(range)}`}
                 className="h-11 shrink-0 rounded-sm px-2 text-sm text-ink-soft transition-colors hover:bg-surface hover:text-ink"
               >
                 Eliminar

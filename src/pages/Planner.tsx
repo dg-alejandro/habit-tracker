@@ -16,10 +16,11 @@ import {
 } from '@dnd-kit/core'
 import { DayLane } from '../components/planner/DayLane'
 import { DraggableTask, DropZone } from '../components/planner/DropZone'
-import { HourGrid } from '../components/planner/HourGrid'
+import { HOUR_RAIL_WIDTH, HourGrid } from '../components/planner/HourGrid'
 import { MobileDayPager } from '../components/planner/MobileDayPager'
 import { TaskChip } from '../components/planner/TaskChip'
 import { TaskEditor } from '../components/planner/TaskEditor'
+import { UnplacedTray } from '../components/planner/UnplacedTray'
 import { WeekNavigator } from '../components/planner/WeekNavigator'
 import { moveTask } from '../data/repositories/plannerTasksRepo'
 import { useIsDesktop, useWeekPreparation, useWeekTasks } from '../hooks/usePlanner'
@@ -30,7 +31,9 @@ import {
   countPendingByDay,
   groupTasksByDay,
   parseDropTargetId,
+  placementFor,
   scheduledTasksByDay,
+  unplacedTasks,
 } from '../logic/planner'
 import type { IsoWeekday } from '../data/types'
 
@@ -42,7 +45,7 @@ const WEEKDAYS: IsoWeekday[] = [1, 2, 3, 4, 5, 6, 7]
  */
 interface PendingMove {
   id: string
-  day: IsoWeekday
+  day: IsoWeekday | null
   startBlock: number | null
 }
 
@@ -108,6 +111,7 @@ export function Planner() {
 
   const editing = (tasks ?? []).find((task) => task.id === editingId)
   const draggingTask = (tasks ?? []).find((task) => task.id === dragging)
+  const unplaced = useMemo(() => unplacedTasks(tasks ?? []), [tasks])
   const byDay = useMemo(() => groupTasksByDay(tasks ?? []), [tasks])
   const pendingByDay = useMemo(() => countPendingByDay(byDay), [byDay])
   const scheduledByDay = useMemo(() => scheduledTasksByDay(byDay), [byDay])
@@ -124,11 +128,11 @@ export function Planner() {
     const target = parseDropTargetId(String(over.id))
     if (target === null) return
     const id = String(active.id)
-    const startBlock = target.kind === 'slot' ? target.block : null
-    setPendingMove({ id, day: target.day, startBlock })
-    void moveTask(id, target.day, startBlock)
+    const { day, startBlock } = placementFor(target)
+    setPendingMove({ id, day, startBlock })
+    void moveTask(id, day, startBlock)
     // Soltar en un día distinto en móvil: seguir a la tarea a donde ha ido.
-    if (!isDesktop) setSelectedDay(target.day)
+    if (!isDesktop && day !== null) setSelectedDay(day)
   }
 
   // La decisión móvil/escritorio se toma en JS, no con `hidden md:`: renderizar
@@ -167,6 +171,13 @@ export function Planner() {
 
         <WeekNavigator weekId={weekId} currentWeekId={currentWeekId} onChange={setWeekId} />
 
+        <UnplacedTray
+          weekId={weekId}
+          tasks={unplaced}
+          editingId={editingId}
+          onEdit={setEditingId}
+        />
+
         {/* El editor vive aquí, a ancho completo: en escritorio una columna de
             día es un séptimo de la pantalla y el formulario no cabría dentro. */}
         {editing !== undefined && (
@@ -184,11 +195,20 @@ export function Planner() {
           />
         )}
 
-        <div className={`mt-6 ${isDesktop ? 'grid grid-cols-7 gap-2' : ''}`}>
+        {/* Misma plantilla de columnas que la cuadrícula de abajo, hueco del
+            raíl horario incluido: las dos rejillas tienen que cuadrar. */}
+        <div
+          className={isDesktop ? 'mt-6 grid' : 'mt-6'}
+          style={
+            isDesktop
+              ? { gridTemplateColumns: `${HOUR_RAIL_WIDTH} repeat(${visibleDays.length}, minmax(0, 1fr))` }
+              : undefined
+          }
+        >
+          {isDesktop && <div />}
           {visibleDays.map((day) => (
             <DayLane
               key={day}
-              weekId={weekId}
               day={day}
               date={days[day - 1] ?? ''}
               isToday={day === todayWeekday}

@@ -8,17 +8,24 @@ interface DropZoneProps {
   className?: string
   /** Estilo geométrico: lo usan las celdas de la cuadrícula, posicionadas en absoluto. */
   style?: React.CSSProperties
+  /** Nombre de la zona, para el lector de pantalla. */
+  label?: string
   children: ReactNode
 }
 
-/** Zona de soltado. El resaltado al pasar por encima es monocromo (bg-surface). */
-export function DropZone({ target, className, style, children }: DropZoneProps) {
+/**
+ * Zona de soltado. Al pasar una tarea por encima se ilumina en lima: es el
+ * único momento en que hace falta gritar «suelta aquí», y encaja con lo que
+ * el lima significa en el resto de la app (§6).
+ */
+export function DropZone({ target, className, style, label, children }: DropZoneProps) {
   const { setNodeRef, isOver } = useDroppable({ id: dropTargetId(target) })
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className={`${className ?? ''} ${isOver ? 'bg-surface' : ''}`}
+      aria-label={label}
+      className={`${className ?? ''} ${isOver ? 'bg-surface outline outline-streak-lime' : ''}`}
     >
       {children}
     </div>

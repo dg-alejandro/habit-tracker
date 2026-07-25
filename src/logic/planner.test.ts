@@ -25,9 +25,11 @@ import {
   layoutDayTasks,
   parseDropTargetId,
   parseFixedTaskGroupId,
+  placementFor,
   planEphemeralPurge,
   scheduledTasksByDay,
   sortTasksForDisplay,
+  unplacedTasks,
   visibleSpan,
 } from './planner'
 import type { IsoWeekday, PlannerTask, TaskTemplate, WeekId } from '../data/types'
@@ -422,9 +424,23 @@ describe('franja nocturna', () => {
 })
 
 describe('agrupación por día para la pantalla', () => {
-  it('groupTasksByDay reparte por día', () => {
-    const byDay = groupTasksByDay([task({ id: 'a', day: 3 }), task({ id: 'b', day: 5 })])
+  it('groupTasksByDay reparte por día y deja fuera las sueltas', () => {
+    const byDay = groupTasksByDay([
+      task({ id: 'a', day: 3 }),
+      task({ id: 'b', day: 5 }),
+      task({ id: 'suelta', day: null }),
+    ])
     expect([...byDay.keys()].sort()).toEqual([3, 5])
+  })
+
+  it('unplacedTasks recoge justo las que aún no tienen día', () => {
+    const result = unplacedTasks([
+      task({ id: 'colocada', day: 3 }),
+      task({ id: 'suelta', day: null }),
+      task({ id: 'hecha', day: null, done: true }),
+    ])
+    // Ordenadas para mostrar: lo pendiente antes que lo hecho.
+    expect(result.map((row) => row.id)).toEqual(['suelta', 'hecha'])
   })
 
   it('scheduledTasksByDay separa las que tienen hora de las que no', () => {
@@ -438,11 +454,17 @@ describe('agrupación por día para la pantalla', () => {
   })
 
   it('applyTaskMove superpone el movimiento sin mutar la entrada', () => {
-    const tasks = [task({ id: 'a', day: 1, startBlock: null })]
+    const tasks = [task({ id: 'a', day: null, startBlock: null })]
     const moved = applyTaskMove(tasks, { id: 'a', day: 3, startBlock: 20 })
     expect(moved[0]?.day).toBe(3)
     expect(moved[0]?.startBlock).toBe(20)
-    expect(tasks[0]?.day).toBe(1)
+    expect(tasks[0]?.day).toBeNull()
+  })
+
+  it('applyTaskMove también sabe descolocar', () => {
+    const tasks = [task({ id: 'a', day: 3, startBlock: 20 })]
+    const moved = applyTaskMove(tasks, { id: 'a', day: null, startBlock: null })
+    expect(moved[0]?.day).toBeNull()
   })
 
   it('applyTaskMove sin movimiento devuelve una copia intacta', () => {
@@ -490,8 +512,9 @@ describe('sortTasksForDisplay', () => {
 })
 
 describe('zonas de soltado', () => {
-  it('ida y vuelta de los dos tipos de zona', () => {
+  it('ida y vuelta de los tres tipos de zona', () => {
     const targets = [
+      { kind: 'unplaced' } as const,
       { kind: 'day', day: 3 as IsoWeekday } as const,
       { kind: 'slot', day: 3 as IsoWeekday, block: 20 } as const,
     ]
@@ -501,8 +524,15 @@ describe('zonas de soltado', () => {
   })
 
   it('los identificadores son los esperados', () => {
+    expect(dropTargetId({ kind: 'unplaced' })).toBe('unplaced')
     expect(dropTargetId({ kind: 'day', day: 3 })).toBe('day:3')
     expect(dropTargetId({ kind: 'slot', day: 3, block: 20 })).toBe('slot:3:20')
+  })
+
+  it('placementFor traduce la zona a día y hora', () => {
+    expect(placementFor({ kind: 'unplaced' })).toEqual({ day: null, startBlock: null })
+    expect(placementFor({ kind: 'day', day: 3 })).toEqual({ day: 3, startBlock: null })
+    expect(placementFor({ kind: 'slot', day: 3, block: 20 })).toEqual({ day: 3, startBlock: 20 })
   })
 
   it('un id inválido devuelve null en vez de una zona inventada', () => {

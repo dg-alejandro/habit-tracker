@@ -43,11 +43,11 @@ export function NotesHistory({ habit, entries }: NotesHistoryProps) {
       ) : (
         groups.map((group) => (
           <div key={group.id} className="mt-4">
-            <h3 className="text-sm font-semibold text-ink">{group.label}</h3>
+            <h3 className="font-display text-sm uppercase text-ink">{group.label}</h3>
             <ul className="mt-1 divide-y divide-line">
               {group.notes.map((note) => (
                 <li key={note.date} className="flex gap-3 py-2">
-                  <span className="w-8 shrink-0 pt-0.5 text-right text-xs tabular-nums text-ink-soft">
+                  <span className="w-8 shrink-0 pt-0.5 text-right font-display text-xs tabular-nums text-ink-soft">
                     {note.day}
                   </span>
                   <span className="text-sm text-ink">{note.text}</span>

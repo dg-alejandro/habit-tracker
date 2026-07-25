@@ -245,6 +245,26 @@ describe('validación de escrituras', () => {
     expect(moved?.startBlock).toBeNull()
   })
 
+  it('nace sin colocar cuando no se le da día', async () => {
+    const created = await createTask({ text: 'Idea suelta', weekId: WEEK })
+    expect(created.day).toBeNull()
+    expect(created.startBlock).toBeNull()
+  })
+
+  it('devolverla a sin colocar le quita también la hora', async () => {
+    const created = await createTask({ text: 'Tarea', weekId: WEEK, day: 4, startBlock: 20 })
+    await moveTask(created.id, null, 20)
+    const moved = await db.plannerTasks.get(created.id)
+    expect(moved?.day).toBeNull()
+    expect(moved?.startBlock).toBeNull()
+  })
+
+  it('una tarea sin colocar que no se hace también muere al cambiar de semana', async () => {
+    const suelta = await createTask({ text: 'Idea vieja', weekId: '2026-W29' })
+    await ensureWeekReady(WEEK, WEEK)
+    expect(await db.plannerTasks.get(suelta.id)).toBeUndefined()
+  })
+
   it('editar quita la duración cuando se pide, en una sola escritura', async () => {
     const created = await createTask({ text: 'Tarea', weekId: WEEK, day: 1, estimatedMinutes: 60 })
     await updateTask(created.id, {

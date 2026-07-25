@@ -98,7 +98,7 @@ describe('mapeos ida/vuelta', () => {
       id: 't1',
       text: 'Llamar al banco',
       weekId: '2026-W31',
-      day: null,
+      day: 3,
       startBlock: null,
       done: false,
       templateId: null,

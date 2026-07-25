@@ -87,11 +87,12 @@ function WeeklyStreakLine({ weekly }: { weekly: WeeklyStreakResult }) {
     <section className="mt-8">
       <p className="font-display text-xs uppercase tracking-widest text-ink-soft">Racha semanal</p>
       <div className="mt-1 flex items-baseline gap-3">
-        <p className="text-4xl font-extrabold leading-none tabular-nums text-streak-lime">
+        <p className="font-display text-4xl font-bold leading-none tabular-nums text-streak-orange">
           {weekly.current}
         </p>
         <p className="text-sm text-ink-soft">
-          semanas · récord <span className="tabular-nums">{weekly.record}</span>
+          semanas · récord{' '}
+          <span className="font-display tabular-nums text-streak-magenta">{weekly.record}</span>
         </p>
       </div>
       <p className={`mt-1 text-sm ${display.className}`}>{display.text(done, effectiveTarget)}</p>

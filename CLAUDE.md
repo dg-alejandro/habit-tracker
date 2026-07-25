@@ -109,7 +109,7 @@ Con el umbral del 80 %, un día cuenta con **12 de 14** cumplidos.
 
 El planificador es **independiente de los hábitos**: no los muestra ni interactúa con ellos.
 
-**Regla que ordena todo lo demás: toda tarea vive dentro de un día.** No hay bandeja intermedia ni limbo. La hora sí es opcional, y lo normal es que lo sea: los horarios varían y un jueves no se parece a un sábado.
+**Regla que ordena todo lo demás: una tarea nace SIN colocar y se arrastra a donde toque.** Escribir no obliga a decidir el día ni la hora: se vuelca la idea en la caja de *sin colocar* y luego se lleva al día, o directamente a una hora de la cuadrícula. Puede quedarse suelta toda la semana. Los horarios varían y un jueves no se parece a un sábado — decidir el momento es un paso aparte de anotar la tarea.
 
 ### Modelo de tarea
 
@@ -118,8 +118,8 @@ El planificador es **independiente de los hábitos**: no los muestra ni interact
 | `text` | Título. Obligatorio. |
 | `estimatedMinutes` | Duración estimada. Opcional. Determina cuántos bloques ocupa al colocarla. |
 | `weekId` | Semana ISO a la que pertenece (`2026-W31`). |
-| `day` | Día de la semana. Toda tarea tiene uno. |
-| `startBlock` | Bloque horario de inicio, o `null` si ese día no tiene hora fijada. |
+| `day` | Día en el que está colocada, o `null` si aún no lo está. |
+| `startBlock` | Bloque horario de inicio, o `null` si no tiene hora. Sin día tampoco hay hora. |
 | `done` | Completada o no. |
 | `templateId` | La tarea fija que la generó, o `null` si es breve. |
 | `carriedOverCount` | **En desuso.** Vale siempre cero; la columna sigue en el esquema remoto, que no se toca. |
@@ -132,13 +132,14 @@ El planificador es **independiente de los hábitos**: no los muestra ni interact
 - Editar la ficha afecta solo a las semanas que aún no se han abierto.
 - Se gestionan desde una pantalla propia dentro del planificador.
 
-**Tareas breves.** Lo que solo importa esta semana. Se escriben directamente sobre un día. **Al cambiar de semana, las que quedaron sin hacer se borran**: no te siguen ni se acumulan. Lo que sí completaste se queda como historial de esa semana, igual que las tareas fijas no hechas, que son el registro de que ese jueves no fuiste al gimnasio.
+**Tareas breves.** Lo que solo importa esta semana. Se escriben en la caja de *sin colocar* y se arrastran desde ahí. **Al cambiar de semana, las que quedaron sin hacer se borran**, estén colocadas o no: no te siguen ni se acumulan. Lo que sí completaste se queda como historial de esa semana, igual que las tareas fijas no hechas, que son el registro de que ese jueves no fuiste al gimnasio.
 
 **No hay arrastre entre semanas.** Cada semana empieza limpia.
 
 ### Creación y edición
 
-- **Creación rápida:** un campo de texto en cada día. Escribir y Enter. Sin modales ni formularios.
+- **Un solo campo de escritura**, arriba, en la caja de *sin colocar*. Escribir y Enter, tantas veces seguidas como haga falta. Sin modales, sin elegir día, sin formularios.
+- **Colocar es arrastrar:** de la caja a un día, de la caja a una hora, de un día a otro, o de vuelta a la caja para descolocarla.
 - **Editar:** al tocar la tarea se abre en línea para cambiar texto, día, hora, duración o borrarla.
 - **Completar:** casilla durante la semana. La tarea hecha se queda visible, tachada y atenuada.
 
@@ -147,7 +148,7 @@ El planificador es **independiente de los hábitos**: no los muestra ni interact
 - Cobertura **00:00 a 24:00**, en bloques de **30 minutos**. Es donde se ven las tareas que sí tienen hora; las que no, viven en la lista de su día.
 - Por defecto la franja **00:00–06:00 aparece plegada**, con un botón para desplegarla y el recuento de lo que esconde.
 - Una tarea con duración estimada ocupa los bloques proporcionales al colocarla. Solaparlas es legítimo: se reparten a media anchura.
-- Se arrastra de un día a otro y de un día a un bloque horario. **Todo lo que hace el arrastre se puede hacer también desde los selectores del editor**, porque el gesto táctil no es verificable desde aquí.
+- Se arrastra desde la caja de *sin colocar* y entre días y bloques. **Todo lo que hace el arrastre se puede hacer también desde los selectores del editor**, porque el gesto táctil no es verificable desde aquí.
 - En móvil: un día visible cada vez, scroll vertical, navegación entre días.
 
 ---

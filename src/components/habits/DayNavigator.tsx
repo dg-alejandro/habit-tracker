@@ -26,8 +26,8 @@ export function DayNavigator({ date, today, onChange }: DayNavigatorProps) {
       </button>
 
       <div className="min-w-0 text-center">
-        <p className="truncate text-base font-semibold capitalize text-ink">{label ?? formatDateEs(date)}</p>
-        {label !== null && <p className="truncate text-xs text-ink-soft">{formatDateEs(date)}</p>}
+        <p className="truncate font-display text-base uppercase text-ink">{label ?? formatDateEs(date)}</p>
+        {label !== null && <p className="truncate font-display text-xs text-ink-soft">{formatDateEs(date)}</p>}
       </div>
 
       <button

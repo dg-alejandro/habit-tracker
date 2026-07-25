@@ -25,14 +25,14 @@ export function WeekNavigator({ weekId, currentWeekId, onChange }: WeekNavigator
       </button>
 
       <div className="min-w-0 text-center">
-        <p className="truncate text-base font-semibold text-ink">{formatWeekRangeEs(weekId)}</p>
+        <p className="truncate font-display text-base text-ink">{formatWeekRangeEs(weekId)}</p>
         {isCurrent ? (
-          <p className="text-xs text-ink-soft">Esta semana</p>
+          <p className="font-display text-xs text-ink-soft">Esta semana</p>
         ) : (
           <button
             type="button"
             onClick={() => onChange(currentWeekId)}
-            className="text-xs text-ink-soft underline-offset-2 hover:text-ink hover:underline"
+            className="inline-flex h-11 items-center font-display text-xs text-ink-soft underline-offset-2 hover:text-streak-lime hover:underline"
           >
             Volver a esta semana
           </button>

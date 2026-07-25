@@ -28,7 +28,7 @@ const WEEKDAYS: IsoWeekday[] = [1, 2, 3, 4, 5, 6, 7]
 export function TaskEditor({ task, onClose }: TaskEditorProps) {
   const [text, setText] = useState(task.text)
   const [minutes, setMinutes] = useState(task.estimatedMinutes?.toString() ?? '')
-  const [day, setDay] = useState<IsoWeekday>(task.day ?? 1)
+  const [day, setDay] = useState<IsoWeekday | null>(task.day)
   const [startBlock, setStartBlock] = useState<number | null>(task.startBlock)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
 
@@ -75,10 +75,16 @@ export function TaskEditor({ task, onClose }: TaskEditorProps) {
         <label className="block min-w-32 flex-1">
           <span className="font-display text-xs uppercase tracking-widest text-ink-soft">Día</span>
           <select
-            value={day}
-            onChange={(event) => setDay(Number(event.currentTarget.value) as IsoWeekday)}
+            value={day ?? ''}
+            onChange={(event) => {
+              const value = event.currentTarget.value
+              setDay(value === '' ? null : (Number(value) as IsoWeekday))
+              // Sin día no hay hora: vuelve a la caja de sin colocar entera.
+              if (value === '') setStartBlock(null)
+            }}
             className={`mt-1 ${FIELD_CLASS} capitalize`}
           >
+            <option value="">Sin colocar</option>
             {WEEKDAYS.map((weekday) => (
               <option key={weekday} value={weekday}>
                 {weekdayLongEs(weekday)}
@@ -91,12 +97,13 @@ export function TaskEditor({ task, onClose }: TaskEditorProps) {
           <span className="font-display text-xs uppercase tracking-widest text-ink-soft">Hora</span>
           <select
             value={startBlock ?? ''}
+            disabled={day === null}
             onChange={(event) =>
               setStartBlock(
                 event.currentTarget.value === '' ? null : Number(event.currentTarget.value),
               )
             }
-            className={`mt-1 ${FIELD_CLASS} font-display tabular-nums`}
+            className={`mt-1 ${FIELD_CLASS} font-display tabular-nums disabled:text-ink-faint`}
           >
             <option value="">Sin hora</option>
             {Array.from({ length: BLOCKS_PER_DAY }, (_, block) => (

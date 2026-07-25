@@ -22,7 +22,7 @@ export function FixedTasks() {
   const [editingId, setEditingId] = useState<string | null>(null)
 
   return (
-    <div className="mx-auto max-w-xl px-5 py-6 md:px-8 md:py-10">
+    <div className="mx-auto max-w-xl px-5 py-6 md:px-10 md:py-10">
       <Link
         to="/planificador"
         className="inline-flex h-11 items-center font-display text-xs uppercase tracking-widest text-ink-soft transition-colors hover:text-streak-lime"
@@ -95,11 +95,12 @@ export function FixedTasks() {
                       setCreating(false)
                       setEditingId(fixed.groupId)
                     }}
+                    aria-label={`Editar ${fixed.text}`}
                     className="h-11 shrink-0 rounded-sm px-2 font-display text-xs uppercase tracking-widest text-ink-soft transition-colors hover:bg-surface hover:text-ink"
                   >
                     Editar
                   </button>
-                  <DeleteFixedTaskButton groupId={fixed.groupId} />
+                  <DeleteFixedTaskButton groupId={fixed.groupId} text={fixed.text} />
                 </div>
               )}
             </li>
@@ -111,7 +112,7 @@ export function FixedTasks() {
 }
 
 /** Confirmación en línea de dos pasos, como en la copia de seguridad. */
-function DeleteFixedTaskButton({ groupId }: { groupId: string }) {
+function DeleteFixedTaskButton({ groupId, text }: { groupId: string; text: string }) {
   const [confirming, setConfirming] = useState(false)
 
   if (!confirming) {
@@ -119,6 +120,7 @@ function DeleteFixedTaskButton({ groupId }: { groupId: string }) {
       <button
         type="button"
         onClick={() => setConfirming(true)}
+        aria-label={`Eliminar ${text}`}
         className="h-11 shrink-0 rounded-sm px-2 font-display text-xs uppercase tracking-widest text-ink-soft transition-colors hover:bg-surface hover:text-ink"
       >
         Eliminar

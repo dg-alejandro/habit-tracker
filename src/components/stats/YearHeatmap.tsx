@@ -77,7 +77,7 @@ export function YearHeatmap({ year, years, onYearChange, cells }: YearHeatmapPro
           >
             ←
           </button>
-          <span className="text-sm font-semibold tabular-nums text-ink">{year}</span>
+          <span className="font-display text-sm tabular-nums text-ink">{year}</span>
           <button
             type="button"
             aria-label="Año siguiente"
@@ -94,7 +94,7 @@ export function YearHeatmap({ year, years, onYearChange, cells }: YearHeatmapPro
           {WEEKDAY_LABELS.map((label, index) => (
             <span
               key={index}
-              className="flex h-2.5 items-center text-[9px] leading-none text-ink-faint"
+              className="flex h-2.5 items-center font-display text-[9px] leading-none text-ink-faint"
             >
               {label}
             </span>
@@ -105,7 +105,7 @@ export function YearHeatmap({ year, years, onYearChange, cells }: YearHeatmapPro
             {monthLabels.map((month) => (
               <span
                 key={month.id}
-                className="absolute top-0 text-[10px] text-ink-faint"
+                className="absolute top-0 font-display text-[10px] text-ink-faint"
                 style={{ left: month.left }}
               >
                 {month.label}

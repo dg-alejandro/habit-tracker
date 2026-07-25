@@ -78,7 +78,10 @@ export interface PlannerTask {
   estimatedMinutes?: number
   /** Semana ISO a la que pertenece, p. ej. '2026-W31'. */
   weekId: WeekId
-  /** null = en el inbox semanal. */
+  /**
+   * Día en el que está colocada, o `null` si aún no lo está: las tareas nacen
+   * SIN colocar y se arrastran al día y a la hora que toque (§4).
+   */
   day: IsoWeekday | null
   /** Bloque de 30 min desde las 00:00 (0–47); null = sin hora asignada. */
   startBlock: number | null

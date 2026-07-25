@@ -128,19 +128,21 @@ function SortableHabitItem({ habit, editing, onStartEdit, onStopEdit }: Sortable
           </button>
           <div className="min-w-0 flex-1">
             <p className="truncate text-base text-ink">{habit.name}</p>
-            <p className="text-xs text-ink-soft">{habitMeta(habit)}</p>
+            <p className="font-display text-xs text-ink-soft">{habitMeta(habit)}</p>
           </div>
           <button
             type="button"
             onClick={onStartEdit}
-            className="h-11 shrink-0 rounded-sm px-2 text-sm text-ink-soft transition-colors hover:bg-surface hover:text-ink"
+            aria-label={`Editar ${habit.name}`}
+            className="h-11 shrink-0 rounded-sm px-2 font-display text-xs uppercase tracking-widest text-ink-soft transition-colors hover:bg-surface hover:text-ink"
           >
             Editar
           </button>
           <button
             type="button"
             onClick={() => void archiveHabit(habit.id)}
-            className="h-11 shrink-0 rounded-sm px-2 text-sm text-ink-soft transition-colors hover:bg-surface hover:text-ink"
+            aria-label={`Archivar ${habit.name}`}
+            className="h-11 shrink-0 rounded-sm px-2 font-display text-xs uppercase tracking-widest text-ink-soft transition-colors hover:bg-surface hover:text-ink"
           >
             Archivar
           </button>

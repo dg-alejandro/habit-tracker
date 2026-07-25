@@ -149,7 +149,7 @@ export function FixedTaskForm({ initial, onSubmit, onCancel }: FixedTaskFormProp
       </ul>
 
       {activeDays.length === 0 && (
-        <p className="mt-2 text-sm font-semibold text-streak-orange">Elige al menos un día.</p>
+        <p className="mt-2 text-sm font-semibold text-ink">Elige al menos un día.</p>
       )}
 
       <div className="mt-4 flex items-center justify-end gap-2">

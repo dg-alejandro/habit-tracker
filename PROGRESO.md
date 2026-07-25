@@ -7,7 +7,7 @@ Es lo que permite que una instancia nueva sepa dónde estamos sin releer todo el
 
 ## Estado actual
 
-**Fase en curso:** Fase 4 — Planificador semanal: construida y después **rehecha a petición del propietario** (2026-07-25) en modelo y en estética. 290 tests en verde, build limpio, verificada en navegador. Pendiente de la **prueba de aceptación del propietario**.
+**Fase en curso:** Fase 4 — Planificador semanal: construida y después **rehecha a petición del propietario** (2026-07-25) en modelo y en estética, con los hallazgos del revisor aplicados. 291 tests en verde, build limpio, verificada en navegador. Pendiente de la **prueba de aceptación del propietario**.
 
 **Ojo al criterio de aceptación del ROADMAP para esta fase** («planifico una semana completa desde el iPhone sin abrir el PC»): el propietario ha aclarado que su uso real es **montar la semana en el PC** y usar el iPhone para consultar y marcar. El criterio está pendiente de reescribirse.
 **También pendiente:** la aceptación de la Fase 3 (sus cifras contra el historial real). Las dos pruebas son independientes.
@@ -147,6 +147,9 @@ El planificador de la mañana no le servía: no entendía la bandeja, el modelo 
 - **Dos tipografías, las dos del sistema.** `font-display` es la monoespaciada del sistema y se usa en títulos, rótulos, horas y cifras. Se descartó una fuente de píxeles real (Silkscreen, Press Start 2P) porque exigía meter un archivo en el repo: el propietario eligió no descargar nada. Si algún día cambia de idea, es cambiar un token.
 - **Esquinas casi rectas en toda la app** (`rounded-sm`) y rótulos en versalitas espaciadas: es lo que responde al «no parece cuadrado del todo».
 - **Los chillones salen de las estadísticas**, con un trabajo asignado a cada uno (tabla en §6). `streak-lime` señala «estás aquí» y estructura; `streak-red` sigue siendo solo ruptura.
+- **Un único color para las cifras de racha: naranja.** Antes la global iba en lima y las de hábito en naranja. Con el lima significando ahora «estás aquí y estructura», una cifra en lima contradecía la tabla. Los récords, magenta en todas partes (hallazgo del revisor).
+- **Migración Dexie v3: las tareas de la bandeja se adoptan al lunes.** Sin ella, las filas con `day` nulo del planificador viejo quedaban invisibles —la interfaz nueva solo dibuja por día—, imposibles de borrar, y la bajada las traía de vuelta una y otra vez. Se encolan para que el otro dispositivo converja, `PlannerTask.day` deja de admitir nulo y el codec de bajada coerciona a lunes cualquier fila remota que aún lo traiga (hallazgo GRAVE del revisor, con test de migración).
+- **La fila de días y la cuadrícula horaria comparten plantilla de columnas.** Eran dos rejillas de siete columnas distintas y desalineadas —una con gutter, la otra desplazada 52 px por el raíl de horas—, que es exactamente lo que el propietario veía como «no parece cuadrado del todo». La caja de la cuadrícula cierra ahora por los cuatro lados y todas las pantallas usan el mismo gutter de contenedor.
 
 
 ---

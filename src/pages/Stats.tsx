@@ -5,7 +5,8 @@ import { GlobalStatsView } from '../components/stats/GlobalStatsView'
 import { HabitStatsView } from '../components/stats/HabitStatsView'
 
 /*
- * Rachas y estadísticas: la única pantalla con color (CLAUDE.md §5.3 y §6).
+ * Rachas y estadísticas (CLAUDE.md §5.3). Es donde los chillones pesan más,
+ * pero desde el rediseño del 2026-07-25 ya no son exclusivos de aquí (§6).
  * Dos vistas con estado local: la global y el detalle de un hábito.
  */
 export function Stats() {
