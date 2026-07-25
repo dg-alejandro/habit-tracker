@@ -28,6 +28,9 @@ export interface CreateTaskInput {
 export interface UpdateTaskPatch {
   text?: string
   estimatedMinutes?: number | null
+  /** Colocación. Ambos deben venir juntos: sin día no puede haber hora. */
+  day?: IsoWeekday | null
+  startBlock?: number | null
 }
 
 /** Todas las tareas de una semana (índice `weekId`). */
@@ -62,11 +65,15 @@ export function createTask(input: CreateTaskInput): Promise<PlannerTask> {
 }
 
 /**
- * Edita texto y duración. Se compone la fila entera y se hace `put`: hay que
- * poder ELIMINAR la duración, y confiar en cómo Dexie trata `undefined` en un
- * parche parcial es frágil.
+ * Edita la tarea entera en UNA escritura: texto, duración y colocación. Que sea
+ * una sola importa — dos transacciones sin esperar releerían la misma fila y la
+ * segunda pisaría lo que escribió la primera.
+ *
+ * Se compone la fila completa y se hace `put`: hay que poder ELIMINAR la
+ * duración, y confiar en cómo Dexie trata `undefined` en un parche es frágil.
  */
 export async function updateTask(id: string, patch: UpdateTaskPatch): Promise<void> {
+  if (patch.day !== undefined) assertBlock(patch.day === null ? null : (patch.startBlock ?? null))
   await writeTask(id, (current) => {
     const next: PlannerTask = { ...current }
     if (patch.text !== undefined) {
@@ -76,6 +83,11 @@ export async function updateTask(id: string, patch: UpdateTaskPatch): Promise<vo
     }
     if (patch.estimatedMinutes === null) delete next.estimatedMinutes
     else if (patch.estimatedMinutes !== undefined) next.estimatedMinutes = patch.estimatedMinutes
+    if (patch.day !== undefined) {
+      next.day = patch.day
+      // Sin día no hay hora: una tarea del inbox no vive en la cuadrícula.
+      next.startBlock = patch.day === null ? null : (patch.startBlock ?? null)
+    }
     return next
   })
 }
