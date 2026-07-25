@@ -35,7 +35,7 @@ export function NavBar() {
               to={section.to}
               end={section.end}
               className={({ isActive }) =>
-                `relative flex h-14 items-center justify-center border-t-2 font-display text-[11px] uppercase tracking-wide ${
+                `relative flex h-14 min-w-0 items-center justify-center overflow-hidden border-t-2 px-0.5 font-display text-[10px] uppercase ${
                   isActive
                     ? 'border-t-streak-lime text-streak-lime'
                     : 'border-t-transparent text-ink-soft'

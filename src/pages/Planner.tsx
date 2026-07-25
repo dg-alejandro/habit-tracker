@@ -146,7 +146,7 @@ export function Planner() {
       onDragCancel={() => setDragging(null)}
     >
       <div className="mx-auto max-w-xl px-5 py-6 md:max-w-6xl md:px-8 md:py-10">
-        <div className="flex items-baseline justify-between gap-3 border-b border-line pb-3">
+        <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-b border-line pb-3">
           <h1 className="font-display text-2xl uppercase tracking-widest text-ink">
             Planificador
           </h1>

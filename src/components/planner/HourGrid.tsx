@@ -70,7 +70,7 @@ export function HourGrid({
 
   return (
     <section className="mt-10">
-      <div className="flex items-baseline justify-between gap-3 border-b border-line pb-2">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 border-b border-line pb-2">
         <h2 className="font-display text-xs uppercase tracking-widest text-streak-lime">Horario</h2>
         <button
           type="button"
