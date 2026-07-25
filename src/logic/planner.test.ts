@@ -15,32 +15,31 @@ import {
   countPendingByDay,
   dropTargetId,
   durationLabel,
-  fixedTaskEntryId,
-  generateWeekTasks,
-  generatedTaskId,
-  groupFixedTasks,
   groupTasksByDay,
+  isPersistent,
   isValidBlock,
   isValidEstimatedMinutes,
   layoutDayTasks,
   parseDropTargetId,
-  parseFixedTaskGroupId,
+  persistentMark,
   placementFor,
   planEphemeralPurge,
-  scheduledTasksByDay,
+  planWeekRollover,
   sortTasksForDisplay,
   unplacedTasks,
   visibleSpan,
+  weeklyCopyId,
 } from './planner'
-import type { IsoWeekday, PlannerTask, TaskTemplate, WeekId } from '../data/types'
+import type { IsoWeekday, PlannerTask, WeekId } from '../data/types'
 
 const WEEK: WeekId = '2026-W30'
+const NEXT: WeekId = '2026-W31'
 
 function task(overrides: Partial<PlannerTask> & Pick<PlannerTask, 'id'>): PlannerTask {
   return {
     text: overrides.id,
     weekId: WEEK,
-    day: 1,
+    day: null,
     startBlock: null,
     done: false,
     templateId: null,
@@ -50,14 +49,12 @@ function task(overrides: Partial<PlannerTask> & Pick<PlannerTask, 'id'>): Planne
   }
 }
 
-function template(overrides: Partial<TaskTemplate> & Pick<TaskTemplate, 'id'>): TaskTemplate {
-  return {
-    text: overrides.id,
-    weekday: 1,
-    startBlock: null,
-    updatedAt: 0,
-    ...overrides,
-  }
+/** Tarea persistente: la que vuelve sola cada semana. */
+function persistent(
+  overrides: Partial<PlannerTask> & Pick<PlannerTask, 'id'>,
+  mark = `persist:${overrides.id}`,
+): PlannerTask {
+  return task({ ...overrides, templateId: mark })
 }
 
 /** Tarea colocada en la rejilla: bloque de inicio y duración en minutos. */
@@ -121,7 +118,7 @@ describe('duración de una tarea en bloques', () => {
     expect(visibleSpan(18, 90)).toBe(3)
   })
 
-  it('blockRangeLabel devuelve null sin hora asignada', () => {
+  it('blockRangeLabel devuelve null si la tarea no está colocada', () => {
     expect(blockRangeLabel(null, 90)).toBeNull()
   })
 
@@ -150,164 +147,121 @@ describe('duración de una tarea en bloques', () => {
   })
 })
 
-describe('tareas fijas — una ficha, varios días, una hora por día', () => {
-  it('ida y vuelta del identificador de grupo', () => {
-    const id = fixedTaskEntryId('gimnasio', 4)
-    expect(id).toBe('grp:gimnasio:4')
-    expect(parseFixedTaskGroupId(id)).toBe('gimnasio')
+describe('persistentes y puntuales', () => {
+  it('la marca de persistencia viaja dentro de templateId', () => {
+    // La tabla remota no tiene columna para esto y añadirla exigiría SQL a mano.
+    expect(persistentMark('abc')).toBe('persist:abc')
+    expect(isPersistent(persistent({ id: 'a' }))).toBe(true)
   })
 
-  it('el grupo va en el id, así que renombrar la tarea no rompe la agrupación', () => {
-    const group = 'abc-123'
-    const templates = [
-      template({ id: fixedTaskEntryId(group, 4), text: 'Gimnasio', weekday: 4, startBlock: 38 }),
-      template({ id: fixedTaskEntryId(group, 6), text: 'GIMNASIO', weekday: 6, startBlock: 22 }),
-    ]
-    expect(groupFixedTasks(templates)).toHaveLength(1)
+  it('una tarea sin marca es puntual', () => {
+    expect(isPersistent(task({ id: 'a' }))).toBe(false)
   })
 
-  it('junta los días de una misma tarea, cada uno con su hora', () => {
-    const group = 'g1'
-    const [fixed] = groupFixedTasks([
-      template({ id: fixedTaskEntryId(group, 6), text: 'Gimnasio', weekday: 6, startBlock: 22 }),
-      template({ id: fixedTaskEntryId(group, 4), text: 'Gimnasio', weekday: 4, startBlock: 38 }),
-    ])
-    expect(fixed?.text).toBe('Gimnasio')
-    // Ordenados de lunes a domingo, aunque entren al revés.
-    expect(fixed?.days).toEqual([
-      { weekday: 4, startBlock: 38 },
-      { weekday: 6, startBlock: 22 },
-    ])
+  it('una plantilla del planificador viejo no cuenta como persistente', () => {
+    // Las tareas que generó el catálogo de tareas fijas llevaban otro prefijo.
+    expect(isPersistent(task({ id: 'a', templateId: 'grp:g1:4' }))).toBe(false)
   })
 
-  it('un día puede no tener hora: los horarios varían y no se obliga a ponerla', () => {
-    const [fixed] = groupFixedTasks([
-      template({ id: fixedTaskEntryId('g1', 7), text: 'Gimnasio', weekday: 7, startBlock: null }),
-    ])
-    expect(fixed?.days[0]?.startBlock).toBeNull()
-  })
-
-  it('una fila sin grupo en el id forma su propia ficha: nada del planificador viejo se pierde', () => {
-    const fixed = groupFixedTasks([
-      template({ id: 'uuid-antiguo', text: 'Compra', weekday: 6 }),
-      template({ id: fixedTaskEntryId('g1', 4), text: 'Gimnasio', weekday: 4 }),
-    ])
-    expect(fixed.map((row) => row.text)).toEqual(['Compra', 'Gimnasio'])
-    expect(fixed[0]?.groupId).toBe('uuid-antiguo')
-  })
-
-  it('un id que no cumple el formato no cuenta como grupo', () => {
-    expect(parseFixedTaskGroupId('grp:g1:8')).toBeNull()
-    expect(parseFixedTaskGroupId('grp:g1')).toBeNull()
-    expect(parseFixedTaskGroupId('uuid-suelto')).toBeNull()
-  })
-
-  it('las fichas salen por orden alfabético', () => {
-    const fixed = groupFixedTasks([
-      template({ id: fixedTaskEntryId('b', 1), text: 'Zumba' }),
-      template({ id: fixedTaskEntryId('a', 1), text: 'Ábaco' }),
-    ])
-    expect(fixed.map((row) => row.text)).toEqual(['Ábaco', 'Zumba'])
+  it('el id de la copia semanal es determinista: dos dispositivos convergen', () => {
+    expect(weeklyCopyId('persist:abc', WEEK)).toBe('persist:abc@2026-W30')
+    expect(weeklyCopyId('persist:abc', WEEK)).toBe(weeklyCopyId('persist:abc', WEEK))
+    expect(weeklyCopyId('persist:abc', NEXT)).not.toBe(weeklyCopyId('persist:abc', WEEK))
   })
 })
 
-describe('generatedTaskId — la clave de la convergencia', () => {
-  it('es determinista entre llamadas', () => {
-    expect(generatedTaskId('t1', WEEK)).toBe(generatedTaskId('t1', WEEK))
-  })
-
-  it('cambia con la ficha y con la semana', () => {
-    expect(generatedTaskId('t1', WEEK)).not.toBe(generatedTaskId('t2', WEEK))
-    expect(generatedTaskId('t1', WEEK)).not.toBe(generatedTaskId('t1', '2026-W31'))
-  })
-
-  it('lleva prefijo, así que no puede colisionar con el uuid de una tarea breve', () => {
-    expect(generatedTaskId('t1', WEEK).startsWith('tpl:')).toBe(true)
-  })
-})
-
-describe('generateWeekTasks — materialización de la semana', () => {
-  it('cada día de una tarea fija genera su tarea, con su hora y su duración', () => {
-    const group = 'g1'
-    const result = generateWeekTasks({
-      templates: [
-        template({
-          id: fixedTaskEntryId(group, 4),
-          text: 'Gimnasio',
-          weekday: 4,
-          startBlock: 38,
-          estimatedMinutes: 60,
-        }),
-        template({ id: fixedTaskEntryId(group, 6), text: 'Gimnasio', weekday: 6, startBlock: 22 }),
-      ],
-      weekId: WEEK,
-    })
-    expect(result).toHaveLength(2)
-    expect(result[0]).toEqual({
-      id: 'tpl:grp:g1:4:2026-W30',
+describe('planWeekRollover — las persistentes vuelven solas', () => {
+  it('recrea la persistente en el mismo hueco, sin marcar', () => {
+    const source = persistent({
+      id: 'gym',
       text: 'Gimnasio',
-      weekId: WEEK,
       day: 4,
       startBlock: 38,
       estimatedMinutes: 60,
-      done: false,
-      templateId: 'grp:g1:4',
-      carriedOverCount: 0,
+      done: true,
     })
-    expect(result[1]?.day).toBe(6)
-    expect(result[1]?.startBlock).toBe(22)
+    expect(planWeekRollover({ sourceTasks: [source], targetWeek: NEXT })).toEqual([
+      {
+        id: 'persist:gym@2026-W31',
+        text: 'Gimnasio',
+        weekId: NEXT,
+        day: 4,
+        startBlock: 38,
+        estimatedMinutes: 60,
+        done: false,
+        templateId: 'persist:gym',
+        carriedOverCount: 0,
+      },
+    ])
   })
 
-  it('sin tareas fijas no genera nada', () => {
-    expect(generateWeekTasks({ templates: [], weekId: WEEK })).toEqual([])
+  it('la marca se conserva, así que la cadena sigue semana tras semana', () => {
+    const first = persistent({ id: 'gym', day: 4, startBlock: 38 })
+    const [second] = planWeekRollover({ sourceTasks: [first], targetWeek: NEXT })
+    expect(second).toBeDefined()
+    if (second === undefined) return
+    const [third] = planWeekRollover({
+      sourceTasks: [{ ...second, updatedAt: 0 }],
+      targetWeek: '2026-W32',
+    })
+    expect(third?.templateId).toBe('persist:gym')
+    expect(third?.startBlock).toBe(38)
   })
 
-  it('un día sin hora aterriza en la lista del día, no en la cuadrícula', () => {
-    const [generated] = generateWeekTasks({
-      templates: [template({ id: 't1', weekday: 6, startBlock: null })],
-      weekId: WEEK,
-    })
-    expect(generated?.day).toBe(6)
-    expect(generated?.startBlock).toBeNull()
+  it('las puntuales no viajan', () => {
+    expect(planWeekRollover({ sourceTasks: [task({ id: 'a' })], targetWeek: NEXT })).toEqual([])
+  })
+
+  it('una persistente que quedó sin colocar reaparece igual, esperando hueco', () => {
+    const source = persistent({ id: 'leer', day: null, startBlock: null })
+    const [copy] = planWeekRollover({ sourceTasks: [source], targetWeek: NEXT })
+    expect(copy?.day).toBeNull()
+    expect(copy?.startBlock).toBeNull()
   })
 
   it('sin duración, la propiedad estimatedMinutes NO existe (no es null)', () => {
-    const [generated] = generateWeekTasks({ templates: [template({ id: 't1' })], weekId: WEEK })
-    expect(generated === undefined ? true : 'estimatedMinutes' in generated).toBe(false)
+    const [copy] = planWeekRollover({ sourceTasks: [persistent({ id: 'a' })], targetWeek: NEXT })
+    expect(copy === undefined ? true : 'estimatedMinutes' in copy).toBe(false)
   })
 
-  it('el orden de salida es estable e independiente del orden de entrada', () => {
-    const templates = [
-      template({ id: 'c', text: 'Cena', weekday: 5, startBlock: 42 }),
-      template({ id: 'a', text: 'Ana', weekday: 1, startBlock: 20 }),
-      template({ id: 'b', text: 'Bici', weekday: 1, startBlock: null }),
+  it('una semana sin persistentes no genera nada', () => {
+    expect(planWeekRollover({ sourceTasks: [], targetWeek: NEXT })).toEqual([])
+  })
+
+  it('la salida es estable e independiente del orden de entrada', () => {
+    const sources = [
+      persistent({ id: 'c', text: 'Cena', day: 5, startBlock: 42 }),
+      persistent({ id: 'a', text: 'Ana', day: 1, startBlock: 20 }),
+      persistent({ id: 'b', text: 'Bici', day: null }),
     ]
-    const forward = generateWeekTasks({ templates, weekId: WEEK }).map((row) => row.id)
-    const backward = generateWeekTasks({ templates: [...templates].reverse(), weekId: WEEK }).map(
-      (row) => row.id,
-    )
+    const forward = planWeekRollover({ sourceTasks: sources, targetWeek: NEXT }).map((r) => r.text)
+    const backward = planWeekRollover({
+      sourceTasks: [...sources].reverse(),
+      targetWeek: NEXT,
+    }).map((r) => r.text)
     expect(forward).toEqual(backward)
-    // Día 1 antes que día 5; dentro del día, la que tiene hora antes que la que no.
-    expect(forward).toEqual(['tpl:a:2026-W30', 'tpl:b:2026-W30', 'tpl:c:2026-W30'])
+    // Por día, y las que no tienen día al final.
+    expect(forward).toEqual(['Ana', 'Cena', 'Bici'])
   })
 })
 
-describe('planEphemeralPurge — las breves solo viven su semana', () => {
+describe('planEphemeralPurge — las puntuales solo viven su semana', () => {
   const CURRENT: WeekId = '2026-W31'
 
-  it('borra lo breve que quedó sin hacer en semanas anteriores', () => {
-    const stale = task({ id: 'a', weekId: WEEK })
-    expect(planEphemeralPurge({ staleTasks: [stale], currentWeek: CURRENT })).toEqual(['a'])
+  it('borra lo puntual que quedó sin hacer en semanas anteriores', () => {
+    expect(planEphemeralPurge({ staleTasks: [task({ id: 'a' })], currentWeek: CURRENT })).toEqual([
+      'a',
+    ])
   })
 
   it('NO borra lo que sí hiciste: eso es historial', () => {
-    const stale = task({ id: 'a', weekId: WEEK, done: true })
+    const stale = task({ id: 'a', done: true })
     expect(planEphemeralPurge({ staleTasks: [stale], currentWeek: CURRENT })).toEqual([])
   })
 
-  it('NO borra las generadas por una tarea fija, ni sin hacer', () => {
+  it('NO borra las persistentes, ni sin hacer', () => {
     // Se quedan como registro de que ese jueves no fuiste al gimnasio.
-    const stale = task({ id: 'a', weekId: WEEK, templateId: 'grp:g1:4' })
+    const stale = persistent({ id: 'gym' })
     expect(planEphemeralPurge({ staleTasks: [stale], currentWeek: CURRENT })).toEqual([])
   })
 
@@ -318,13 +272,9 @@ describe('planEphemeralPurge — las breves solo viven su semana', () => {
   })
 
   it('es idempotente: borrado el lote, no queda nada que borrar', () => {
-    const stale = task({ id: 'a', weekId: WEEK })
-    const ids = planEphemeralPurge({ staleTasks: [stale], currentWeek: CURRENT })
-    expect(ids).toEqual(['a'])
-    expect(planEphemeralPurge({ staleTasks: [], currentWeek: CURRENT })).toEqual([])
-  })
-
-  it('sin nada viejo no borra nada', () => {
+    expect(planEphemeralPurge({ staleTasks: [task({ id: 'a' })], currentWeek: CURRENT })).toEqual([
+      'a',
+    ])
     expect(planEphemeralPurge({ staleTasks: [], currentWeek: CURRENT })).toEqual([])
   })
 })
@@ -381,8 +331,8 @@ describe('layoutDayTasks — carriles de la cuadrícula', () => {
     expect(result.map((placement) => placement.lanes)).toEqual([2, 2, 1])
   })
 
-  it('ignora las tareas sin hora: esas viven en la lista del día', () => {
-    expect(layoutDayTasks([task({ id: 'a', day: 1, startBlock: null })])).toEqual([])
+  it('ignora las tareas sin colocar', () => {
+    expect(layoutDayTasks([task({ id: 'a' })])).toEqual([])
   })
 
   it('las completadas también se colocan: siguen visibles y tachadas', () => {
@@ -418,43 +368,41 @@ describe('franja nocturna', () => {
     expect(countNightTasks([scheduled('a', 12, 60)])).toBe(0)
   })
 
-  it('las tareas sin hora nunca cuentan como nocturnas', () => {
-    expect(countNightTasks([task({ id: 'a', startBlock: null })])).toBe(0)
+  it('las tareas sin colocar nunca cuentan como nocturnas', () => {
+    expect(countNightTasks([task({ id: 'a' })])).toBe(0)
   })
 })
 
-describe('agrupación por día para la pantalla', () => {
-  it('groupTasksByDay reparte por día y deja fuera las sueltas', () => {
+describe('reparto para la pantalla', () => {
+  it('groupTasksByDay reparte las colocadas y deja fuera las sueltas', () => {
     const byDay = groupTasksByDay([
-      task({ id: 'a', day: 3 }),
-      task({ id: 'b', day: 5 }),
-      task({ id: 'suelta', day: null }),
+      scheduled('a', 20),
+      task({ id: 'b', day: 5, startBlock: 30 }),
+      task({ id: 'suelta' }),
     ])
-    expect([...byDay.keys()].sort()).toEqual([3, 5])
+    expect([...byDay.keys()].sort()).toEqual([1, 5])
   })
 
-  it('unplacedTasks recoge justo las que aún no tienen día', () => {
+  it('unplacedTasks recoge justo las que aún no están colocadas', () => {
     const result = unplacedTasks([
-      task({ id: 'colocada', day: 3 }),
-      task({ id: 'suelta', day: null }),
-      task({ id: 'hecha', day: null, done: true }),
+      scheduled('colocada', 20),
+      task({ id: 'suelta' }),
+      task({ id: 'hecha', done: true }),
     ])
     // Ordenadas para mostrar: lo pendiente antes que lo hecho.
     expect(result.map((row) => row.id)).toEqual(['suelta', 'hecha'])
   })
 
-  it('scheduledTasksByDay separa las que tienen hora de las que no', () => {
-    const byDay = groupTasksByDay([scheduled('a', 20), task({ id: 'b', day: 1 })])
-    expect(scheduledTasksByDay(byDay).get(1)?.map((row) => row.id)).toEqual(['a'])
-  })
-
   it('countPendingByDay no cuenta las completadas', () => {
-    const byDay = groupTasksByDay([task({ id: 'a', day: 1 }), task({ id: 'b', day: 1, done: true })])
+    const byDay = groupTasksByDay([
+      scheduled('a', 20),
+      { ...scheduled('b', 30), done: true },
+    ])
     expect(countPendingByDay(byDay).get(1)).toBe(1)
   })
 
   it('applyTaskMove superpone el movimiento sin mutar la entrada', () => {
-    const tasks = [task({ id: 'a', day: null, startBlock: null })]
+    const tasks = [task({ id: 'a' })]
     const moved = applyTaskMove(tasks, { id: 'a', day: 3, startBlock: 20 })
     expect(moved[0]?.day).toBe(3)
     expect(moved[0]?.startBlock).toBe(20)
@@ -462,38 +410,21 @@ describe('agrupación por día para la pantalla', () => {
   })
 
   it('applyTaskMove también sabe descolocar', () => {
-    const tasks = [task({ id: 'a', day: 3, startBlock: 20 })]
+    const tasks = [scheduled('a', 20)]
     const moved = applyTaskMove(tasks, { id: 'a', day: null, startBlock: null })
     expect(moved[0]?.day).toBeNull()
   })
-
-  it('applyTaskMove sin movimiento devuelve una copia intacta', () => {
-    const tasks = [task({ id: 'a', day: 2 })]
-    expect(applyTaskMove(tasks, null)).toEqual(tasks)
-  })
 })
 
-describe('sortTasksForDisplay', () => {
+describe('sortTasksForDisplay — el orden de la caja', () => {
   it('las pendientes van antes que las hechas', () => {
     const result = sortTasksForDisplay([task({ id: 'a', done: true }), task({ id: 'b' })])
     expect(result.map((row) => row.id)).toEqual(['b', 'a'])
   })
 
-  it('las fijas abren el día: son su esqueleto', () => {
-    const result = sortTasksForDisplay([
-      task({ id: 'breve' }),
-      task({ id: 'fija', templateId: 'grp:g1:1' }),
-    ])
-    expect(result.map((row) => row.id)).toEqual(['fija', 'breve'])
-  })
-
-  it('ordena por hora y deja al final las que no la tienen', () => {
-    const result = sortTasksForDisplay([
-      task({ id: 'a', startBlock: null }),
-      task({ id: 'b', startBlock: 40 }),
-      task({ id: 'c', startBlock: 20 }),
-    ])
-    expect(result.map((row) => row.id)).toEqual(['c', 'b', 'a'])
+  it('las persistentes abren la caja: son el esqueleto de la semana', () => {
+    const result = sortTasksForDisplay([task({ id: 'puntual' }), persistent({ id: 'fija' })])
+    expect(result.map((row) => row.id)).toEqual(['fija', 'puntual'])
   })
 
   it('a igualdad de todo, alfabético en español', () => {
@@ -512,10 +443,9 @@ describe('sortTasksForDisplay', () => {
 })
 
 describe('zonas de soltado', () => {
-  it('ida y vuelta de los tres tipos de zona', () => {
+  it('ida y vuelta de los dos tipos de zona', () => {
     const targets = [
       { kind: 'unplaced' } as const,
-      { kind: 'day', day: 3 as IsoWeekday } as const,
       { kind: 'slot', day: 3 as IsoWeekday, block: 20 } as const,
     ]
     for (const target of targets) {
@@ -525,23 +455,21 @@ describe('zonas de soltado', () => {
 
   it('los identificadores son los esperados', () => {
     expect(dropTargetId({ kind: 'unplaced' })).toBe('unplaced')
-    expect(dropTargetId({ kind: 'day', day: 3 })).toBe('day:3')
     expect(dropTargetId({ kind: 'slot', day: 3, block: 20 })).toBe('slot:3:20')
   })
 
   it('placementFor traduce la zona a día y hora', () => {
     expect(placementFor({ kind: 'unplaced' })).toEqual({ day: null, startBlock: null })
-    expect(placementFor({ kind: 'day', day: 3 })).toEqual({ day: 3, startBlock: null })
     expect(placementFor({ kind: 'slot', day: 3, block: 20 })).toEqual({ day: 3, startBlock: 20 })
   })
 
   it('un id inválido devuelve null en vez de una zona inventada', () => {
+    // 'day:3' era una zona del planificador anterior: ya no coloca nada.
     for (const id of [
       'inbox',
-      'day:0',
-      'day:8',
-      'day:x',
-      'day:3:1',
+      'day:3',
+      'slot:0:20',
+      'slot:8:20',
       'slot:3:48',
       'slot:x:1',
       'slot:3',
@@ -553,8 +481,6 @@ describe('zonas de soltado', () => {
   })
 
   it('acepta los bordes válidos: día 1 y 7, bloques 0 y 47', () => {
-    expect(parseDropTargetId('day:1')).toEqual({ kind: 'day', day: 1 })
-    expect(parseDropTargetId('day:7')).toEqual({ kind: 'day', day: 7 })
     expect(parseDropTargetId('slot:1:0')).toEqual({ kind: 'slot', day: 1, block: 0 })
     expect(parseDropTargetId('slot:7:47')).toEqual({ kind: 'slot', day: 7, block: 47 })
   })

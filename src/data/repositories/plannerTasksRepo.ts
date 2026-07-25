@@ -7,19 +7,19 @@ import { db } from '../db'
 import { enqueueDelete, enqueueUpsert, enqueueUpsertMany } from '../outbox'
 import {
   MAX_ESTIMATED_MINUTES,
-  generateWeekTasks,
   isValidBlock,
   isValidEstimatedMinutes,
+  persistentMark,
   planEphemeralPurge,
+  planWeekRollover,
 } from '../../logic/planner'
 import type { IsoWeekday, PlannerTask, WeekId } from '../types'
 
 export interface CreateTaskInput {
   text: string
   weekId: WeekId
-  /** Ausente = nace sin colocar, para arrastrarla después al día que toque. */
-  day?: IsoWeekday | null
-  startBlock?: number | null
+  /** true = vuelve sola cada semana (gimnasio, leer). */
+  persistent: boolean
   estimatedMinutes?: number
 }
 
@@ -30,6 +30,8 @@ export interface UpdateTaskPatch {
   /** Colocación. `day: null` la devuelve a la caja de sin colocar. */
   day?: IsoWeekday | null
   startBlock?: number | null
+  /** Cambiar de idea: una puntual puede pasar a persistente y al revés. */
+  persistent?: boolean
 }
 
 /** Todas las tareas de una semana (índice `weekId`). */
@@ -43,20 +45,17 @@ export function listWeekTasks(weekId: WeekId): Promise<PlannerTask[]> {
 export async function createTask(input: CreateTaskInput): Promise<PlannerTask> {
   const text = input.text.trim()
   if (text === '') throw new Error('La tarea necesita un texto')
-  const day = input.day ?? null
-  // Sin día no hay hora: una tarea sin colocar no vive en la cuadrícula.
-  const startBlock = day === null ? null : (input.startBlock ?? null)
-  assertBlock(startBlock)
   assertMinutes(input.estimatedMinutes)
   return await db.transaction('rw', db.plannerTasks, db.outbox, async () => {
     const row: PlannerTask = {
       id: crypto.randomUUID(),
       text,
       weekId: input.weekId,
-      day,
-      startBlock,
+      // Nace sin colocar: el día y la hora los decide el arrastre.
+      day: null,
+      startBlock: null,
       done: false,
-      templateId: null,
+      templateId: input.persistent ? persistentMark(crypto.randomUUID()) : null,
       // Ya no se arrastra nada entre semanas; la columna sigue en el esquema
       // remoto, que no se toca, pero vale siempre cero.
       carriedOverCount: 0,
@@ -70,9 +69,9 @@ export async function createTask(input: CreateTaskInput): Promise<PlannerTask> {
 }
 
 /**
- * Edita la tarea entera en UNA escritura: texto, duración y colocación. Que sea
- * una sola importa — dos transacciones sin esperar releerían la misma fila y la
- * segunda pisaría lo que escribió la primera.
+ * Edita la tarea entera en UNA escritura: texto, duración, colocación y clase.
+ * Que sea una sola importa — dos transacciones sin esperar releerían la misma
+ * fila y la segunda pisaría lo que escribió la primera.
  *
  * Se compone la fila completa y se hace `put`: hay que poder ELIMINAR la
  * duración, y confiar en cómo Dexie trata `undefined` en un parche es frágil.
@@ -91,18 +90,24 @@ export async function updateTask(id: string, patch: UpdateTaskPatch): Promise<vo
     else if (patch.estimatedMinutes !== undefined) next.estimatedMinutes = patch.estimatedMinutes
     if (patch.day !== undefined) {
       next.day = patch.day
-      // Devolverla a la caja de sin colocar le quita también la hora.
+      // Colocar es ocupar un hueco de la cuadrícula: sin día no hay hora, y con
+      // día siempre hay una, porque si no la tarea no se vería en ningún sitio.
       next.startBlock = patch.day === null ? null : (patch.startBlock ?? next.startBlock)
     } else if (patch.startBlock !== undefined) {
       next.startBlock = next.day === null ? null : patch.startBlock
+    }
+    if (patch.persistent !== undefined) {
+      const alreadyPersistent = next.templateId !== null
+      if (patch.persistent && !alreadyPersistent) next.templateId = persistentMark(crypto.randomUUID())
+      else if (!patch.persistent) next.templateId = null
     }
     return next
   })
 }
 
 /**
- * Coloca la tarea: en un día, en un bloque horario, o de vuelta a la caja de
- * sin colocar (`day: null`). Es lo que llama el drop del drag & drop.
+ * Coloca la tarea en un hueco de la cuadrícula, o la devuelve a la caja de sin
+ * colocar (`day: null`). Es lo que llama el drop del drag & drop.
  */
 export async function moveTask(
   id: string,
@@ -127,35 +132,58 @@ export async function deleteTask(id: string): Promise<void> {
 }
 
 /**
+ * Copia la tarea en la misma semana, sin colocar. Es lo que hace llevadero
+ * poner «Leer» en cinco días: se coloca una y se duplica, en vez de teclearla
+ * cinco veces. La copia de una persistente es persistente por su cuenta, así
+ * que cada una vuelve a su propio hueco la semana siguiente.
+ */
+export async function duplicateTask(id: string): Promise<PlannerTask | undefined> {
+  return await db.transaction('rw', db.plannerTasks, db.outbox, async () => {
+    const source = await db.plannerTasks.get(id)
+    if (source === undefined) return undefined
+    const copy: PlannerTask = {
+      ...source,
+      id: crypto.randomUUID(),
+      day: null,
+      startBlock: null,
+      done: false,
+      templateId: source.templateId === null ? null : persistentMark(crypto.randomUUID()),
+      updatedAt: Date.now(),
+    }
+    await db.plannerTasks.add(copy)
+    await enqueueUpsert('plannerTasks', copy.id)
+    return copy
+  })
+}
+
+/**
  * Prepara la semana que se está mirando. No hay cron: esto es lo que sustituye
  * al «crear una semana nueva» de §4, y corre al abrir el planificador.
  *
- * Dos cosas, en este orden y en una sola transacción:
- * 1. Si la semana visitada es presente o futura y está VACÍA, se generan sus
- *    tareas fijas. El marcador de «ya materializada» es la propia semana: no
- *    hace falta tabla nueva y, por tanto, ni una línea de SQL.
- * 2. Al abrir la semana en curso, las tareas BREVES sin hacer de semanas
- *    anteriores se borran: solo viven su semana (decisión del propietario).
- *
- * El orden importa: si se purgara antes de generar no cambiaría nada, pero
- * generar primero deja la transacción con una única lectura de la semana.
+ * Dos cosas, en una sola transacción:
+ * 1. Si la semana visitada es presente o futura y está VACÍA, se recrean las
+ *    tareas persistentes de la última semana que tuviera algo, en su mismo
+ *    hueco. El marcador de «ya preparada» es la propia semana: no hace falta
+ *    tabla nueva y, por tanto, ni una línea de SQL.
+ * 2. Al abrir la semana en curso, las PUNTUALES sin hacer de semanas anteriores
+ *    se borran: solo viven su semana (decisión del propietario).
  */
 export async function ensureWeekReady(weekId: WeekId, currentWeekId: WeekId): Promise<void> {
-  await db.transaction('rw', db.plannerTasks, db.taskTemplates, db.outbox, async () => {
+  await db.transaction('rw', db.plannerTasks, db.outbox, async () => {
     if (weekId >= currentWeekId) {
       const existing = await db.plannerTasks.where('weekId').equals(weekId).count()
       if (existing === 0) {
-        const templates = await db.taskTemplates.toArray()
-        const generated = generateWeekTasks({ templates, weekId })
-        if (generated.length > 0) {
+        const sourceTasks = await lastWeekWithTasks(weekId)
+        const copies = planWeekRollover({ sourceTasks, targetWeek: weekId })
+        if (copies.length > 0) {
           const now = Date.now()
           // bulkPut y no bulkAdd: los ids son deterministas, así que un doble
           // disparo (StrictMode, dos pestañas, dos dispositivos) reescribe la
           // misma fila en vez de duplicarla o reventar.
-          await db.plannerTasks.bulkPut(generated.map((row) => ({ ...row, updatedAt: now })))
+          await db.plannerTasks.bulkPut(copies.map((row) => ({ ...row, updatedAt: now })))
           await enqueueUpsertMany(
             'plannerTasks',
-            generated.map((row) => row.id),
+            copies.map((row) => row.id),
           )
         }
       }
@@ -171,6 +199,19 @@ export async function ensureWeekReady(weekId: WeekId, currentWeekId: WeekId): Pr
       }
     }
   })
+}
+
+/**
+ * Tareas de la semana con contenido más reciente ANTERIOR a la indicada.
+ * Se busca hacia atrás y no solo una semana: si el planificador lleva un mes
+ * sin abrirse, las persistentes tienen que volver igual.
+ */
+async function lastWeekWithTasks(before: WeekId): Promise<PlannerTask[]> {
+  const previous = await db.plannerTasks.where('weekId').below(before).toArray()
+  if (previous.length === 0) return []
+  // WeekId ordena como string, así que el máximo es la semana más reciente.
+  const latest = previous.reduce((best, task) => (task.weekId > best ? task.weekId : best), '')
+  return previous.filter((task) => task.weekId === latest)
 }
 
 /** Lee, transforma y reescribe la fila entera, encolando en la misma transacción. */

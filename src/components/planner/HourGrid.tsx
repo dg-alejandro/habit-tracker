@@ -1,6 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react'
 import { toggleTaskDone } from '../../data/repositories/plannerTasksRepo'
-import { weekdayShortEs } from '../../logic/dates'
+import { formatDateShortEs, weekdayShortEs, type IsoDate } from '../../logic/dates'
 import {
   BLOCKS_PER_DAY,
   NIGHT_END_BLOCK,
@@ -20,7 +20,9 @@ export const HOUR_RAIL_WIDTH = '3.25rem'
 interface HourGridProps {
   /** Los días que se pintan: los siete en escritorio, uno en móvil. */
   days: readonly IsoWeekday[]
-  /** Tareas CON hora, por día. */
+  /** Las siete fechas de la semana, de lunes a domingo. */
+  dates: readonly IsoDate[]
+  /** Tareas colocadas, por día. */
   tasksByDay: ReadonlyMap<IsoWeekday, PlannerTask[]>
   todayWeekday: IsoWeekday | null
   nightOpen: boolean
@@ -53,6 +55,7 @@ interface HourGridProps {
  */
 export function HourGrid({
   days,
+  dates,
   tasksByDay,
   todayWeekday,
   nightOpen,
@@ -74,7 +77,9 @@ export function HourGrid({
   return (
     <section className="mt-10">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 border-b border-line pb-2">
-        <h2 className="font-display text-xs uppercase tracking-widest text-streak-lime">Horario</h2>
+        <h2 className="font-display text-xs uppercase tracking-widest text-streak-lime">
+          La semana
+        </h2>
         <button
           type="button"
           onClick={onToggleNight}
@@ -104,7 +109,10 @@ export function HourGrid({
                   : 'border-line text-ink-soft'
               }`}
             >
-              {weekdayShortEs(day)}
+              <span className="block">{weekdayShortEs(day)}</span>
+              <span className="block truncate text-[10px] normal-case text-ink-faint">
+                {formatDateShortEs(dates[day - 1] ?? '')}
+              </span>
             </div>
           ))}
 

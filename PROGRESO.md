@@ -7,7 +7,9 @@ Es lo que permite que una instancia nueva sepa dónde estamos sin releer todo el
 
 ## Estado actual
 
-**Fase en curso:** Fase 4 — Planificador semanal: construida y después **rehecha dos veces a petición del propietario** (2026-07-25) en modelo y en estética, con los hallazgos del revisor aplicados. 296 tests en verde, build limpio, verificada en navegador a 375 y 1280. Pendiente de la **prueba de aceptación del propietario**.
+**Fase en curso:** Fase 4 — Planificador semanal. El modelo se ha rehecho **tres veces** el 2026-07-25 hasta dar con lo que el propietario quería; el de ahora es el bueno y está descrito entero en `CLAUDE.md` §4. 291 tests en verde, build limpio, verificado en navegador. Pendiente de la **prueba de aceptación del propietario**.
+
+**El planificador, en una frase:** una caja donde se escribe y una cuadrícula donde se arrastra. Dos clases de tarea —persistentes, que vuelven solas cada semana a su hueco, y puntuales, que mueren con la semana— creadas en el mismo sitio y con los mismos campos.
 
 **Ojo al criterio de aceptación del ROADMAP para esta fase** («planifico una semana completa desde el iPhone sin abrir el PC»): el propietario ha aclarado que su uso real es **montar la semana en el PC** y usar el iPhone para consultar y marcar. El criterio está pendiente de reescribirse.
 **También pendiente:** la aceptación de la Fase 3 (sus cifras contra el historial real). Las dos pruebas son independientes.
@@ -26,7 +28,7 @@ Es lo que permite que una instancia nueva sepa dónde estamos sin releer todo el
 | 1 — Registro diario en local | **Cerrada** | 2026-07-23 | Probada y dada por buena por el propietario el mismo día de su construcción (decisión suya, sin esperar las tres noches) |
 | 2 — Supabase y sincronización | **Cerrada** | 2026-07-24 | El propietario confirma completado su checklist de *Bloqueos* («mi parte está hecha»): verificación autenticada, Vercel y prueba PC ↔ iPhone |
 | 3 — Rachas y estadísticas | En curso (construida; aceptación pendiente) | | Código completo y en GitHub; falta que el propietario compruebe sus cifras reales |
-| 4 — Planificador semanal | En curso (rehecha; aceptación pendiente) | | Se escribe en una caja y se arrastra al día o a la hora; tareas fijas con varios días; pasada de estética sobre toda la app |
+| 4 — Planificador semanal | En curso (rehecha; aceptación pendiente) | | Caja + cuadrícula, tareas persistentes y puntuales, y pasada de estética sobre toda la app |
 | 5 — Pulido y PWA | Pendiente | | |
 | 6 — Notificación (opcional) | Pendiente | | |
 
@@ -136,21 +138,19 @@ Toda decisión no especificada en `CLAUDE.md` se anota aquí con una línea de j
 
 ### Rediseño del 2026-07-25 (petición del propietario)
 
-El planificador de la mañana no le servía: no entendía la bandeja, el modelo de tareas fijas no admitía que la hora cambiara según el día, y la estética le pareció fea y poco cuadrada. `CLAUDE.md` §4 se reescribió entera y §6 se extendió.
+**Aviso para quien lea esto en otra sesión: el modelo del planificador se rehízo tres veces el mismo día.** Lo que sigue es el resultado, no el camino. Las dos primeras versiones (catálogo de tareas fijas con varios días; alta dentro de cada día sin bandeja) **ya no existen**; si algo en el código huele a ellas, es un resto que hay que limpiar.
 
-- **La caja de «sin colocar», con nombre y explicación en pantalla.** Primero se quitó la bandeja entera y toda tarea nacía dentro de un día; el propietario lo probó y aclaró que lo que quiere es justo lo contrario: escribir sin decidir el día y arrastrar después «a la zona u hora que yo quiera». Lo que fallaba de la bandeja no era la idea sino el nombre («inbox») y que no explicaba para qué servía. Ahora hay UN solo campo de escritura en toda la pantalla, arriba, bajo el rótulo «SIN COLOCAR · escribe aquí y arrastra al día o a la hora», y los siete campos por día desaparecen. Colocar es opcional: una tarea puede quedarse suelta toda la semana. Arrastrarla de vuelta a la caja la descoloca.
-- **Fuera el arrastre entre semanas y la alarma roja de las 3 semanas.** Cada semana empieza limpia.
-- **Las tareas breves no hechas se BORRAN al cambiar de semana** (elección explícita del propietario sobre la alternativa no destructiva). Lo completado se conserva como historial, y las tareas fijas no hechas también: son el registro de que ese jueves no fue al gimnasio. El borrado se encola para que el otro dispositivo también las pierda.
-- **Una tarea fija = una ficha con varios días, cada uno con su hora.** «Gimnasio: jueves 19:00, sábado 11:00». El grupo viaja DENTRO del `id` de la fila (`grp:<grupo>:<día>`) porque la tabla remota no tiene columna de grupo y añadirla exigiría que el propietario ejecutase SQL a mano. Agrupar por el texto habría sido más simple pero se rompe al renombrar. Las fichas antiguas de un solo día, con `id` de uuid suelto, hacen de grupo de sí mismas: nada del planificador viejo se pierde.
-- **Ruta renombrada a `/planificador/fijas`** («plantilla» era jerga que no significaba nada para el propietario).
-- **Fuera «duplicar la semana anterior»**: con las fijas generándose solas y las breves muriendo cada semana, ya no tenía trabajo que hacer.
-- **Dos tipografías, las dos del sistema.** `font-display` es la monoespaciada del sistema y se usa en títulos, rótulos, horas y cifras. Se descartó una fuente de píxeles real (Silkscreen, Press Start 2P) porque exigía meter un archivo en el repo: el propietario eligió no descargar nada. Si algún día cambia de idea, es cambiar un token.
-- **Esquinas casi rectas en toda la app** (`rounded-sm`) y rótulos en versalitas espaciadas: es lo que responde al «no parece cuadrado del todo».
-- **Los chillones salen de las estadísticas**, con un trabajo asignado a cada uno (tabla en §6). `streak-lime` señala «estás aquí» y estructura; `streak-red` sigue siendo solo ruptura.
-- **Un único color para las cifras de racha: naranja.** Antes la global iba en lima y las de hábito en naranja. Con el lima significando ahora «estás aquí y estructura», una cifra en lima contradecía la tabla. Los récords, magenta en todas partes (hallazgo del revisor).
-- **`day` nulo vuelve a ser un estado legítimo** («sin colocar»), así que la migración v3 que llegó a escribirse para adoptar huérfanas al lunes se revirtió: ya no hay huérfanas que adoptar. El revisor tenía razón en que, sin bandeja, esas filas quedaban invisibles e imborrables; la solución final es que la bandeja existe.
-- **La fila de días y la cuadrícula horaria comparten plantilla de columnas.** Eran dos rejillas de siete columnas distintas y desalineadas —una con gutter, la otra desplazada 52 px por el raíl de horas—, que es exactamente lo que el propietario veía como «no parece cuadrado del todo». La caja de la cuadrícula cierra ahora por los cuatro lados y todas las pantallas usan el mismo gutter de contenedor.
+Lo que el propietario quería, y que costó tres intentos entender: **escribir una tarea no debe obligar a decidir cuándo**. Se escribe en una caja y se arrastra al hueco que sea. Y hay cosas que se repiten y cosas que no, pero las dos se crean igual.
 
+- **Caja + cuadrícula, y nada más.** Fuera las listas por día: colocar una tarea es soltarla en una casilla concreta de la rejilla, que es lo único que decide día y hora. Sin bandeja de entrada con nombre raro, sin catálogo aparte, sin siete campos de alta.
+- **Persistentes y puntuales.** La persistencia es una propiedad de la tarea, no un catálogo: un interruptor al crearla (y otro en su editor para cambiar de idea). Las persistentes se recrean solas en la semana siguiente, en el mismo hueco y sin marcar; las puntuales sin hacer se borran al cambiar de semana. Esto sustituye a la pantalla de «tareas fijas», que se ha eliminado.
+- **La marca de persistencia viaja dentro de `templateId`** (`persist:<uuid>`), que es `text` y admite nulo tanto en Dexie como en Postgres. El esquema remoto no tiene columna para esto y añadirla obligaría al propietario a ejecutar SQL a mano. El id de cada copia semanal es `<marca>@<semana>`: determinista, así que dos dispositivos preparando la misma semana producen la misma fila y la guardia LWW la colapsa.
+- **La preparación de la semana busca hacia atrás** hasta la última semana con contenido, no solo a la anterior: si el planificador lleva un mes cerrado, las persistentes vuelven igual.
+- **Duración al crear**, en el mismo gesto, para las dos clases.
+- **Duplicar** desde el editor: poner «leer» en cinco días es colocar una y duplicar cuatro veces, no teclearla cinco. Cada copia lleva su propia marca, así que cada una vuelve a su hueco.
+- **`day` y `startBlock` van juntos**: no hay día sin hora ni hora sin día. Una tarea con día pero sin hora no se vería en ningún sitio.
+- **Anuncios del arrastre en español** (dnd-kit los trae en inglés hablando de «draggable items»).
+- La tabla `taskTemplates` queda **sin uso** en local y en remoto. Vaciarla o quitarla exigiría SQL a mano y no aporta nada.
 
 ---
 

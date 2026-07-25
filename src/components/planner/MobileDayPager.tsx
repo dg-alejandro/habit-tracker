@@ -1,5 +1,4 @@
 import { weekdayInitialEs, weekdayLongEs } from '../../logic/dates'
-import { DropZone } from './DropZone'
 import type { IsoWeekday } from '../../data/types'
 
 interface MobileDayPagerProps {
@@ -15,10 +14,8 @@ const WEEKDAYS: IsoWeekday[] = [1, 2, 3, 4, 5, 6, 7]
 /**
  * En móvil se ve un día cada vez (§4): esta tira elige cuál.
  *
- * Cada letra es además zona de soltado, que es la única forma cómoda de mover
- * una tarea a otro día en el iPhone. El día seleccionado NO se registra aquí:
- * su carril ya está montado abajo con el mismo identificador, y dnd-kit no
- * admite dos zonas con el mismo id.
+ * Solo cambia de día: colocar una tarea es soltarla en una casilla concreta de
+ * la cuadrícula, no en un día suelto.
  */
 export function MobileDayPager({ selected, today, pendingByDay, onSelect }: MobileDayPagerProps) {
   return (
@@ -33,13 +30,7 @@ export function MobileDayPager({ selected, today, pendingByDay, onSelect }: Mobi
             onSelect={onSelect}
           />
         )
-        return day === selected ? (
-          <div key={day}>{button}</div>
-        ) : (
-          <DropZone key={day} target={{ kind: 'day', day }} className="rounded-sm">
-            {button}
-          </DropZone>
-        )
+        return <div key={day}>{button}</div>
       })}
     </nav>
   )

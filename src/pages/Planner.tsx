@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router'
 import {
   DndContext,
   DragOverlay,
@@ -10,13 +9,13 @@ import {
   rectIntersection,
   useSensor,
   useSensors,
+  type Announcements,
   type CollisionDetection,
   type DragEndEvent,
   type DragStartEvent,
 } from '@dnd-kit/core'
-import { DayLane } from '../components/planner/DayLane'
 import { DraggableTask, DropZone } from '../components/planner/DropZone'
-import { HOUR_RAIL_WIDTH, HourGrid } from '../components/planner/HourGrid'
+import { HourGrid } from '../components/planner/HourGrid'
 import { MobileDayPager } from '../components/planner/MobileDayPager'
 import { TaskChip } from '../components/planner/TaskChip'
 import { TaskEditor } from '../components/planner/TaskEditor'
@@ -25,14 +24,20 @@ import { WeekNavigator } from '../components/planner/WeekNavigator'
 import { moveTask } from '../data/repositories/plannerTasksRepo'
 import { useIsDesktop, useWeekPreparation, useWeekTasks } from '../hooks/usePlanner'
 import { useLogicalToday } from '../hooks/useLogicalToday'
-import { daysOfWeekId, isoWeekIdOf, isoWeekdayOf, type WeekId } from '../logic/dates'
+import {
+  daysOfWeekId,
+  isoWeekIdOf,
+  isoWeekdayOf,
+  weekdayLongEs,
+  type WeekId,
+} from '../logic/dates'
 import {
   applyTaskMove,
+  blockLabel,
   countPendingByDay,
   groupTasksByDay,
   parseDropTargetId,
   placementFor,
-  scheduledTasksByDay,
   unplacedTasks,
 } from '../logic/planner'
 import type { IsoWeekday } from '../data/types'
@@ -59,10 +64,31 @@ const collisionDetection: CollisionDetection = (args) => {
   return hits.length > 0 ? hits : rectIntersection(args)
 }
 
+/**
+ * Lo que oye un lector de pantalla al arrastrar. dnd-kit trae los suyos en
+ * inglés y hablando de «draggable items»; la interfaz es en español y habla de
+ * tareas y de huecos.
+ */
+const announcements: Announcements = {
+  onDragStart: () => 'Tarea agarrada. Suéltala en un hueco de la cuadrícula.',
+  onDragOver: ({ over }) =>
+    over === null ? 'Fuera de cualquier hueco.' : describeTarget(String(over.id)),
+  onDragEnd: ({ over }) =>
+    over === null ? 'Soltada fuera: la tarea no se ha movido.' : `Colocada. ${describeTarget(String(over.id))}`,
+  onDragCancel: () => 'Arrastre cancelado.',
+}
+
+function describeTarget(id: string): string {
+  const target = parseDropTargetId(id)
+  if (target === null) return 'Zona no válida.'
+  if (target.kind === 'unplaced') return 'Sin colocar.'
+  return `${weekdayLongEs(target.day)} a las ${blockLabel(target.block)}.`
+}
+
 /*
  * Planificador semanal, independiente de los hábitos (CLAUDE.md §4 y §5.4).
- * Toda tarea vive dentro de un día: no hay bandeja intermedia. Las fijas salen
- * de una ficha con varios días; las breves solo viven la semana en curso.
+ * Dos piezas y nada más: la caja donde se escribe y la cuadrícula donde se
+ * coloca. No hay listas por día — arrastrar es lo que decide día y hora.
  */
 export function Planner() {
   const today = useLogicalToday()
@@ -114,7 +140,6 @@ export function Planner() {
   const unplaced = useMemo(() => unplacedTasks(tasks ?? []), [tasks])
   const byDay = useMemo(() => groupTasksByDay(tasks ?? []), [tasks])
   const pendingByDay = useMemo(() => countPendingByDay(byDay), [byDay])
-  const scheduledByDay = useMemo(() => scheduledTasksByDay(byDay), [byDay])
   const pendingTotal = (tasks ?? []).filter((task) => !task.done).length
 
   const closeEdit = () => setEditingId(null)
@@ -142,6 +167,7 @@ export function Planner() {
   return (
     <DndContext
       sensors={sensors}
+      accessibility={{ announcements }}
       collisionDetection={collisionDetection}
       // Las 252 celdas de escritorio no se miden hasta que empieza un arrastre.
       measuring={{ droppable: { strategy: MeasuringStrategy.WhileDragging } }}
@@ -149,34 +175,17 @@ export function Planner() {
       onDragEnd={onDragEnd}
       onDragCancel={() => setDragging(null)}
     >
-      <div className="mx-auto max-w-xl px-5 py-6 md:max-w-6xl md:px-8 md:py-10">
+      <div className="mx-auto max-w-xl px-5 py-6 md:max-w-6xl md:px-10 md:py-10">
         <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-b border-line pb-3">
-          <h1 className="font-display text-2xl uppercase tracking-widest text-ink">
-            Planificador
-          </h1>
-          <div className="flex items-baseline gap-4">
-            {pendingTotal > 0 && (
-              <span className="font-display text-xs uppercase tracking-widest text-streak-orange">
-                {pendingTotal} pendientes
-              </span>
-            )}
-            <Link
-              to="/planificador/fijas"
-              className="font-display text-xs uppercase tracking-widest text-ink-soft transition-colors hover:text-streak-lime"
-            >
-              Tareas fijas
-            </Link>
-          </div>
+          <h1 className="font-display text-2xl uppercase tracking-widest text-ink">Planificador</h1>
+          {pendingTotal > 0 && (
+            <span className="font-display text-xs uppercase tracking-widest text-streak-orange">
+              {pendingTotal} {pendingTotal === 1 ? 'pendiente' : 'pendientes'}
+            </span>
+          )}
         </div>
 
         <WeekNavigator weekId={weekId} currentWeekId={currentWeekId} onChange={setWeekId} />
-
-        <UnplacedTray
-          weekId={weekId}
-          tasks={unplaced}
-          editingId={editingId}
-          onEdit={setEditingId}
-        />
 
         {/* El editor vive aquí, a ancho completo: en escritorio una columna de
             día es un séptimo de la pantalla y el formulario no cabría dentro. */}
@@ -185,6 +194,8 @@ export function Planner() {
             <TaskEditor key={editing.id} task={editing} onClose={closeEdit} />
           </div>
         )}
+
+        <UnplacedTray weekId={weekId} tasks={unplaced} editingId={editingId} onEdit={setEditingId} />
 
         {!isDesktop && (
           <MobileDayPager
@@ -195,34 +206,10 @@ export function Planner() {
           />
         )}
 
-        {/* Misma plantilla de columnas que la cuadrícula de abajo, hueco del
-            raíl horario incluido: las dos rejillas tienen que cuadrar. */}
-        <div
-          className={isDesktop ? 'mt-6 grid' : 'mt-6'}
-          style={
-            isDesktop
-              ? { gridTemplateColumns: `${HOUR_RAIL_WIDTH} repeat(${visibleDays.length}, minmax(0, 1fr))` }
-              : undefined
-          }
-        >
-          {isDesktop && <div />}
-          {visibleDays.map((day) => (
-            <DayLane
-              key={day}
-              day={day}
-              date={days[day - 1] ?? ''}
-              isToday={day === todayWeekday}
-              tasks={(byDay.get(day) ?? []).filter((task) => task.startBlock === null)}
-              editingId={editingId}
-              onEdit={setEditingId}
-              density={isDesktop ? 'grid' : 'row'}
-            />
-          ))}
-        </div>
-
         <HourGrid
           days={visibleDays}
-          tasksByDay={scheduledByDay}
+          dates={days}
+          tasksByDay={byDay}
           todayWeekday={todayWeekday}
           nightOpen={nightOpen}
           onToggleNight={() => setNightOpen((open) => !open)}
@@ -239,8 +226,8 @@ export function Planner() {
           )}
         />
 
-        {/* Imprescindible: las listas y la cuadrícula son contenedores
-            distintos, y sin capa flotante no se puede arrastrar de una a otra. */}
+        {/* Imprescindible: la caja y la cuadrícula son contenedores distintos,
+            y sin capa flotante no se puede arrastrar de una a otra. */}
         <DragOverlay dropAnimation={null}>
           {draggingTask === undefined ? null : (
             <div className="w-64 rounded-sm border border-streak-lime bg-surface px-2 opacity-90">

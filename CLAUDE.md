@@ -109,47 +109,48 @@ Con el umbral del 80 %, un día cuenta con **12 de 14** cumplidos.
 
 El planificador es **independiente de los hábitos**: no los muestra ni interactúa con ellos.
 
-**Regla que ordena todo lo demás: una tarea nace SIN colocar y se arrastra a donde toque.** Escribir no obliga a decidir el día ni la hora: se vuelca la idea en la caja de *sin colocar* y luego se lleva al día, o directamente a una hora de la cuadrícula. Puede quedarse suelta toda la semana. Los horarios varían y un jueves no se parece a un sábado — decidir el momento es un paso aparte de anotar la tarea.
+Tiene **dos piezas y ninguna más**: la **caja** donde se escribe y la **cuadrícula** donde se coloca. No hay listas por día, ni bandejas, ni catálogos aparte.
+
+**La regla que ordena todo: escribir y colocar son dos pasos distintos.** Una tarea nace en la caja, sin día ni hora, y **arrastrarla a una casilla de la cuadrícula es lo que le da día y hora**. Puede quedarse en la caja toda la semana sin colocar. Los horarios varían y un jueves no se parece a un sábado: obligar a decidir el momento al escribir sobra.
+
+### Las dos clases de tarea
+
+Se crean **en el mismo sitio, de la misma forma y con los mismos campos** — texto, duración opcional y un interruptor. Lo único que las separa es qué pasa el lunes siguiente:
+
+- **Persistentes** — lo que se repite (gimnasio, leer). La semana que viene **vuelven solas, al mismo hueco**, sin marcar.
+- **Puntuales** — lo de esta semana. Si acaban sin hacerse, **se borran**.
+
+Lo COMPLETADO nunca se borra: es el historial de lo que sí hiciste. Y una persistente que quedó sin hacer se queda también en su semana, como registro de que ese jueves no fuiste al gimnasio.
+
+Cambiar una tarea de clase es un interruptor en su editor. Para repetir la misma tarea en varios días —«leer» de lunes a viernes— se coloca una y se **duplica**: cada copia es persistente por su cuenta y vuelve a su propio hueco.
 
 ### Modelo de tarea
 
 | Campo | Descripción |
 |---|---|
 | `text` | Título. Obligatorio. |
-| `estimatedMinutes` | Duración estimada. Opcional. Determina cuántos bloques ocupa al colocarla. |
+| `estimatedMinutes` | Duración estimada. Opcional, y se puede poner al crearla. Determina cuántos bloques ocupa. |
 | `weekId` | Semana ISO a la que pertenece (`2026-W31`). |
-| `day` | Día en el que está colocada, o `null` si aún no lo está. |
-| `startBlock` | Bloque horario de inicio, o `null` si no tiene hora. Sin día tampoco hay hora. |
+| `day` | Día en el que está colocada, o `null` si sigue en la caja. |
+| `startBlock` | Bloque horario, o `null` si sigue en la caja. Van siempre juntos: no hay día sin hora ni hora sin día. |
 | `done` | Completada o no. |
-| `templateId` | La tarea fija que la generó, o `null` si es breve. |
+| `templateId` | Marca de persistencia (`persist:<uuid>`), o `null` si es puntual. Todas las copias semanales de una misma tarea comparten marca, y es lo que las encadena. |
 | `carriedOverCount` | **En desuso.** Vale siempre cero; la columna sigue en el esquema remoto, que no se toca. |
-
-### Las dos clases de tarea
-
-**Tareas fijas.** Lo que se repite cada semana. Una ficha —«Gimnasio»— tiene un nombre y **varios días, cada uno con su propia hora**, que puede quedarse vacía. Al abrir una semana nueva, cada día de cada ficha genera su tarea.
-
-- Editar o borrar la tarea generada en una semana concreta **no afecta a la ficha**.
-- Editar la ficha afecta solo a las semanas que aún no se han abierto.
-- Se gestionan desde una pantalla propia dentro del planificador.
-
-**Tareas breves.** Lo que solo importa esta semana. Se escriben en la caja de *sin colocar* y se arrastran desde ahí. **Al cambiar de semana, las que quedaron sin hacer se borran**, estén colocadas o no: no te siguen ni se acumulan. Lo que sí completaste se queda como historial de esa semana, igual que las tareas fijas no hechas, que son el registro de que ese jueves no fuiste al gimnasio.
-
-**No hay arrastre entre semanas.** Cada semana empieza limpia.
 
 ### Creación y edición
 
-- **Un solo campo de escritura**, arriba, en la caja de *sin colocar*. Escribir y Enter, tantas veces seguidas como haga falta. Sin modales, sin elegir día, sin formularios.
-- **Colocar es arrastrar:** de la caja a un día, de la caja a una hora, de un día a otro, o de vuelta a la caja para descolocarla.
-- **Editar:** al tocar la tarea se abre en línea para cambiar texto, día, hora, duración o borrarla.
+- **Un solo campo de escritura** en toda la pantalla, en la caja. Escribir y Enter, tantas veces seguidas como haga falta; la clase y la duración se conservan entre una y otra.
+- **Colocar es arrastrar:** de la caja a una casilla, entre casillas, o de vuelta a la caja para descolocar.
+- **Editar:** al tocar la tarea se abre en línea para cambiar texto, clase, día, hora, duración, duplicarla o borrarla.
 - **Completar:** casilla durante la semana. La tarea hecha se queda visible, tachada y atenuada.
 
 ### Cuadrícula horaria
 
-- Cobertura **00:00 a 24:00**, en bloques de **30 minutos**. Es donde se ven las tareas que sí tienen hora; las que no, viven en la lista de su día.
+- Cobertura **00:00 a 24:00**, en bloques de **30 minutos**, con los siete días en columnas.
 - Por defecto la franja **00:00–06:00 aparece plegada**, con un botón para desplegarla y el recuento de lo que esconde.
-- Una tarea con duración estimada ocupa los bloques proporcionales al colocarla. Solaparlas es legítimo: se reparten a media anchura.
-- Se arrastra desde la caja de *sin colocar* y entre días y bloques. **Todo lo que hace el arrastre se puede hacer también desde los selectores del editor**, porque el gesto táctil no es verificable desde aquí.
-- En móvil: un día visible cada vez, scroll vertical, navegación entre días.
+- Una tarea con duración estimada ocupa los bloques proporcionales. Solaparlas es legítimo: se reparten a media anchura.
+- **Todo lo que hace el arrastre se puede hacer también desde los selectores del editor**, porque el gesto táctil no es verificable desde el entorno de desarrollo.
+- En móvil: un día visible cada vez, con una tira para elegir cuál.
 
 ---
 
