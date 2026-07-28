@@ -117,6 +117,13 @@ export interface EngineSnapshot {
   /** Mensaje del último fallo, o null si el último ciclo terminó bien. */
   lastError: string | null
   lastSyncedAt: EpochMs | null
+  /**
+   * Última BAJADA completa. Distinto de `lastSyncedAt`, que lo estampa también
+   * un ciclo de solo subida: quien vaya a BORRAR filas mirando la foto local
+   * tiene que esperar a esto, o borraría lo que el otro dispositivo acaba de
+   * completar sin haberlo visto nunca.
+   */
+  lastPulledAt: EpochMs | null
 }
 
 export interface EngineStore {
@@ -126,7 +133,12 @@ export interface EngineStore {
 }
 
 export function createEngineStore(): EngineStore {
-  let snapshot: EngineSnapshot = { syncing: false, lastError: null, lastSyncedAt: null }
+  let snapshot: EngineSnapshot = {
+    syncing: false,
+    lastError: null,
+    lastSyncedAt: null,
+    lastPulledAt: null,
+  }
   const listeners = new Set<() => void>()
   return {
     getSnapshot: () => snapshot,
@@ -314,7 +326,12 @@ export function createSyncEngine(deps: SyncEngineDeps): SyncEngine {
   async function run(mode: SyncMode): Promise<boolean> {
     store.set({ syncing: true })
     try {
-      if (mode === 'full') await pullAll()
+      if (mode === 'full') {
+        await pullAll()
+        // Dentro del `if` y no fuera: es la marca de que la foto local YA vio
+        // el servidor. Fuera, un ciclo de solo subida la habría estampado.
+        store.set({ lastPulledAt: now() })
+      }
       await pushAll()
       store.set({ syncing: false, lastError: null, lastSyncedAt: now() })
       return true

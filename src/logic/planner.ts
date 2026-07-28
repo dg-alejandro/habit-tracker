@@ -307,11 +307,22 @@ export function countNightTasks(tasks: readonly PlannerTask[]): number {
 
 /* ── Presentación ─────────────────────────────────────────────────────────── */
 
+/**
+ * true si la tarea está colocada de verdad: día Y hora, y la hora dentro de la
+ * rejilla. §4 las ata, pero el invariante solo se puede defender al ESCRIBIR, y
+ * hay dos puertas que no pasan por el repositorio —la bajada y el import JSON—.
+ * Esta es la mitad de lectura: una fila a medias no se pierde de vista, cae en
+ * la caja de sin colocar, donde se ve, se coloca o se borra.
+ */
+export function isPlaced(task: PlannerTask): boolean {
+  return task.day !== null && task.startBlock !== null && isValidBlock(task.startBlock)
+}
+
 /** Agrupa por día las tareas ya colocadas. Las de la caja de arriba salen aparte. */
 export function groupTasksByDay(tasks: readonly PlannerTask[]): Map<IsoWeekday, PlannerTask[]> {
   const byDay = new Map<IsoWeekday, PlannerTask[]>()
   for (const task of tasks) {
-    if (task.day === null) continue
+    if (task.day === null || !isPlaced(task)) continue
     const list = byDay.get(task.day)
     if (list === undefined) byDay.set(task.day, [task])
     else list.push(task)
@@ -322,9 +333,10 @@ export function groupTasksByDay(tasks: readonly PlannerTask[]): Map<IsoWeekday, 
 /**
  * Las que aún no están colocadas, ya ordenadas. Es la caja donde se escribe:
  * se vuelcan aquí y se arrastran al hueco que toque, o se quedan esperando.
+ * Recoge también las filas a medias: mejor verlas aquí que en ninguna parte.
  */
 export function unplacedTasks(tasks: readonly PlannerTask[]): PlannerTask[] {
-  return sortTasksForDisplay(tasks.filter((task) => task.day === null))
+  return sortTasksForDisplay(tasks.filter((task) => !isPlaced(task)))
 }
 
 /** Pendientes por día, para el indicador del selector móvil. */

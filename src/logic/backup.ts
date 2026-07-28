@@ -5,6 +5,7 @@
  * hace copias. Sin React, sin I/O, sin Date.now() sin inyectar.
  */
 import { addDaysIso, logicalDateOf, type IsoDate } from './dates'
+import { isValidBlock, isValidEstimatedMinutes } from './planner'
 import type {
   DayEntry,
   EpochMs,
@@ -64,6 +65,24 @@ function optional(value: unknown, predicate: (v: unknown) => boolean): boolean {
 }
 
 /** `| null` = aplica pero puede estar vacío. */
+/**
+ * Día ISO de la semana. El planificador no valida solo el TIPO aquí: un fichero
+ * con `day: 9` o `estimatedMinutes: 20.5` entraría en Dexie y luego reventaría
+ * contra las restricciones de Postgres, dejando la cola de subida atascada para
+ * siempre — y con ella las seis tablas, incluidos los hábitos (§9).
+ */
+function isWeekday(value: unknown): boolean {
+  return Number.isInteger(value) && (value as number) >= 1 && (value as number) <= 7
+}
+
+function isBlock(value: unknown): boolean {
+  return typeof value === 'number' && isValidBlock(value)
+}
+
+function isMinutes(value: unknown): boolean {
+  return typeof value === 'number' && isValidEstimatedMinutes(value)
+}
+
 function nullable(value: unknown, predicate: (v: unknown) => boolean): boolean {
   return value === null || predicate(value)
 }
@@ -96,20 +115,22 @@ const ROW_VALIDATORS: { [K in keyof BackupData]: (row: Record<string, unknown>) 
   plannerTasks: (r) =>
     isString(r.id) &&
     isString(r.text) &&
-    optional(r.estimatedMinutes, isNumber) &&
+    optional(r.estimatedMinutes, isMinutes) &&
     isString(r.weekId) &&
-    nullable(r.day, isNumber) &&
-    nullable(r.startBlock, isNumber) &&
+    nullable(r.day, isWeekday) &&
+    nullable(r.startBlock, isBlock) &&
+    // Día y hora van juntos (§4): la mitad suelta no se vería en ningún sitio.
+    (r.day === null) === (r.startBlock === null) &&
     isBoolean(r.done) &&
     nullable(r.templateId, isString) &&
-    isNumber(r.carriedOverCount) &&
+    Number.isInteger(r.carriedOverCount) &&
     isNumber(r.updatedAt),
   taskTemplates: (r) =>
     isString(r.id) &&
     isString(r.text) &&
-    isNumber(r.weekday) &&
-    nullable(r.startBlock, isNumber) &&
-    optional(r.estimatedMinutes, isNumber) &&
+    isWeekday(r.weekday) &&
+    nullable(r.startBlock, isBlock) &&
+    optional(r.estimatedMinutes, isMinutes) &&
     isNumber(r.updatedAt),
   settings: (r) =>
     r.id === 'settings' &&

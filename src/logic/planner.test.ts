@@ -480,12 +480,13 @@ describe('duraciones raras que no vienen del formulario', () => {
 })
 
 describe('la rejilla frente a filas corruptas', () => {
-  it('una tarea con día pero sin hora no aparece en la rejilla ni en la caja', () => {
-    // Es el estado imposible que el repositorio ya no deja escribir; si una fila
-    // vieja lo trae, ninguna de las dos vistas debe fingir que sabe dónde va.
+  it('una tarea con día pero sin hora no se pinta en la rejilla, pero SÍ en la caja', () => {
+    // La rejilla no puede fingir que sabe dónde va; la caja sí tiene que
+    // enseñarla, o la fila queda invisible y el propietario no puede ni
+    // borrarla. Antes se filtraba en las dos y desaparecía de la app.
     const orphan = task({ id: 'huérfana', day: 1, startBlock: null })
     expect(layoutDayTasks([orphan])).toEqual([])
-    expect(unplacedTasks([orphan])).toEqual([])
+    expect(unplacedTasks([orphan]).map((t) => t.id)).toEqual(['huérfana'])
   })
 
   it('un bloque inválido se descarta en vez de romper el pintado', () => {
@@ -544,5 +545,32 @@ describe('bordes de las zonas de soltado y del movimiento optimista', () => {
   it('mover un id que no está en la lista la deja igual', () => {
     const tasks = [task({ id: 'a' })]
     expect(applyTaskMove(tasks, { id: 'fantasma', day: 1, startBlock: 20 })).toEqual(tasks)
+  })
+})
+
+describe('el invariante día+hora, también al LEER', () => {
+  // Escribir ya lo defiende el repositorio; estas son las filas que entran por
+  // la bajada o por un import JSON, que no pasan por él.
+  const media = task({ id: 'a-medias', day: 3, startBlock: null })
+  const corrupta = task({ id: 'corrupta', day: 3, startBlock: 99 })
+
+  it('una fila con día y sin hora cae en la caja, no en la nada', () => {
+    expect(unplacedTasks([media]).map((t) => t.id)).toEqual(['a-medias'])
+    expect(groupTasksByDay([media]).size).toBe(0)
+  })
+
+  it('una hora fuera de la rejilla se trata igual', () => {
+    expect(unplacedTasks([corrupta]).map((t) => t.id)).toEqual(['corrupta'])
+    expect(groupTasksByDay([corrupta]).size).toBe(0)
+  })
+
+  it('ya no pinta un punto de pendiente en un día donde no hay nada', () => {
+    expect(countPendingByDay(groupTasksByDay([media, corrupta])).get(3)).toBeUndefined()
+  })
+
+  it('las colocadas de verdad siguen agrupándose por su día', () => {
+    const buena = task({ id: 'buena', day: 3, startBlock: 20 })
+    expect(groupTasksByDay([buena, media]).get(3)?.map((t) => t.id)).toEqual(['buena'])
+    expect(unplacedTasks([buena, media]).map((t) => t.id)).toEqual(['a-medias'])
   })
 })

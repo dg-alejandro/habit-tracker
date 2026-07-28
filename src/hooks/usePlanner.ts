@@ -65,7 +65,12 @@ export function useSyncSettled(): boolean {
 
   if (!isSupabaseConfigured()) return true
   if (session === null) return true
-  return snapshot.lastSyncedAt !== null
+  // `lastPulledAt` y NO `lastSyncedAt`: este último lo estampa también un ciclo
+  // de solo subida, que no ha traído nada del servidor. Bastaba con que la
+  // bajada inicial fallara y el propietario escribiera algo en los segundos
+  // siguientes para que la purga se creyera al día y borrara, con la foto vieja
+  // en la mano, tareas que el iPhone acababa de completar.
+  return snapshot.lastPulledAt !== null
 }
 
 /** Limpia lo que caducó al cambiar de semana, una sola vez por par de semanas. */
