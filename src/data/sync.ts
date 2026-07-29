@@ -42,6 +42,13 @@ import { SYNC_TABLES, type EpochMs, type OutboxEntry, type SyncTable } from './t
 
 const PULL_LIMIT = 1000
 const PUSH_BATCH = 500
+/**
+ * Lote de la relectura posterior al push. Mucho más pequeño que PUSH_BATCH
+ * porque no viaja en el cuerpo de un POST sino en la URL de un GET: 100 uuids
+ * son unos 3,7 KB, cómodamente por debajo del límite de 8 KB que imponen la
+ * mayoría de proxys. Ver el comentario largo en pushTable.
+ */
+const READBACK_BATCH = 100
 const DEBOUNCE_MS = 1_500
 const RETRY_MIN_MS = 5_000
 const RETRY_MAX_MS = 300_000
@@ -289,11 +296,29 @@ export function createSyncEngine(deps: SyncEngineDeps): SyncEngine {
         ? [...new Set(liveRows.map((row) => (row as LocalRowByTable['entries']).date))]
         : [...new Set(ops.map((op) => op.rowId))]
     if (values.length === 0) return
-    const echoed = await backend.readBack(table, table === 'entries' ? 'date' : 'id', values)
-    if (echoed.length === 0) return
-    await db.transaction('rw', [db.table(table)], async () => {
-      for (const row of echoed) await applyPulledRow(table, row)
-    })
+
+    /*
+     * TROCEADO OBLIGATORIO, y con un lote mucho menor que el del upsert.
+     *
+     * El upsert viaja en el CUERPO de un POST y aguanta 500 filas sin
+     * inmutarse. La relectura es un `.in(...)`, que PostgREST serializa en la
+     * QUERY STRING de un GET: unos 37 bytes por uuid. Sin trocear, restaurar
+     * una copia grande —importBackup re-encola el historial entero— construía
+     * una URL de más de 100 KB contra el límite típico de 8 KB de cualquier
+     * proxy, y el 414 que devolvía no era ni de lejos lo peor.
+     *
+     * Lo peor era la cadena: el throw sube hasta el catch de `run`, así que
+     * NUNCA se llegaba al `outbox.bulkDelete` de más abajo. El upsert sí había
+     * entrado en el servidor, pero la cola no se vaciaba jamás y el backoff
+     * reintentaba la misma petición imposible para siempre.
+     */
+    for (const batch of chunk(values, READBACK_BATCH)) {
+      const echoed = await backend.readBack(table, table === 'entries' ? 'date' : 'id', batch)
+      if (echoed.length === 0) continue
+      await db.transaction('rw', [db.table(table)], async () => {
+        for (const row of echoed) await applyPulledRow(table, row)
+      })
+    }
   }
 
   async function pushOnce(): Promise<boolean> {

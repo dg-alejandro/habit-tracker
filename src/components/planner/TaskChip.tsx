@@ -56,7 +56,7 @@ export function TaskChip({ task, density, shared, onToggle, onOpen, handle }: Ta
             onClick={onToggle}
             aria-pressed={task.done}
             aria-label={`Completar ${task.text}`}
-            className="flex w-10 shrink-0 items-center justify-center"
+            className="flex w-11 shrink-0 items-center justify-center"
           >
             <span
               aria-hidden="true"
@@ -119,6 +119,7 @@ export function TaskChip({ task, density, shared, onToggle, onOpen, handle }: Ta
         className="flex h-11 w-11 shrink-0 items-center justify-center"
       >
         <CheckToggle checked={task.done} />
+        <span className="sr-only">{task.done ? 'Completada' : 'Sin completar'}</span>
       </button>
       {/* self-stretch: la fila mide 56 px y el objetivo táctil debe medir lo mismo. */}
       <button type="button" onClick={onOpen} className="min-w-0 flex-1 self-stretch py-1 text-left">

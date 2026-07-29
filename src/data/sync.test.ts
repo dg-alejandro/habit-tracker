@@ -36,6 +36,8 @@ class FakeBackend implements SyncBackend {
   /** Registro de lotes subidos, para las aserciones de coalescencia. */
   upsertBatches: Array<{ table: SyncTable; rows: Array<Record<string, unknown>> }> = []
   deleteCalls: Array<{ table: SyncTable; rowId: string; deletedAt: number }> = []
+  /** Una entrada por llamada a readBack, para comprobar que se trocea. */
+  readBackCalls: Array<{ table: SyncTable; by: 'id' | 'date'; count: number }> = []
   private gate: { started: () => void; wait: Promise<void> } | null = null
 
   /** La próxima subida se detiene hasta `release()`; `started` resuelve al entrar. */
@@ -168,6 +170,7 @@ class FakeBackend implements SyncBackend {
     values: readonly string[],
   ): Promise<Array<PulledRow<T>>> {
     this.net()
+    this.readBackCalls.push({ table, by, count: values.length })
     const wanted = new Set(values)
     const rows = [...this.tableMap(table).values()].filter((row) => wanted.has(String(row[by])))
     return rows as unknown as Array<PulledRow<T>>
@@ -475,6 +478,36 @@ describe('guardia del servidor y read-back', () => {
     expect(await db.habits.get('h1')).toEqual(before)
     const cursor = await db.syncMeta.get('cursor:habits')
     expect(cursor !== undefined && 'rowId' in cursor && cursor.rowId === 'h1').toBe(true)
+  })
+
+  /*
+   * El read-back viaja en la URL de un GET (`.in(id, …)`), no en el cuerpo
+   * como el upsert. Sin trocear, una restauración grande construía una petición
+   * de más de 100 KB: el servidor devolvía 414, el throw saltaba por encima del
+   * `outbox.bulkDelete` y la cola NO SE VACIABA NUNCA, reintentando la misma
+   * petición imposible para siempre. Este test fija las dos mitades.
+   */
+  it('el read-back se trocea en lotes pequeños y la cola queda vacía', async () => {
+    const { db, backend, engine } = rig()
+
+    const total = 250
+    for (let index = 0; index < total; index += 1) {
+      const id = `h${String(index).padStart(4, '0')}`
+      await db.habits.put(habit(id, 100 + index))
+      await enqueue(db, 'habits', id)
+    }
+
+    await expect(engine.syncNow('push')).resolves.toBe(true)
+
+    const calls = backend.readBackCalls.filter((call) => call.table === 'habits')
+    // 250 ids en lotes de 100: tres llamadas, ninguna por encima del lote.
+    expect(calls.length).toBe(3)
+    expect(calls.every((call) => call.count <= 100)).toBe(true)
+    expect(calls.reduce((sum, call) => sum + call.count, 0)).toBe(total)
+
+    // Y lo que de verdad importa: la cola drena y las filas llegaron enteras.
+    expect(await db.outbox.count()).toBe(0)
+    expect(backend.rowsOf('habits').length).toBe(total)
   })
 })
 

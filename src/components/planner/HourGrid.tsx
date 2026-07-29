@@ -26,6 +26,33 @@ export const CELL_PX = 72
 
 /** Ancho del raíl de horas. */
 export const HOUR_RAIL_WIDTH = '5rem'
+const HOUR_RAIL_PX = 80
+
+/**
+ * Ancho mínimo de una columna de día.
+ *
+ * Antes las pistas eran `minmax(0, 1fr)` —suelo CERO—, así que las siete
+ * columnas se repartían lo que hubiera por estrecha que fuera la pantalla: a
+ * 768 px, que es justo donde `useIsDesktop` conmuta a siete columnas, cada día
+ * caía a ~89 px. Y el `overflow-x-auto` del envoltorio no salvaba nada, porque
+ * con mínimo intrínseco cero la rejilla mide SIEMPRE exactamente lo que su
+ * contenedor y no desborda jamás.
+ *
+ * Con un suelo real la rejilla crece, desborda y entonces sí aparece la barra
+ * de scroll. Un calendario semanal que se desplaza en horizontal es lo normal;
+ * uno con los nombres recortados, no.
+ */
+const MIN_DAY_COL_PX = 120
+
+/**
+ * Ancho mínimo de un chip.
+ *
+ * El ALTO ya tenía suelo (MIN_CHIP_PX) y el ancho no: era `100/lanes %` puro, y
+ * `lanes` no está acotado por arriba. Tres tareas solapadas dejaban el chip en
+ * un tercio de columna, y con `shared` el componente ya renuncia al botón de
+ * completar asumiendo un espacio que nadie le garantizaba.
+ */
+const MIN_CHIP_W_PX = 56
 
 /**
  * Alto mínimo de un chip: una casilla entera menos el filete.
@@ -128,8 +155,14 @@ export function HourGrid({
 
       <div className="mt-4 overflow-x-auto pt-2">
         <div
-          className="grid min-w-full border-r border-b border-line"
-          style={{ gridTemplateColumns: `${HOUR_RAIL_WIDTH} repeat(${days.length}, minmax(0, 1fr))` }}
+          className="grid w-full border-r border-b border-line"
+          style={{
+            gridTemplateColumns: `${HOUR_RAIL_WIDTH} repeat(${days.length}, minmax(${MIN_DAY_COL_PX}px, 1fr))`,
+            // `w-full` con un `min-width` mayor resuelve al mayor de los dos:
+            // la rejilla ocupa el ancho disponible y, cuando no cabe, crece y
+            // desborda para que el overflow-x-auto de arriba haga su trabajo.
+            minWidth: HOUR_RAIL_PX + days.length * MIN_DAY_COL_PX,
+          }}
         >
           {/* Cabecera: esquina vacía sobre el raíl horario, y un día por columna */}
           <div className="border-b border-line" />
@@ -225,8 +258,13 @@ export function HourGrid({
                         // Alto proporcional a los MINUTOS reales: una tarea de
                         // 20 min ocupa dos tercios de una casilla, no una entera.
                         height,
-                        left: `${(placement.lane / placement.lanes) * 100}%`,
-                        width: `${100 / placement.lanes}%`,
+                        // Suelo en píxeles, y el desplazamiento acotado para
+                        // que el último carril no se salga de la columna. Con
+                        // dos carriles sobre una columna de 120 px no hay
+                        // solape; de tres en adelante los chips se pisan un
+                        // poco, que es honesto: SON tareas que se pisan.
+                        left: `min(${(placement.lane / placement.lanes) * 100}%, calc(100% - ${MIN_CHIP_W_PX}px))`,
+                        width: `max(${MIN_CHIP_W_PX}px, ${100 / placement.lanes}%)`,
                         // Un chip que empieza en la madrugada plegada no se pinta.
                         display: placement.startBlock < firstBlock ? 'none' : undefined,
                       }}
