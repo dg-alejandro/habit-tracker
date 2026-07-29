@@ -57,11 +57,13 @@ Claude Code hace el `git init`, los commits y el `push`. Yo solo creo el reposit
 
 ## 5. Instalar la PWA en el iPhone — Fase 5
 
+> **Si ya la añadiste antes de la Fase 5, BÓRRALA primero y vuelve a añadirla.** iOS no vuelve a leer el manifest de un acceso directo que ya existe: conservaría el icono y el nombre viejos, y no se abriría a pantalla completa.
+
 1. Abrir la URL de Vercel **en Safari** (Chrome no vale).
 2. Compartir → **Añadir a pantalla de inicio**.
-3. Abrirla desde el icono, no desde el navegador.
+3. Abrirla desde el icono, no desde el navegador. Debe salir **sin barra de direcciones**, con el fondo negro llegando hasta abajo y el check blanco como icono.
 
-> Merece la pena hacerlo ya al final de la Fase 0, aunque esté vacía. Tras cada despliegue conviene cerrarla desde el multitarea para forzar la recarga.
+> Ya no hace falta cerrarla desde el multitarea tras cada despliegue: la app comprueba sola si hay versión nueva (al abrirla, al volver a ella y cada hora) y avisa con una banda al pie. **Nada se recarga solo** — se actualiza cuando tú pulsas.
 
 ---
 

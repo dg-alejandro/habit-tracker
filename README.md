@@ -19,7 +19,12 @@ npm run dev        # servidor de desarrollo
 npm test           # tests (Vitest)
 npm run build      # build de producción (incluye chequeo de tipos)
 npm run preview    # servir el build localmente
+npm run icons      # regenerar los iconos PNG de la PWA
 ```
+
+El service worker **solo existe en el build**, no en `npm run dev`. Para probar la PWA hay que usar `npm run preview`.
+
+`npm run icons` no se ejecuta en el build: los PNG son contenido determinista y están en el repositorio. Solo hay que volver a lanzarlo si cambian los tokens de color o la geometría del icono en `scripts/generate-icons.mjs`, que emite también `public/favicon.svg` desde las mismas constantes.
 
 Requiere Node 20 o superior.
 

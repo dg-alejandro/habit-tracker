@@ -196,25 +196,31 @@ Según §4. El banco de tareas se gestiona en la misma pantalla, plegado.
 
 **Base: negro y blanco —fondo negro—, minimalista, con aire de terminal.** Mucho espacio vacío, bordes sutiles, esquinas casi rectas, cero sombras decorativas. El grueso de cada pantalla sigue siendo monocromo. (Hasta el 2026-07-23 el fondo era blanco; se invirtió a petición del propietario: la app se usa de noche.)
 
-**Dos tipografías** (2026-07-25, petición del propietario). El cuerpo va en la sans del sistema, para leer. Títulos, etiquetas de sección, horas, cifras y todo lo destacado van en **`font-display`**, que es la monoespaciada del sistema: de ahí sale el aire retro. No es un archivo descargado — cero bytes, cero dependencias y funciona sin red desde el primer día.
+**Dos tipografías** (2026-07-25, petición del propietario). El cuerpo va en la sans del sistema, para leer. La monoespaciada del sistema es **`font-display`**, y de ahí sale el aire retro. No es un archivo descargado — cero bytes, cero dependencias y funciona sin red desde el primer día.
+
+Va en `font-display`: **títulos y rótulos de sección**, **toda cifra** —leída o editable—, **horas y fechas**, y **todo texto de control** (botones y pestañas). La sans queda para la prosa: lo que escribe el usuario, las descripciones y los mensajes.
+**Corolario:** una cifra no cambia de tipografía al tocarla. Si es editable, el campo va en la misma cara que la cifra en lectura.
 
 **El color señala, no adorna.** Los chillones —naranja, verde ácido, magenta— ya no viven solo en las estadísticas, pero cada uno tiene un trabajo y ninguno decora:
 
 | Color | Significa |
 |---|---|
-| `streak-lime` | «Estás aquí» y «esto es estructura»: sección activa de la navegación, día de hoy, rótulos de sección, tareas fijas |
-| `streak-orange` | Cifras que miden: el % semanal, los pendientes, las series |
+| `streak-lime` | **Estructura y meta alcanzada.** «Estás aquí» (sección activa, día de hoy, el foco del teclado), lo que da estructura (rótulos de sección, tareas que vienen del banco, el hueco donde se puede soltar) y **el día logrado** del mapa del año — que es la misma idea vista en el calendario: el día que llega al listón |
+| `streak-orange` | **Lo que mide y lo que aún cuelga.** Las cifras que miden (% semanal, series, rachas por hábito, recuentos) y **las tareas sueltas** del planificador: lo que solo importa esta semana y desaparece si no se hace |
 | `streak-magenta` | Récords, y la raya del «ahora» en el planificador: es la única marca que no se puede confundir con una tarea |
-| `streak-red` | **Solo ruptura.** La racha rota, y los botones que borran de verdad |
+| `streak-red` | **Solo ruptura.** La racha rota, y los botones que borran de verdad — incluida la restauración de una copia, que borra todo lo que hay |
 
-Un color que no signifique nada de eso no entra. El fondo, el texto y los bordes siguen siendo neutros siempre: sobre negro, un filete de dos píxeles ya grita bastante.
+Un mismo chillón puede tener dos trabajos si son **la misma idea vista dos veces**. Lo que no puede es decorar. Un color que no signifique nada de eso no entra. El fondo, el texto y los bordes siguen siendo neutros siempre: sobre negro, un filete de dos píxeles ya grita bastante.
 
 Los tokens de color y de tipografía viven en `src/styles/tokens.css`. Ningún componente escribe un color ni una familia a mano.
 
 - Números de racha **enormes**, desproporcionados a propósito.
 - **Al romper una racha: que duela.** Rojo, aviso claro, el número cayendo a cero de forma visible. No lo suavices ni lo escondas: es el mecanismo que hace funcionar la app.
 - Mobile-first: se diseña para el iPhone y se adapta al escritorio, no al revés.
-- Objetivos táctiles grandes. Se usa de noche, con una mano, medio dormido.
+- Objetivos táctiles grandes (**44 px como mínimo**). Se usa de noche, con una mano, medio dormido.
+- **Contraste:** todo texto pasa el 4,5:1 de WCAG AA sobre su fondo. Es lo que fija el valor de `ink-faint`, que no es un gris decorativo sino el tono más apagado que sigue siendo legible.
+- **El foco se ve.** Sobre negro, el anillo por defecto del navegador se pierde: hay una regla base de `:focus-visible` en lima. Ningún componente pone `outline-none` sin sustituto.
+- **El área segura del iPhone tiene un solo dueño:** `App.tsx` y la barra de navegación. Las páginas no la gestionan.
 - Interfaz **en español**.
 
 
@@ -236,6 +242,8 @@ Respétala. Si necesitas crear una carpeta nueva, anótalo en `PROGRESO.md`.
 ├── supabase/
 │   ├── schema.sql             Tablas
 │   └── policies.sql           RLS
+├── scripts/
+│   └── generate-icons.mjs     Iconos PNG de la PWA (`npm run icons`), sin dependencias
 ├── public/                    Iconos, manifest
 └── src/
     ├── main.tsx
@@ -248,10 +256,11 @@ Respétala. Si necesitas crear una carpeta nueva, anótalo en `PROGRESO.md`.
     │   ├── Planner.tsx
     │   └── Settings.tsx
     ├── components/
-    │   ├── ui/                Primitivas reutilizables
+    │   ├── ui/                Primitivas reutilizables — y NADA de dominio
     │   ├── habits/
     │   ├── stats/
-    │   └── planner/
+    │   ├── planner/
+    │   └── settings/
     ├── data/
     │   ├── types.ts           Tipos compartidos
     │   ├── db.ts              Esquema Dexie
