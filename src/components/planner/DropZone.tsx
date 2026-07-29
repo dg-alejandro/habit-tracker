@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { useDraggable, useDroppable } from '@dnd-kit/core'
 import { dropTargetId, type DropTarget } from '../../logic/planner'
+import { GripIcon } from '../ui/GripIcon'
 import type { PlannerTask } from '../../data/types'
 
 interface DropZoneProps {
@@ -80,18 +81,5 @@ export function DraggableTask({ task, density, children }: DraggableTaskProps) {
     <div ref={setNodeRef} className={isDragging ? 'opacity-30' : ''}>
       {children(handle)}
     </div>
-  )
-}
-
-function GripIcon() {
-  return (
-    <svg viewBox="0 0 20 20" aria-hidden="true" className="h-5 w-5" fill="currentColor">
-      <circle cx="7" cy="5" r="1.5" />
-      <circle cx="13" cy="5" r="1.5" />
-      <circle cx="7" cy="10" r="1.5" />
-      <circle cx="13" cy="10" r="1.5" />
-      <circle cx="7" cy="15" r="1.5" />
-      <circle cx="13" cy="15" r="1.5" />
-    </svg>
   )
 }

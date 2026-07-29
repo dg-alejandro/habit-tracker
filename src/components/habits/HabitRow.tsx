@@ -1,7 +1,7 @@
 import { toggleCheck } from '../../data/repositories/entriesRepo'
 import type { IsoDate } from '../../logic/dates'
 import type { DayEntry, Habit } from '../../data/types'
-import { CheckToggle } from './CheckToggle'
+import { CheckToggle } from '../ui/CheckToggle'
 import { CounterControls } from './CounterControls'
 import { NoteField } from './NoteField'
 

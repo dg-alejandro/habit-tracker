@@ -8,16 +8,14 @@ import {
   blockLabel,
   isValidEstimatedMinutes,
 } from '../../logic/planner'
-import { CheckToggle } from '../habits/CheckToggle'
+import { CheckToggle } from '../ui/CheckToggle'
+import { BUTTON_DANGER, BUTTON_PRIMARY, BUTTON_QUIET, FIELD_CLASS } from '../ui/classes'
 import type { IsoWeekday, PlannerTask } from '../../data/types'
 
 interface TaskEditorProps {
   task: PlannerTask
   onClose: () => void
 }
-
-const FIELD_CLASS =
-  'h-11 w-full rounded-sm border border-line bg-paper px-3 text-base text-ink placeholder:text-ink-faint focus:border-streak-lime focus:outline-none'
 
 const WEEKDAYS: IsoWeekday[] = [1, 2, 3, 4, 5, 6, 7]
 
@@ -59,7 +57,7 @@ export function TaskEditor({ task, onClose }: TaskEditorProps) {
           type="text"
           value={text}
           onChange={(event) => setText(event.currentTarget.value)}
-          className={`mt-1 ${FIELD_CLASS}`}
+          className={`mt-1 w-full ${FIELD_CLASS}`}
         />
       </label>
 
@@ -77,7 +75,7 @@ export function TaskEditor({ task, onClose }: TaskEditorProps) {
               if (value === '') setStartBlock(null)
               else if (startBlock === null) setStartBlock(DEFAULT_BLOCK)
             }}
-            className={`mt-1 ${FIELD_CLASS} capitalize`}
+            className={`mt-1 w-full ${FIELD_CLASS} capitalize`}
           >
             <option value="">Sin colocar</option>
             {WEEKDAYS.map((weekday) => (
@@ -98,7 +96,7 @@ export function TaskEditor({ task, onClose }: TaskEditorProps) {
                 event.currentTarget.value === '' ? null : Number(event.currentTarget.value),
               )
             }
-            className={`mt-1 ${FIELD_CLASS} font-display tabular-nums disabled:text-ink-faint`}
+            className={`mt-1 w-full ${FIELD_CLASS} font-display tabular-nums disabled:text-ink-faint`}
           >
             {/* Deshabilitada a propósito: elegir «sin hora» con un día puesto
                 dejaba la tarea sin sitio donde verse. Para quitarla de la
@@ -127,7 +125,7 @@ export function TaskEditor({ task, onClose }: TaskEditorProps) {
             value={minutes}
             onChange={(event) => setMinutes(event.currentTarget.value)}
             placeholder="Sin estimar"
-            className={`mt-1 ${FIELD_CLASS} font-display tabular-nums`}
+            className={`mt-1 w-full ${FIELD_CLASS} font-display tabular-nums`}
           />
         </label>
       </div>
@@ -153,14 +151,14 @@ export function TaskEditor({ task, onClose }: TaskEditorProps) {
                 void deleteTask(task.id)
                 onClose()
               }}
-              className="h-11 rounded-sm border border-streak-red px-4 text-sm font-semibold text-streak-red transition-colors hover:bg-surface"
+              className={BUTTON_DANGER}
             >
               Eliminar de verdad
             </button>
             <button
               type="button"
               onClick={() => setConfirmingDelete(false)}
-              className="h-11 rounded-sm px-3 text-sm text-ink-soft transition-colors hover:bg-surface hover:text-ink"
+              className={BUTTON_QUIET}
             >
               No
             </button>
@@ -169,25 +167,17 @@ export function TaskEditor({ task, onClose }: TaskEditorProps) {
           <button
             type="button"
             onClick={() => setConfirmingDelete(true)}
-            className="h-11 rounded-sm px-3 text-sm text-ink-soft transition-colors hover:bg-surface hover:text-ink"
+            className={BUTTON_QUIET}
           >
             Eliminar
           </button>
         )}
 
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="h-11 rounded-sm px-4 text-sm font-medium text-ink-soft transition-colors hover:bg-surface"
-          >
+          <button type="button" onClick={onClose} className={BUTTON_QUIET}>
             Cancelar
           </button>
-          <button
-            type="submit"
-            disabled={!valid}
-            className="h-11 rounded-sm bg-ink px-5 text-sm font-semibold text-paper transition-opacity disabled:opacity-30"
-          >
+          <button type="submit" disabled={!valid} className={BUTTON_PRIMARY}>
             Guardar
           </button>
         </div>

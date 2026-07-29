@@ -17,6 +17,9 @@ import { CSS } from '@dnd-kit/utilities'
 import { archiveHabit, reorderHabits, updateHabit } from '../../data/repositories/habitsRepo'
 import type { Habit } from '../../data/types'
 import { HabitForm, type HabitFormValues } from './HabitForm'
+import { EmptyState } from '../ui/EmptyState'
+import { GripIcon } from '../ui/GripIcon'
+import { BUTTON_QUIET } from '../ui/classes'
 
 interface SortableHabitListProps {
   habits: Habit[]
@@ -61,7 +64,7 @@ export function SortableHabitList({ habits }: SortableHabitListProps) {
   }
 
   if (habits.length === 0) {
-    return <p className="mt-6 text-sm text-ink-soft">Sin hábitos activos.</p>
+    return <EmptyState className="mt-6">Sin hábitos activos.</EmptyState>
   }
 
   return (
@@ -134,7 +137,7 @@ function SortableHabitItem({ habit, editing, onStartEdit, onStopEdit }: Sortable
             type="button"
             onClick={onStartEdit}
             aria-label={`Editar ${habit.name}`}
-            className="h-11 shrink-0 rounded-sm px-2 font-display text-xs uppercase tracking-widest text-ink-soft transition-colors hover:bg-surface hover:text-ink"
+            className={`shrink-0 ${BUTTON_QUIET}`}
           >
             Editar
           </button>
@@ -142,7 +145,7 @@ function SortableHabitItem({ habit, editing, onStartEdit, onStopEdit }: Sortable
             type="button"
             onClick={() => void archiveHabit(habit.id)}
             aria-label={`Archivar ${habit.name}`}
-            className="h-11 shrink-0 rounded-sm px-2 font-display text-xs uppercase tracking-widest text-ink-soft transition-colors hover:bg-surface hover:text-ink"
+            className={`shrink-0 ${BUTTON_QUIET}`}
           >
             Archivar
           </button>
@@ -160,17 +163,4 @@ function habitMeta(habit: Habit): string {
   if (habit.targetMinutes !== undefined) parts.push(`${habit.targetMinutes} min`)
   parts.push(`${habit.weeklyTarget}/sem`)
   return parts.join(' · ')
-}
-
-function GripIcon() {
-  return (
-    <svg viewBox="0 0 20 20" aria-hidden="true" className="h-5 w-5" fill="currentColor">
-      <circle cx="7" cy="5" r="1.5" />
-      <circle cx="13" cy="5" r="1.5" />
-      <circle cx="7" cy="10" r="1.5" />
-      <circle cx="13" cy="10" r="1.5" />
-      <circle cx="7" cy="15" r="1.5" />
-      <circle cx="13" cy="15" r="1.5" />
-    </svg>
-  )
 }

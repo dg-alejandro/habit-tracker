@@ -12,15 +12,17 @@ import {
   isValidEstimatedMinutes,
   type BankTask,
 } from '../../logic/planner'
+import { EmptyState } from '../ui/EmptyState'
+import { GripIcon } from '../ui/GripIcon'
+import { SkeletonRows } from '../ui/Skeleton'
+import { BUTTON_DANGER, BUTTON_PRIMARY, BUTTON_QUIET, FIELD_CLASS } from '../ui/classes'
 
 interface TaskBankProps {
-  bank: readonly BankTask[]
+  /** `undefined` mientras Dexie responde: vacío y sin cargar no son lo mismo. */
+  bank: readonly BankTask[] | undefined
   /** Manda la ficha a la semana sin colocarla: la ruta que no necesita arrastrar. */
   onSend: (item: BankTask) => void
 }
-
-const FIELD_CLASS =
-  'h-11 rounded-sm border border-line bg-paper px-3 text-base text-ink placeholder:text-ink-faint focus:border-streak-lime focus:outline-none'
 
 /**
  * El banco de tareas reutilizables (§4): lo que se repite semana tras semana.
@@ -44,7 +46,10 @@ export function TaskBank({ bank, onSend }: TaskBankProps) {
       >
         <span aria-hidden="true">{open ? '▾' : '▸'}</span>
         <span>Banco de tareas</span>
-        <span className="tabular-nums text-ink-soft">· {bank.length}</span>
+        {/* Sin recuento mientras carga: un «· 0» que luego salta a «· 7» miente. */}
+        {bank !== undefined && (
+          <span className="tabular-nums text-ink-soft">· {bank.length}</span>
+        )}
         <span className="ml-auto text-sm normal-case tracking-normal text-ink-soft">
           {open ? 'arrastra una a la cuadrícula' : 'lo que se repite cada semana'}
         </span>
@@ -52,11 +57,13 @@ export function TaskBank({ bank, onSend }: TaskBankProps) {
 
       {open && (
         <div className="mt-3">
-          {bank.length === 0 ? (
-            <p className="text-sm text-ink-faint">
+          {bank === undefined ? (
+            <SkeletonRows rows={2} />
+          ) : bank.length === 0 ? (
+            <EmptyState>
               Vacío. Añade aquí lo que repites —gimnasio, leer, compra— y arrástralo a la semana
               cuando toque.
-            </p>
+            </EmptyState>
           ) : (
             <ul className="flex flex-wrap gap-3">
               {bank.map((item) =>
@@ -129,7 +136,7 @@ function BankChip({
         {...listeners}
         className="flex w-11 shrink-0 cursor-grab touch-none items-center justify-center text-streak-lime active:cursor-grabbing"
       >
-        <GripIcon />
+        <GripIcon size="sm" />
       </button>
       <button type="button" onClick={onEdit} className="min-h-12 py-2 pr-3 text-left">
         <span className="block text-lg text-ink">{item.text}</span>
@@ -220,15 +227,11 @@ function BankTaskForm({ initial, onSubmit, onCancel, onDelete }: BankTaskFormPro
           <button
             type="submit"
             disabled={!valid}
-            className="h-11 rounded-sm bg-ink px-4 font-display text-xs uppercase tracking-widest text-paper disabled:opacity-30"
+            className={BUTTON_PRIMARY}
           >
             Guardar
           </button>
-          <button
-            type="button"
-            onClick={onCancel}
-            className="h-11 rounded-sm px-3 font-display text-xs uppercase tracking-widest text-ink-soft hover:bg-surface"
-          >
+          <button type="button" onClick={onCancel} className={BUTTON_QUIET}>
             Cancelar
           </button>
           {/* En dos pasos, como el resto de borrados de la app: una ficha del
@@ -238,14 +241,14 @@ function BankTaskForm({ initial, onSubmit, onCancel, onDelete }: BankTaskFormPro
               <button
                 type="button"
                 onClick={onDelete}
-                className="h-11 rounded-sm border border-streak-red px-4 font-display text-xs uppercase tracking-widest text-streak-red hover:bg-surface"
+                className={BUTTON_DANGER}
               >
                 Quitar de verdad
               </button>
               <button
                 type="button"
                 onClick={() => setConfirmingDelete(false)}
-                className="h-11 rounded-sm px-3 font-display text-xs uppercase tracking-widest text-ink-soft hover:bg-surface"
+                className={BUTTON_QUIET}
               >
                 No
               </button>
@@ -254,7 +257,7 @@ function BankTaskForm({ initial, onSubmit, onCancel, onDelete }: BankTaskFormPro
             <button
               type="button"
               onClick={() => setConfirmingDelete(true)}
-              className="h-11 rounded-sm px-3 font-display text-xs uppercase tracking-widest text-streak-red hover:bg-surface"
+              className={`${BUTTON_QUIET} text-streak-red hover:text-streak-red`}
             >
               Quitar del banco
             </button>
@@ -262,18 +265,5 @@ function BankTaskForm({ initial, onSubmit, onCancel, onDelete }: BankTaskFormPro
         </>
       )}
     </form>
-  )
-}
-
-function GripIcon() {
-  return (
-    <svg viewBox="0 0 20 20" aria-hidden="true" className="h-4 w-4" fill="currentColor">
-      <circle cx="7" cy="5" r="1.5" />
-      <circle cx="13" cy="5" r="1.5" />
-      <circle cx="7" cy="10" r="1.5" />
-      <circle cx="13" cy="10" r="1.5" />
-      <circle cx="7" cy="15" r="1.5" />
-      <circle cx="13" cy="15" r="1.5" />
-    </svg>
   )
 }

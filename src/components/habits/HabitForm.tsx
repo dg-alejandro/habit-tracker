@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { BUTTON_PRIMARY, BUTTON_QUIET, FIELD_CLASS } from '../ui/classes'
 import { DEFAULT_WEEKLY_TARGET, type Habit, type HabitType } from '../../data/types'
 
 export interface HabitFormValues {
@@ -20,9 +21,6 @@ const TYPE_LABELS: Record<HabitType, string> = {
   counter: 'Contador con objetivo',
   counter_note: 'Contador con nota',
 }
-
-const FIELD_CLASS =
-  'h-11 w-full rounded-sm border border-line bg-paper px-3 text-base text-ink placeholder:text-ink-faint'
 
 /** Formulario en línea de crear/editar hábito. Sin modales. */
 export function HabitForm({ initial, onSubmit, onCancel }: HabitFormProps) {
@@ -60,7 +58,7 @@ export function HabitForm({ initial, onSubmit, onCancel }: HabitFormProps) {
           value={name}
           onChange={(event) => setName(event.currentTarget.value)}
           placeholder="Nombre del hábito"
-          className={`mt-1 ${FIELD_CLASS}`}
+          className={`mt-1 w-full ${FIELD_CLASS}`}
         />
       </label>
 
@@ -70,7 +68,7 @@ export function HabitForm({ initial, onSubmit, onCancel }: HabitFormProps) {
           value={type}
           disabled={editing}
           onChange={(event) => setType(event.currentTarget.value as HabitType)}
-          className={`mt-1 ${FIELD_CLASS} disabled:text-ink-faint`}
+          className={`mt-1 w-full ${FIELD_CLASS} disabled:text-ink-faint`}
         >
           {(Object.keys(TYPE_LABELS) as HabitType[]).map((key) => (
             <option key={key} value={key}>
@@ -91,7 +89,7 @@ export function HabitForm({ initial, onSubmit, onCancel }: HabitFormProps) {
               min={1}
               value={targetMinutes}
               onChange={(event) => setTargetMinutes(event.currentTarget.value)}
-              className={`mt-1 ${FIELD_CLASS} tabular-nums`}
+              className={`mt-1 w-full ${FIELD_CLASS} tabular-nums`}
             />
           </label>
         )}
@@ -100,7 +98,7 @@ export function HabitForm({ initial, onSubmit, onCancel }: HabitFormProps) {
           <select
             value={weeklyTarget}
             onChange={(event) => setWeeklyTarget(event.currentTarget.value)}
-            className={`mt-1 ${FIELD_CLASS}`}
+            className={`mt-1 w-full ${FIELD_CLASS}`}
           >
             {[1, 2, 3, 4, 5, 6, 7].map((days) => (
               <option key={days} value={days}>
@@ -115,15 +113,11 @@ export function HabitForm({ initial, onSubmit, onCancel }: HabitFormProps) {
         <button
           type="button"
           onClick={onCancel}
-          className="h-11 rounded-sm px-4 text-sm font-medium text-ink-soft transition-colors hover:bg-surface"
+          className={BUTTON_QUIET}
         >
           Cancelar
         </button>
-        <button
-          type="submit"
-          disabled={!valid}
-          className="h-11 rounded-sm bg-ink px-5 text-sm font-semibold text-paper transition-opacity disabled:opacity-30"
-        >
+        <button type="submit" disabled={!valid} className={BUTTON_PRIMARY}>
           Guardar
         </button>
       </div>

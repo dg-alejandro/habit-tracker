@@ -3,18 +3,22 @@ import { createTask } from '../../data/repositories/plannerTasksRepo'
 import { MAX_ESTIMATED_MINUTES, isValidEstimatedMinutes } from '../../logic/planner'
 import { DropZone } from './DropZone'
 import { TaskList } from './TaskList'
+import { EmptyState } from '../ui/EmptyState'
+import { SkeletonRows } from '../ui/Skeleton'
+import { FIELD_CLASS } from '../ui/classes'
 import type { PlannerTask, WeekId } from '../../data/types'
 
 interface UnplacedTrayProps {
   weekId: WeekId
-  /** Las tareas de la semana que aún no están colocadas. */
-  tasks: readonly PlannerTask[]
+  /**
+   * Las tareas de la semana que aún no están colocadas, o `undefined` mientras
+   * Dexie responde. Antes esto llegaba ya aplastado a `[]` y la caja anunciaba
+   * «nada suelto» antes de saber si había algo.
+   */
+  tasks: readonly PlannerTask[] | undefined
   editingId: string | null
   onEdit: (id: string) => void
 }
-
-const FIELD_CLASS =
-  'h-11 rounded-sm border border-line bg-paper px-3 text-base text-ink placeholder:text-ink-faint focus:border-streak-lime focus:outline-none'
 
 /**
  * Las tareas PUNTUALES de la semana que aún no están colocadas, y el campo para
@@ -52,14 +56,17 @@ export function UnplacedTray({ weekId, tasks, editingId, onEdit }: UnplacedTrayP
     commit()
   }
 
-  const pending = tasks.filter((task) => !task.done).length
+  // null mientras carga: un «· 0» que luego salta a «· 3» es peor que nada.
+  const pending = tasks === undefined ? null : tasks.filter((task) => !task.done).length
 
   return (
     <section className="mt-8">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 border-b border-line pb-2">
         <h2 className="font-display text-base uppercase tracking-[0.2em] text-streak-lime">
           Sueltas de esta semana{' '}
-          {pending > 0 && <span className="tabular-nums text-streak-orange">· {pending}</span>}
+          {pending !== null && pending > 0 && (
+            <span className="tabular-nums text-streak-orange">· {pending}</span>
+          )}
         </h2>
         <p className="font-display text-sm text-ink-soft">
           desaparecen al acabar la semana
@@ -98,11 +105,15 @@ export function UnplacedTray({ weekId, tasks, editingId, onEdit }: UnplacedTrayP
       </form>
 
 
+      {/* La zona de soltado se monta siempre, también mientras carga: si
+          desapareciera, un arrastre en vuelo se quedaría sin destino. */}
       <DropZone target={{ kind: 'unplaced' }} className="mt-2 min-h-14 rounded-sm">
-        {tasks.length === 0 ? (
-          <p className="py-4 text-base text-ink-faint">
+        {tasks === undefined ? (
+          <SkeletonRows rows={2} />
+        ) : tasks.length === 0 ? (
+          <EmptyState className="py-4">
             Nada suelto. Lo que escribas aquí aparecerá hasta que lo arrastres a un hueco.
-          </p>
+          </EmptyState>
         ) : (
           <TaskList tasks={tasks} editingId={editingId} onEdit={onEdit} />
         )}

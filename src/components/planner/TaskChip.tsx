@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { CheckToggle } from '../habits/CheckToggle'
+import { CheckToggle } from '../ui/CheckToggle'
 import {
   blockRangeLabel,
   durationLabel,

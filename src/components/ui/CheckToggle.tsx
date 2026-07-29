@@ -6,6 +6,9 @@ interface CheckToggleProps {
  * Casilla visual, sin interactividad propia: en los hábitos de casilla la pulsa
  * la fila entera; en los contadores es un indicador pasivo del cumplido automático.
  * La micro-animación (hundirse al pulsar, tick que se dibuja) vive en index.css.
+ *
+ * Vive en `ui/` desde la Fase 5: nació en `habits/` pero el planificador la usa
+ * desde la Fase 4, así que era una primitiva disfrazada de componente de dominio.
  */
 export function CheckToggle({ checked }: CheckToggleProps) {
   return (
