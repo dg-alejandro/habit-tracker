@@ -89,7 +89,7 @@ export function HabitForm({ initial, onSubmit, onCancel }: HabitFormProps) {
               min={1}
               value={targetMinutes}
               onChange={(event) => setTargetMinutes(event.currentTarget.value)}
-              className={`mt-1 w-full ${FIELD_CLASS} tabular-nums`}
+              className={`mt-1 w-full ${FIELD_CLASS} font-display tabular-nums`}
             />
           </label>
         )}

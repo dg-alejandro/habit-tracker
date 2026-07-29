@@ -37,7 +37,13 @@ export function HabitRow({ habit, entry, date, disabled }: HabitRowProps) {
     <div className="flex min-h-14 items-start gap-4 py-3">
       <CheckToggle checked={done} />
       <div className="min-w-0 flex-1">
-        <p className="text-lg leading-7 text-ink">{habit.name}</p>
+        {/* La casilla de un contador es aria-hidden y la fila no es un botón,
+            así que el cumplido no se anunciaba de ninguna forma: solo existía
+            como color. */}
+        <p className="text-lg leading-7 text-ink">
+          {habit.name}
+          {done && <span className="sr-only"> — cumplido</span>}
+        </p>
         <CounterControls habit={habit} entry={entry} date={date} disabled={disabled} />
         {habit.type === 'counter_note' && (
           <NoteField habit={habit} entry={entry} date={date} disabled={disabled} />

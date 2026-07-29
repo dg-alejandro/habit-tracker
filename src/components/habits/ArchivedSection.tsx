@@ -1,4 +1,5 @@
 import { unarchiveHabit } from '../../data/repositories/habitsRepo'
+import { BUTTON_QUIET } from '../ui/classes'
 import type { Habit } from '../../data/types'
 
 interface ArchivedSectionProps {
@@ -19,7 +20,8 @@ export function ArchivedSection({ habits }: ArchivedSectionProps) {
             <button
               type="button"
               onClick={() => void unarchiveHabit(habit.id)}
-              className="h-11 shrink-0 rounded-sm px-2 text-sm text-ink-soft transition-colors hover:bg-surface hover:text-ink"
+              aria-label={`Desarchivar ${habit.name}`}
+              className={`shrink-0 ${BUTTON_QUIET}`}
             >
               Desarchivar
             </button>

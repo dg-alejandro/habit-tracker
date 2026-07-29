@@ -38,6 +38,10 @@ export function TaskBank({ bank, onSend }: TaskBankProps) {
 
   return (
     <section className="mt-8">
+      {/* Era la única sección de la app sin encabezado: el rótulo era el propio
+          botón. Las clases se quedan en el botón, así que no cambia nada a la
+          vista y sí en el árbol de accesibilidad. */}
+      <h2>
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
@@ -54,6 +58,7 @@ export function TaskBank({ bank, onSend }: TaskBankProps) {
           {open ? 'arrastra una a la cuadrícula' : 'lo que se repite cada semana'}
         </span>
       </button>
+      </h2>
 
       {open && (
         <div className="mt-3">

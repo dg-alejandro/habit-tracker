@@ -30,7 +30,7 @@ export function GlobalThresholdSection() {
           id="global-threshold"
           value={percent}
           onChange={(event) => void setGlobalThreshold(Number(event.target.value) / 100)}
-          className="h-11 rounded-sm border border-line bg-paper px-3 text-sm text-ink"
+          className="h-11 rounded-sm border border-line bg-paper px-3 font-display text-sm tabular-nums text-ink"
         >
           {OPTIONS.map((option) => (
             <option key={option} value={option}>
@@ -40,9 +40,19 @@ export function GlobalThresholdSection() {
         </select>
       </div>
       <p className="mt-2 text-sm text-ink-soft">
-        {activeCount > 0
-          ? `Con ${activeCount} hábitos activos, un día cuenta a partir de ${required} cumplidos.`
-          : 'Sin hábitos activos ahora mismo.'}
+        {habits === undefined ? (
+          /* Ni «0 hábitos» ni el texto de vacío mientras carga: los dos
+             mienten durante los primeros milisegundos. */
+          <>Con el umbral al {percent} %.</>
+        ) : activeCount > 0 ? (
+          <>
+            Con <span className="font-display tabular-nums">{activeCount}</span> hábitos activos, un
+            día cuenta a partir de <span className="font-display tabular-nums">{required}</span>{' '}
+            cumplidos.
+          </>
+        ) : (
+          'Sin hábitos activos ahora mismo.'
+        )}
       </p>
     </section>
   )

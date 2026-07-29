@@ -44,7 +44,10 @@ export function CounterControls({ habit, entry, date, disabled }: CounterControl
           onKeyDown={(event) => {
             if (event.key === 'Enter') event.currentTarget.blur()
           }}
-          className="h-11 w-20 rounded-sm border border-line bg-paper px-2 text-sm tabular-nums text-ink"
+          // font-display igual que la MISMA cifra en modo lectura, cuatro
+          // líneas más abajo: una cifra no puede cambiar de tipografía por
+          // tocarla (§6).
+          className="h-11 w-20 rounded-sm border border-line bg-paper px-2 font-display text-sm tabular-nums text-ink focus:border-streak-lime"
         />
       ) : (
         <button

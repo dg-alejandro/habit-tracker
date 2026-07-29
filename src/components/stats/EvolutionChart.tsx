@@ -40,7 +40,7 @@ export function EvolutionChart({ input }: EvolutionChartProps) {
               type="button"
               aria-pressed={granularity === key}
               onClick={() => setGranularity(key)}
-              className={`h-11 rounded-sm px-3 text-sm ${
+              className={`h-11 rounded-sm px-3 font-display text-xs uppercase tracking-widest ${
                 granularity === key
                   ? 'bg-surface font-semibold text-ink'
                   : 'text-ink-soft hover:text-ink'
@@ -59,7 +59,14 @@ export function EvolutionChart({ input }: EvolutionChartProps) {
               axisLine={false}
               tickLine={false}
               interval={granularity === 'week' ? 1 : 0}
-              tick={{ fill: 'var(--color-ink-soft)', fontSize: 11 }}
+              // Recharts pinta <text> SVG y sin esto heredaba la sans del body:
+              // eran las únicas cifras de la pantalla que no iban en la
+              // monoespaciada. Entra por la misma puerta que los var(--color-*).
+              tick={{
+                fill: 'var(--color-ink-soft)',
+                fontSize: 11,
+                fontFamily: 'var(--font-display)',
+              }}
             />
             <YAxis domain={[0, 100]} hide />
             <Bar
@@ -73,6 +80,7 @@ export function EvolutionChart({ input }: EvolutionChartProps) {
                 position="top"
                 fill="var(--color-ink-soft)"
                 fontSize={10}
+                fontFamily="var(--font-display)"
                 formatter={(value: unknown) => (typeof value === 'number' ? String(value) : '')}
               />
             </Bar>
