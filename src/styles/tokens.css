@@ -28,7 +28,13 @@
   --color-line: #2b2b2b;       /* bordes sutiles */
   --color-ink: #f0f0f0;        /* texto principal */
   --color-ink-soft: #9a9a9a;   /* texto secundario */
-  --color-ink-faint: #5f5f5f;  /* texto terciario y deshabilitados */
+  /* Texto terciario: el tono más apagado que SIGUE SIENDO LEGIBLE, no un gris
+     decorativo. Era #5f5f5f, que daba 3,00:1 sobre el fondo y 2,67:1 sobre las
+     tarjetas — por debajo del 4,5:1 que pide WCAG AA, y ningún texto que lo usa
+     es grande. #848484 es el suelo exacto que pasa en los DOS fondos (5,13:1 y
+     4,56:1); se elige el suelo y no un valor más alto para conservar toda la
+     jerarquía posible frente a ink-soft. */
+  --color-ink-faint: #848484;  /* texto terciario y deshabilitados */
 
   /* Chillones — SOLO para rachas y datos estadísticos */
   --color-streak-orange: #ff5f00;
