@@ -42,22 +42,22 @@ export function TaskBank({ bank, onSend }: TaskBankProps) {
           botón. Las clases se quedan en el botón, así que no cambia nada a la
           vista y sí en el árbol de accesibilidad. */}
       <h2>
-      <button
-        type="button"
-        onClick={() => setOpen((value) => !value)}
-        aria-expanded={open}
-        className="flex h-14 w-full items-center gap-3 border-b border-streak-lime/60 font-display text-base uppercase tracking-[0.2em] text-streak-lime transition-colors hover:bg-surface"
-      >
-        <span aria-hidden="true">{open ? '▾' : '▸'}</span>
-        <span>Banco de tareas</span>
-        {/* Sin recuento mientras carga: un «· 0» que luego salta a «· 7» miente. */}
-        {bank !== undefined && (
-          <span className="tabular-nums text-ink-soft">· {bank.length}</span>
-        )}
-        <span className="ml-auto text-sm normal-case tracking-normal text-ink-soft">
-          {open ? 'arrastra una a la cuadrícula' : 'lo que se repite cada semana'}
-        </span>
-      </button>
+        <button
+          type="button"
+          onClick={() => setOpen((value) => !value)}
+          aria-expanded={open}
+          className="flex h-14 w-full items-center gap-3 border-b border-streak-lime/60 font-display text-base uppercase tracking-[0.2em] text-streak-lime transition-colors hover:bg-surface"
+        >
+          <span aria-hidden="true">{open ? '▾' : '▸'}</span>
+          <span>Banco de tareas</span>
+          {/* Sin recuento mientras carga: un «· 0» que luego salta a «· 7» miente. */}
+          {bank !== undefined && (
+            <span className="tabular-nums text-ink-soft">· {bank.length}</span>
+          )}
+          <span className="ml-auto text-sm normal-case tracking-normal text-ink-soft">
+            {open ? 'arrastra una a la cuadrícula' : 'lo que se repite cada semana'}
+          </span>
+        </button>
       </h2>
 
       {open && (
