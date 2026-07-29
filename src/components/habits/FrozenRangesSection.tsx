@@ -2,6 +2,9 @@ import { useState, type FormEvent } from 'react'
 import { createFrozenRange, deleteFrozenRange } from '../../data/repositories/frozenRepo'
 import { useFrozenRanges } from '../../hooks/useFrozenRanges'
 import { formatDateShortEs } from '../../logic/dates'
+import { EmptyState } from '../ui/EmptyState'
+import { SkeletonRows } from '../ui/Skeleton'
+import { BUTTON_DANGER, BUTTON_PRIMARY, BUTTON_QUIET, FIELD_CLASS } from '../ui/classes'
 import type { FrozenRange } from '../../data/types'
 
 /**
@@ -41,7 +44,7 @@ export function FrozenRangesSection() {
               type="date"
               value={startDate}
               onChange={(event) => setStartDate(event.currentTarget.value)}
-              className="mt-1 h-11 w-full rounded-sm border border-line bg-paper px-3 text-base text-ink"
+              className={`mt-1 w-full ${FIELD_CLASS} font-display tabular-nums`}
             />
           </label>
           <label className="block min-w-36 flex-1">
@@ -50,32 +53,40 @@ export function FrozenRangesSection() {
               type="date"
               value={endDate}
               onChange={(event) => setEndDate(event.currentTarget.value)}
-              className="mt-1 h-11 w-full rounded-sm border border-line bg-paper px-3 text-base text-ink"
+              className={`mt-1 w-full ${FIELD_CLASS} font-display tabular-nums`}
             />
           </label>
         </div>
+        {/* Era el único campo de toda la app sin nombre accesible: solo tenía
+            placeholder, que desaparece en cuanto escribes. */}
         <input
           type="text"
           value={note}
           onChange={(event) => setNote(event.currentTarget.value)}
+          aria-label="Nota del rango congelado"
           placeholder="Nota (opcional: vacaciones, enfermedad…)"
-          className="mt-3 h-11 w-full rounded-sm border border-line bg-paper px-3 text-base text-ink placeholder:text-ink-faint"
+          className={`mt-3 w-full ${FIELD_CLASS}`}
         />
         {invalidRange && (
-          <p className="mt-2 text-sm font-semibold text-ink">El final no puede ser anterior al inicio.</p>
+          <p role="alert" className="mt-2 text-sm font-semibold text-ink">
+            El final no puede ser anterior al inicio.
+          </p>
         )}
         <div className="mt-3 flex justify-end">
-          <button
-            type="submit"
-            disabled={!canSubmit}
-            className="h-11 rounded-sm bg-ink px-5 text-sm font-semibold text-paper transition-opacity disabled:opacity-30"
-          >
+          <button type="submit" disabled={!canSubmit} className={BUTTON_PRIMARY}>
             Congelar rango
           </button>
         </div>
       </form>
 
-      {ranges !== undefined && ranges.length > 0 && (
+      {/* Tres ramas y no dos: antes `undefined` y `[]` caían en la misma
+          condición y las dos pintaban silencio, así que no había forma de
+          distinguir «cargando» de «no hay ningún rango». */}
+      {ranges === undefined ? (
+        <SkeletonRows rows={2} className="mt-3" />
+      ) : ranges.length === 0 ? (
+        <EmptyState className="mt-3">Ningún rango congelado.</EmptyState>
+      ) : (
         <ul className="mt-3 divide-y divide-line">
           {ranges.map((range) => (
             <li key={range.id} className="flex min-h-12 items-center justify-between gap-3 py-2">
@@ -83,19 +94,50 @@ export function FrozenRangesSection() {
                 <p className="font-display text-sm text-ink">{formatRange(range)}</p>
                 {range.note !== undefined && <p className="truncate text-xs text-ink-soft">{range.note}</p>}
               </div>
-              <button
-                type="button"
-                onClick={() => void deleteFrozenRange(range.id)}
-                aria-label={`Eliminar el rango ${formatRange(range)}`}
-                className="h-11 shrink-0 rounded-sm px-2 text-sm text-ink-soft transition-colors hover:bg-surface hover:text-ink"
-              >
-                Eliminar
-              </button>
+              <DeleteRangeButton range={range} />
             </li>
           ))}
         </ul>
       )}
     </section>
+  )
+}
+
+/**
+ * Borrar un rango es un borrado de verdad: destruye el registro y recalcula
+ * rachas y porcentajes HACIA ATRÁS. Era el último borrado de un solo paso que
+ * quedaba en la app, y encima en gris. Ahora es rojo y en dos pasos, como el
+ * resto (§6).
+ */
+function DeleteRangeButton({ range }: { range: FrozenRange }) {
+  const [confirming, setConfirming] = useState(false)
+
+  if (!confirming) {
+    return (
+      <button
+        type="button"
+        onClick={() => setConfirming(true)}
+        aria-label={`Eliminar el rango ${formatRange(range)}`}
+        className={`shrink-0 ${BUTTON_QUIET} text-streak-red hover:text-streak-red`}
+      >
+        Eliminar
+      </button>
+    )
+  }
+
+  return (
+    <div className="flex shrink-0 items-center gap-1">
+      <button
+        type="button"
+        onClick={() => void deleteFrozenRange(range.id)}
+        className={BUTTON_DANGER}
+      >
+        Eliminar de verdad
+      </button>
+      <button type="button" onClick={() => setConfirming(false)} className={BUTTON_QUIET}>
+        No
+      </button>
+    </div>
   )
 }
 

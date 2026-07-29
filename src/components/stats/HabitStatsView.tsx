@@ -9,6 +9,8 @@ import type { IsoDate } from '../../logic/dates'
 import type { Habit } from '../../data/types'
 import type { StatsData } from '../../hooks/useStatsData'
 import { StreakHero } from './StreakHero'
+import { PageTitle } from '../ui/PageTitle'
+import { BUTTON_QUIET } from '../ui/classes'
 import { EvolutionChart } from './EvolutionChart'
 import { YearHeatmap, availableYears } from './YearHeatmap'
 import { habitHeatmapCells } from './heatmapStyles'
@@ -52,16 +54,23 @@ export function HabitStatsView({ habit, data, today, onBack }: HabitStatsViewPro
       <button
         type="button"
         onClick={onBack}
-        className="inline-flex h-11 items-center text-sm text-ink-soft hover:text-ink hover:underline"
+        className={BUTTON_QUIET}
       >
         ← Todos los hábitos
       </button>
-      <h1 className="mt-2 border-b border-line pb-4 font-display text-3xl uppercase tracking-[0.2em] text-ink">
-        {habit.name}
-        {habit.archivedAt !== null && (
-          <span className="ml-2 text-sm font-normal text-ink-faint">archivado</span>
-        )}
-      </h1>
+      <div className="mt-2">
+        <PageTitle
+          action={
+            habit.archivedAt !== null && (
+              <span className="font-display text-sm uppercase tracking-widest text-ink-soft">
+                archivado
+              </span>
+            )
+          }
+        >
+          {habit.name}
+        </PageTitle>
+      </div>
       <div className="mt-8">
         <StreakHero label="Racha actual" streak={streak} accentClass="text-streak-orange" />
       </div>

@@ -31,6 +31,8 @@ import {
   useWeekTasks,
 } from '../hooks/usePlanner'
 import { useLogicalToday } from '../hooks/useLogicalToday'
+import { EmptyState } from '../components/ui/EmptyState'
+import { PageTitle } from '../components/ui/PageTitle'
 import {
   addWeeksToWeekId,
   daysOfWeekId,
@@ -106,21 +108,43 @@ export function Planner() {
   // la semana que empieza»). Si no, planificar un domingo por la noche caería
   // sobre la semana que muere, y la purga del lunes se lo llevaría todo.
   const planningAhead = isoWeekdayOf(today) === 7
-  const [weekId, setWeekId] = useState<WeekId>(() =>
-    planningAhead ? addWeeksToWeekId(currentWeekId, 1) : currentWeekId,
-  )
+
+  const desiredWeekId = planningAhead ? addWeeksToWeekId(currentWeekId, 1) : currentWeekId
+  const desiredDay: IsoWeekday = planningAhead ? 1 : isoWeekdayOf(today)
+
+  /*
+   * La semana y el día visibles se RE-BASAN cuando cambia el día lógico.
+   *
+   * Antes eran dos `useState` con inicializador perezoso, y React solo ejecuta
+   * ese inicializador al montar: al cruzar las 4:00 con la pestaña abierta,
+   * `currentWeekId` avanzaba y `weekId` no. Consecuencias, todas reales: se
+   * apagaba la columna de hoy, desaparecía la raya magenta de la hora actual
+   * (useNowMarker exige todayWeekday) y `ensureWeekReady` salía por su primera
+   * línea, o sea que la purga semanal dejaba de correr mientras no se recargara.
+   *
+   * Se guarda la base junto al valor elegido y se ajusta en render —el patrón
+   * de «estado derivado que se corrige»—, no en un efecto: así no hay un
+   * fotograma pintado con el valor viejo. Cruzar las 4:00 descarta la
+   * navegación manual, y es lo correcto: ocurre mientras el propietario duerme.
+   */
+  const [view, setView] = useState({ base: today, weekId: desiredWeekId, day: desiredDay })
+  if (view.base !== today) {
+    setView({ base: today, weekId: desiredWeekId, day: desiredDay })
+  }
+  const weekId = view.weekId
+  const selectedDay = view.day
+  const setWeekId = (next: WeekId) => setView((current) => ({ ...current, weekId: next }))
+  const setSelectedDay = (next: IsoWeekday) => setView((current) => ({ ...current, day: next }))
+
   const [editingId, setEditingId] = useState<string | null>(null)
   // La madrugada arranca plegada (§4): 48 bloques enteros son ingobernables.
   const [nightOpen, setNightOpen] = useState(false)
   const isDesktop = useIsDesktop()
-  const [selectedDay, setSelectedDay] = useState<IsoWeekday>(() =>
-    planningAhead ? 1 : isoWeekdayOf(today),
-  )
 
   const [dragging, setDragging] = useState<string | null>(null)
   const [pendingMove, setPendingMove] = useState<PendingMove | null>(null)
 
-  useWeekPreparation(weekId, currentWeekId)
+  const settled = useWeekPreparation(weekId, currentWeekId)
   const liveTasks = useWeekTasks(weekId)
   const bank = useBankTasks()
 
@@ -158,9 +182,17 @@ export function Planner() {
   const draggingBankId = dragging === null ? null : parseBankDragId(dragging)
   const draggingBank = (bank ?? []).find((item) => item.id === draggingBankId)
   const draggingTask = (tasks ?? []).find((task) => task.id === dragging)
-  const unplaced = useMemo(() => unplacedTasks(tasks ?? []), [tasks])
+  // `undefined` mientras Dexie responde, y NO aplastado a []: la caja de sueltas
+  // anunciaba «nada suelto» y el banco un «· 0» antes de saber si había algo.
+  const unplaced = useMemo(
+    () => (tasks === undefined ? undefined : unplacedTasks(tasks)),
+    [tasks],
+  )
   const byDay = useMemo(() => groupTasksByDay(tasks ?? []), [tasks])
-  const pendingByDay = useMemo(() => countPendingByDay(byDay), [byDay])
+  const pendingByDay = useMemo(
+    () => (tasks === undefined ? undefined : countPendingByDay(byDay)),
+    [tasks, byDay],
+  )
 
   const closeEdit = () => setEditingId(null)
 
@@ -209,11 +241,19 @@ export function Planner() {
           siete columnas dentro de `max-w-6xl` dejaban 140 px por día y el nombre
           de la tarea salía recortado. Es un calendario — se queda con la pantalla. */}
       <div className="mx-auto max-w-xl px-5 py-6 md:max-w-none md:px-8 md:py-10">
-        <h1 className="border-b border-line pb-4 font-display text-3xl uppercase tracking-[0.2em] text-ink">
-          Planificador
-        </h1>
+        <PageTitle>Planificador</PageTitle>
 
         <WeekNavigator weekId={weekId} currentWeekId={currentWeekId} onChange={setWeekId} />
+
+        {/* La preparación de la semana (generar y purgar) espera a una bajada
+            completa cuando hay sesión — es el arreglo de pérdida de datos del
+            28/07 y no se relaja. Lo que faltaba era contarlo: sin red, esto se
+            quedaba parado en silencio y nadie sabía por qué. */}
+        {!settled && (
+          <EmptyState className="mt-3" role="status">
+            Esperando a sincronizar: la limpieza de la semana está en pausa.
+          </EmptyState>
+        )}
 
         {/* El editor vive aquí, a ancho completo: en escritorio una columna de
             día es un séptimo de la pantalla y el formulario no cabría dentro. */}
@@ -226,7 +266,7 @@ export function Planner() {
         {/* Del banco a la caja de sin colocar, sin gesto: desde ahí el editor
             le pone día y hora. Es la alternativa sin arrastre que pide §4. */}
         <TaskBank
-          bank={bank ?? []}
+          bank={bank}
           onSend={(item) => void createTaskFromBank(item, weekId, null, null)}
         />
 

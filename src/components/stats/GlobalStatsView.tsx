@@ -8,6 +8,8 @@ import { EvolutionChart } from './EvolutionChart'
 import { YearHeatmap, availableYears } from './YearHeatmap'
 import { globalHeatmapCells } from './heatmapStyles'
 import { HabitStreakList } from './HabitStreakList'
+import { EmptyState } from '../ui/EmptyState'
+import { PageTitle } from '../ui/PageTitle'
 
 interface GlobalStatsViewProps {
   data: StatsData
@@ -44,17 +46,17 @@ export function GlobalStatsView({ data, today, onSelectHabit }: GlobalStatsViewP
   if (habits.length === 0) {
     return (
       <>
-        <h1 className="border-b border-line pb-4 font-display text-3xl uppercase tracking-[0.2em] text-ink">Rachas y estadísticas</h1>
-        <p className="mt-6 text-sm text-ink-soft">
+        <PageTitle>Rachas y estadísticas</PageTitle>
+        <EmptyState className="mt-6">
           Sin hábitos todavía. Crea el primero en la pestaña Hábitos.
-        </p>
+        </EmptyState>
       </>
     )
   }
 
   return (
     <>
-      <h1 className="border-b border-line pb-4 font-display text-3xl uppercase tracking-[0.2em] text-ink">Rachas y estadísticas</h1>
+      <PageTitle>Rachas y estadísticas</PageTitle>
       <div className="mt-8">
         <StreakHero label="Racha global" streak={streak} />
       </div>

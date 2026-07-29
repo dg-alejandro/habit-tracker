@@ -3,6 +3,8 @@ import { useLogicalToday } from '../hooks/useLogicalToday'
 import { useStatsData } from '../hooks/useStatsData'
 import { GlobalStatsView } from '../components/stats/GlobalStatsView'
 import { HabitStatsView } from '../components/stats/HabitStatsView'
+import { PageTitle } from '../components/ui/PageTitle'
+import { SkeletonRows } from '../components/ui/Skeleton'
 
 /*
  * Rachas y estadísticas (CLAUDE.md §5.3). Es donde los chillones pesan más,
@@ -19,7 +21,13 @@ export function Stats() {
   return (
     <div className="mx-auto max-w-xl px-5 py-6 md:px-10 md:py-10">
       {data === undefined ? (
-        <h1 className="border-b border-line pb-4 font-display text-3xl uppercase tracking-[0.2em] text-ink">Rachas y estadísticas</h1>
+        /* useStatsData es la consulta más pesada de la app: lee el historial
+           entero desde el createdOn más antiguo. Antes aquí solo quedaba el
+           título flotando sobre un hueco mudo. */
+        <>
+          <PageTitle>Rachas y estadísticas</PageTitle>
+          <SkeletonRows className="mt-6" />
+        </>
       ) : selected === null ? (
         <GlobalStatsView data={data} today={today} onSelectHabit={setSelectedHabitId} />
       ) : (

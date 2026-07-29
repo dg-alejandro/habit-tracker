@@ -3,6 +3,9 @@ import { ArchivedSection } from '../components/habits/ArchivedSection'
 import { FrozenRangesSection } from '../components/habits/FrozenRangesSection'
 import { HabitForm, type HabitFormValues } from '../components/habits/HabitForm'
 import { SortableHabitList } from '../components/habits/SortableHabitList'
+import { PageTitle } from '../components/ui/PageTitle'
+import { SkeletonRows } from '../components/ui/Skeleton'
+import { BUTTON_PRIMARY } from '../components/ui/classes'
 import { createHabit } from '../data/repositories/habitsRepo'
 import { useAllHabits } from '../hooks/useHabits'
 
@@ -21,18 +24,21 @@ export function Habits() {
 
   return (
     <div className="mx-auto max-w-xl px-5 py-6 md:px-10 md:py-10">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-b border-line pb-3">
-        <h1 className="border-b border-line pb-4 font-display text-3xl uppercase tracking-[0.2em] text-ink">Hábitos</h1>
-        {!creating && (
-          <button
-            type="button"
-            onClick={() => setCreating(true)}
-            className="h-11 shrink-0 rounded-sm bg-ink px-4 font-display text-xs uppercase tracking-widest text-paper"
-          >
-            Nuevo hábito
-          </button>
-        )}
-      </div>
+      <PageTitle
+        action={
+          !creating && (
+            <button
+              type="button"
+              onClick={() => setCreating(true)}
+              className={`shrink-0 ${BUTTON_PRIMARY}`}
+            >
+              Nuevo hábito
+            </button>
+          )
+        }
+      >
+        Hábitos
+      </PageTitle>
 
       {creating && (
         <div className="mt-4">
@@ -40,8 +46,14 @@ export function Habits() {
         </div>
       )}
 
-      {habits !== undefined && <SortableHabitList habits={active} />}
-      {habits !== undefined && <ArchivedSection habits={archived} />}
+      {habits === undefined ? (
+        <SkeletonRows className="mt-6" />
+      ) : (
+        <>
+          <SortableHabitList habits={active} />
+          <ArchivedSection habits={archived} />
+        </>
+      )}
       <FrozenRangesSection />
     </div>
   )

@@ -73,8 +73,13 @@ export function useSyncSettled(): boolean {
   return snapshot.lastPulledAt !== null
 }
 
-/** Limpia lo que caducó al cambiar de semana, una sola vez por par de semanas. */
-export function useWeekPreparation(weekId: WeekId, currentWeekId: WeekId): void {
+/**
+ * Limpia lo que caducó al cambiar de semana, una sola vez por par de semanas.
+ *
+ * Devuelve si la sincronización está asentada, para que la pantalla pueda decir
+ * que está esperando en vez de quedarse parada en silencio.
+ */
+export function useWeekPreparation(weekId: WeekId, currentWeekId: WeekId): boolean {
   const settled = useSyncSettled()
   // Sobrevive al doble efecto de StrictMode sin depender de cómo se serialicen
   // las transacciones de Dexie.
@@ -89,6 +94,8 @@ export function useWeekPreparation(weekId: WeekId, currentWeekId: WeekId): void 
     // planificador sin generar ni arrastrar para el resto de la sesión.
     void ensureWeekReady(weekId, currentWeekId).catch(() => done.current.delete(key))
   }, [settled, weekId, currentWeekId])
+
+  return settled
 }
 
 const DESKTOP_QUERY = '(min-width: 768px)'

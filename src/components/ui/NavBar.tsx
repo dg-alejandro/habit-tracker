@@ -26,8 +26,10 @@ const SECTIONS: Section[] = [
 export function NavBar() {
   return (
     <>
-      {/* Móvil — objetivos táctiles grandes, con hueco para el gesto del iPhone */}
-      <nav className="fixed inset-x-0 bottom-0 z-10 border-t border-line bg-paper pb-[env(safe-area-inset-bottom)] md:hidden">
+      {/* Móvil — objetivos táctiles grandes, con hueco para el gesto del iPhone.
+          Los insets laterales son para el apaisado: sin ellos, las cinco
+          pestañas se meten debajo del notch. */}
+      <nav className="fixed inset-x-0 bottom-0 z-10 border-t border-line bg-paper px-safe pb-[env(safe-area-inset-bottom)] md:hidden">
         <div className="grid grid-cols-5">
           {SECTIONS.map((section) => (
             <NavLink
@@ -50,7 +52,8 @@ export function NavBar() {
       </nav>
 
       {/* Escritorio */}
-      <aside className="hidden border-r border-line md:sticky md:top-0 md:flex md:h-dvh md:w-56 md:shrink-0 md:flex-col md:gap-1 md:p-4">
+      {/* pt-safe y el inset izquierdo son para el iPad en apaisado. */}
+      <aside className="hidden border-r border-line pt-safe pl-[env(safe-area-inset-left)] md:sticky md:top-0 md:flex md:h-dvh md:w-56 md:shrink-0 md:flex-col md:gap-1 md:p-4">
         <div className="mb-5 px-3 pt-2 font-display text-sm uppercase tracking-[0.3em] text-ink">
           Hábitos
         </div>

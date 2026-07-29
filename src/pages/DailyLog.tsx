@@ -4,6 +4,8 @@ import { FrozenDayBanner } from '../components/habits/FrozenDayBanner'
 import { HabitRow } from '../components/habits/HabitRow'
 import { WeeklyHeader } from '../components/habits/WeeklyHeader'
 import { ExportReminderBanner } from '../components/settings/ExportReminderBanner'
+import { EmptyState } from '../components/ui/EmptyState'
+import { SkeletonRows } from '../components/ui/Skeleton'
 import { freezeDay } from '../data/repositories/frozenRepo'
 import { useEntriesForDate } from '../hooks/useEntries'
 import { useExportReminder } from '../hooks/useExportReminder'
@@ -11,7 +13,7 @@ import { useFrozenRanges } from '../hooks/useFrozenRanges'
 import { useActiveHabits } from '../hooks/useHabits'
 import { useLogicalToday } from '../hooks/useLogicalToday'
 import { useWeeklyPercentage } from '../hooks/useWeeklyPercentage'
-import { isDateFrozen } from '../logic/dates'
+import { formatDateEs, isDateFrozen } from '../logic/dates'
 
 /*
  * Pantalla de inicio: registro diario de hábitos (CLAUDE.md §5.1).
@@ -37,28 +39,46 @@ export function DailyLog() {
 
   return (
     <div className="mx-auto max-w-xl px-5 py-6 md:px-10 md:py-10">
+      {/* El único h1 que no se ve: §5.1 manda que lo primero en pantalla sea el
+          porcentaje de la semana, así que el título vive solo para el lector. */}
+      <h1 className="sr-only">Registro diario</h1>
       <WeeklyHeader percent={weeklyPercent} />
       <DayNavigator date={viewDate} today={today} onChange={setViewDate} />
 
       {frozen && <FrozenDayBanner date={viewDate} canQuickUnfreeze={canQuickUnfreeze} />}
 
-      <ul className={`mt-4 divide-y divide-line ${frozen ? 'opacity-40' : ''}`}>
-        {visibleHabits.map((habit) => (
-          <li key={habit.id}>
-            <HabitRow
-              habit={habit}
-              entry={entries?.get(habit.id)}
-              date={viewDate}
-              disabled={frozen}
-            />
-          </li>
-        ))}
-      </ul>
+      {/*
+       * El flag `loading` ya existía, pero solo tapaba el texto de vacío y el
+       * botón de congelar: la lista se pintaba igual. Y como los hábitos y los
+       * registros son dos consultas independientes, si los hábitos llegaban
+       * primero salían las catorce casillas DESMARCADAS y luego se marcaban
+       * solas. De noche y medio dormido, es justo lo contrario de lo que §5.1
+       * pide de esta pantalla.
+       */}
+      {loading ? (
+        <SkeletonRows className="mt-4" />
+      ) : (
+        <ul
+          aria-label={`Hábitos del ${formatDateEs(viewDate)}`}
+          className={`mt-4 divide-y divide-line ${frozen ? 'opacity-40' : ''}`}
+        >
+          {visibleHabits.map((habit) => (
+            <li key={habit.id}>
+              <HabitRow
+                habit={habit}
+                entry={entries.get(habit.id)}
+                date={viewDate}
+                disabled={frozen}
+              />
+            </li>
+          ))}
+        </ul>
+      )}
 
       {!loading && visibleHabits.length === 0 && (
-        <p className="mt-6 text-sm text-ink-soft">
+        <EmptyState className="mt-6">
           {habits.length === 0 ? 'Sin hábitos activos.' : 'No había hábitos este día.'}
-        </p>
+        </EmptyState>
       )}
 
       {!loading && !frozen && (

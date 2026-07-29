@@ -1,6 +1,7 @@
 import { AuthSection } from '../components/settings/AuthSection'
 import { GlobalThresholdSection } from '../components/settings/GlobalThresholdSection'
 import { BackupSection } from '../components/settings/BackupSection'
+import { PageTitle } from '../components/ui/PageTitle'
 
 /*
  * Ajustes y datos (CLAUDE.md §5.5): cuenta/sincronización, umbral de la racha
@@ -9,7 +10,7 @@ import { BackupSection } from '../components/settings/BackupSection'
 export function Settings() {
   return (
     <div className="mx-auto max-w-xl px-5 py-6 md:px-10 md:py-10">
-      <h1 className="border-b border-line pb-4 font-display text-3xl uppercase tracking-[0.2em] text-ink">Ajustes</h1>
+      <PageTitle>Ajustes</PageTitle>
       <AuthSection />
       <GlobalThresholdSection />
       <BackupSection />
