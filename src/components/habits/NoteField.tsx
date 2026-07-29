@@ -1,4 +1,5 @@
 import { setNote } from '../../data/repositories/entriesRepo'
+import { FIELD_CLASS } from '../ui/classes'
 import type { IsoDate } from '../../logic/dates'
 import type { DayEntry, Habit } from '../../data/types'
 
@@ -32,7 +33,7 @@ export function NoteField({ habit, entry, date, disabled }: NoteFieldProps) {
       onKeyDown={(event) => {
         if (event.key === 'Enter') event.currentTarget.blur()
       }}
-      className="mt-2 h-11 w-full rounded-sm border border-line bg-paper px-3 text-sm text-ink placeholder:text-ink-faint"
+      className={`mt-2 w-full ${FIELD_CLASS} text-sm`}
     />
   )
 }

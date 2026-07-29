@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { formatMonthShortEs, monthIdOf } from '../../logic/dates'
+import { EmptyState } from '../ui/EmptyState'
 import type { DayEntry, Habit } from '../../data/types'
 
 interface NotesHistoryProps {
@@ -39,7 +40,7 @@ export function NotesHistory({ habit, entries }: NotesHistoryProps) {
     <section className="mt-12">
       <h2 className="font-display text-xs uppercase tracking-widest text-streak-lime">Notas</h2>
       {groups.length === 0 ? (
-        <p className="mt-2 text-sm text-ink-soft">Sin notas todavía.</p>
+        <EmptyState className="mt-2">Sin notas todavía.</EmptyState>
       ) : (
         groups.map((group) => (
           <div key={group.id} className="mt-4">

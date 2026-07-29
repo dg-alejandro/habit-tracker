@@ -7,10 +7,7 @@ import { useActiveHabits } from '../../hooks/useHabits'
 /* Del 50 al 100 en pasos de 5; se guarda como fracción 0–1. */
 const OPTIONS = Array.from({ length: 11 }, (_, index) => 50 + index * 5)
 
-/*
- * Umbral de la racha global (CLAUDE.md §5.5). Ajustes es zona monocroma:
- * el color del dato queda para la pantalla de estadísticas.
- */
+/* Umbral de la racha global (CLAUDE.md §5.5). */
 export function GlobalThresholdSection() {
   const settings = useSettings()
   const habits = useActiveHabits()
@@ -43,7 +40,9 @@ export function GlobalThresholdSection() {
         {habits === undefined ? (
           /* Ni «0 hábitos» ni el texto de vacío mientras carga: los dos
              mienten durante los primeros milisegundos. */
-          <>Con el umbral al {percent} %.</>
+          <>
+            Con el umbral al <span className="font-display tabular-nums">{percent} %</span>.
+          </>
         ) : activeCount > 0 ? (
           <>
             Con <span className="font-display tabular-nums">{activeCount}</span> hábitos activos, un

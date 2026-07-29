@@ -60,12 +60,18 @@ export function AuthSection() {
     setPassword('')
   }
 
+  const count = <span className="font-display tabular-nums">{pendingCount}</span>
   const statusLine =
-    status === 'pending' && pendingCount > 0
-      ? `${pendingCount} ${pendingCount === 1 ? 'cambio pendiente' : 'cambios pendientes'} de subir.`
-      : status === 'offline' && pendingCount > 0
-      ? `Sin conexión. ${pendingCount} ${pendingCount === 1 ? 'cambio' : 'cambios'} en cola; se subirán al recuperarla.`
-      : STATUS_DETAIL[status]
+    status === 'pending' && pendingCount > 0 ? (
+      <>{count} {pendingCount === 1 ? 'cambio pendiente' : 'cambios pendientes'} de subir.</>
+    ) : status === 'offline' && pendingCount > 0 ? (
+      <>
+        Sin conexión. {count} {pendingCount === 1 ? 'cambio' : 'cambios'} en cola; se subirán al
+        recuperarla.
+      </>
+    ) : (
+      STATUS_DETAIL[status]
+    )
 
   return (
     <section className="mt-12">

@@ -136,7 +136,7 @@ export function TaskEditor({ task, onClose }: TaskEditorProps) {
         type="button"
         onClick={() => void toggleTaskDone(task.id)}
         aria-pressed={task.done}
-        className="mt-3 flex h-11 w-full items-center gap-3 rounded-sm border border-line px-3 text-sm text-ink transition-colors hover:bg-surface"
+        className="mt-3 flex h-11 w-full items-center gap-3 rounded-sm border border-line px-3 font-display text-sm text-ink transition-colors hover:bg-surface"
       >
         <CheckToggle checked={task.done} />
         <span>{task.done ? 'Completada' : 'Marcar como completada'}</span>

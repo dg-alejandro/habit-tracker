@@ -98,7 +98,7 @@ export function HabitForm({ initial, onSubmit, onCancel }: HabitFormProps) {
           <select
             value={weeklyTarget}
             onChange={(event) => setWeeklyTarget(event.currentTarget.value)}
-            className={`mt-1 w-full ${FIELD_CLASS}`}
+            className={`mt-1 w-full ${FIELD_CLASS} font-display tabular-nums`}
           >
             {[1, 2, 3, 4, 5, 6, 7].map((days) => (
               <option key={days} value={days}>

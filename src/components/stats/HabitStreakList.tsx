@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { computeHabitStreak, computeHabitWeeklyStreak } from '../../logic/streaks'
+import { EmptyState } from '../ui/EmptyState'
 import type { IsoDate } from '../../logic/dates'
 import type { DayEntry, FrozenRange, Habit } from '../../data/types'
 
@@ -50,7 +51,7 @@ export function HabitStreakList({
     <section className="mt-12">
       <h2 className="font-display text-xs uppercase tracking-widest text-streak-lime">Por hábito</h2>
       {active.length === 0 ? (
-        <p className="mt-2 text-sm text-ink-soft">Sin hábitos activos.</p>
+        <EmptyState className="mt-2">Sin hábitos activos.</EmptyState>
       ) : (
         <ul className="mt-2 divide-y divide-line">
           {active.map((row) => (

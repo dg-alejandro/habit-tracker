@@ -41,7 +41,12 @@ export function SyncNotice() {
       <NoticeBanner
         className="mt-6"
         title="Sin conexión"
-        detail={`${pendingCount} ${pendingCount === 1 ? 'cambio' : 'cambios'} en cola. Se subirán solos al recuperarla.`}
+        detail={
+          <>
+            <span className="font-display tabular-nums">{pendingCount}</span>{' '}
+            {pendingCount === 1 ? 'cambio' : 'cambios'} en cola. Se subirán solos al recuperarla.
+          </>
+        }
       />
     )
   }

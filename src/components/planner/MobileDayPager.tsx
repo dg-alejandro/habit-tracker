@@ -29,7 +29,9 @@ export function MobileDayPager({ selected, today, pendingByDay, onSelect }: Mobi
      * pantallas más estrechas en vez de encoger los objetivos; de 360 px en
      * adelante se ve exactamente igual que antes.
      */
-    <nav aria-label="Elegir día" className="mt-4 flex gap-1 overflow-x-auto">
+    /* `py-1` no es aire decorativo: `overflow-x-auto` recorta también en
+       vertical, y sin holgura se comería el anillo de foco de los botones. */
+    <nav aria-label="Elegir día" className="mt-3 flex gap-1 overflow-x-auto px-1 py-1">
       {WEEKDAYS.map((day) => {
         return (
           <DayButton

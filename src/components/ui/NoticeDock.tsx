@@ -14,7 +14,7 @@ import { WriteErrorNotice } from './WriteErrorNotice'
  */
 export function NoticeDock() {
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20 px-4 pb-[calc(3.5rem+env(safe-area-inset-bottom,0px)+0.75rem)] md:pb-4">
+    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20 px-dock pb-dock md:pb-4">
       <div className="pointer-events-auto mx-auto flex max-w-xl flex-col gap-2">
         <UpdatePrompt />
         <WriteErrorNotice />

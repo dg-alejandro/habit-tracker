@@ -115,8 +115,16 @@ export function BackupSection() {
       </h2>
       <p className="mt-1 text-sm text-ink-soft">
         La exportación JSON es el único respaldo: Supabase no hace copias en el plan gratuito.
-        {lastExportAt !== null &&
-          ` Última exportación: ${formatDateEs(logicalDateOf(new Date(lastExportAt)))}.`}
+        {lastExportAt !== null && (
+          <>
+            {' '}
+            Última exportación:{' '}
+            <span className="font-display">
+              {formatDateEs(logicalDateOf(new Date(lastExportAt)))}
+            </span>
+            .
+          </>
+        )}
       </p>
 
       <div className="mt-4 flex flex-wrap gap-3">

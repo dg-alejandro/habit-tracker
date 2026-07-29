@@ -39,10 +39,17 @@ export function TaskChip({ task, density, shared, onToggle, onOpen, handle }: Ta
   const duration = durationLabel(task.estimatedMinutes)
   const hint = time === null ? task.text : `${task.text} · ${time}`
 
+  /*
+   * `overflow-clip` y no `overflow-hidden`: el recorte del nombre largo se
+   * necesita igual, pero `hidden` recorta también el anillo de foco de los
+   * botones de dentro —que se pinta 2 px por FUERA de su caja— y dejaba la
+   * cuadrícula entera sin foco visible al tabular. Con `overflow-clip` y
+   * `overflow-clip-margin` el contenido se sigue recortando y el anillo cabe.
+   */
   if (density === 'grid') {
     return (
       <div
-        className={`flex h-full w-full overflow-hidden rounded-sm border border-line border-l-4 bg-surface ${
+        className={`flex h-full w-full overflow-clip rounded-sm border border-line border-l-4 bg-surface [overflow-clip-margin:4px] ${
           fromBank ? 'border-l-streak-lime' : 'border-l-streak-orange'
         }`}
       >

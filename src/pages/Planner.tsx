@@ -310,7 +310,15 @@ export function Planner() {
               {draggingBank.text}
             </div>
           ) : draggingTask === undefined ? null : (
-            <div className="w-64 rounded-sm border border-streak-lime bg-surface px-2 opacity-90">
+            /* El borde sigue el ORIGEN de la tarea (§4: lima si vino del banco,
+               naranja si es suelta). Estaba fijo en lima, así que al arrastrar
+               una suelta el chip se contradecía consigo mismo: borde exterior
+               lima y filete interior naranja. */
+            <div
+              className={`w-64 rounded-sm border bg-surface px-2 opacity-90 ${
+                draggingTask.templateId === null ? 'border-streak-orange' : 'border-streak-lime'
+              }`}
+            >
               <TaskChip
                 task={draggingTask}
                 density="row"
