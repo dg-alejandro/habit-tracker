@@ -6,6 +6,24 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#0f0f0f" />
     <title>Hábitos</title>
+
+    <!--
+      Instalación en la pantalla de inicio del iPhone (SETUP.md §5).
+      iOS no lee el manifest para esto: quiere sus propias metas y un PNG.
+    -->
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Hábitos" />
+    <!--
+      `black` y no `black-translucent`. Con translucent el contenido sube por
+      debajo del reloj y de la isla dinámica, y las páginas abren con 24 px de
+      aire contra un inset de 44–59 px: el porcentaje semanal —el dato más
+      importante de la app (§5.1)— quedaría medio tapado. El sistema pinta esa
+      franja en negro puro contra el #0f0f0f de la app: quince niveles de
+      luminancia de diferencia, imperceptibles de noche.
+    -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
   </head>
   <body>
     <div id="root"></div>
