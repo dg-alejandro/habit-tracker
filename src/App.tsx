@@ -28,7 +28,15 @@ export function App() {
          * por si algún día la barra de estado pasa a translúcida. Las cinco
          * páginas no saben nada de esto y no tienen que saberlo.
          */}
-        <main className="flex-1 px-safe pb-nav pt-safe md:pb-0">
+        {/*
+         * `min-w-0` no es decorativo: en escritorio `<main>` es un elemento
+         * flex, y su `min-width: auto` por defecto le impide encoger por debajo
+         * del contenido más ancho que tenga dentro. Sin esto, los 920 px que
+         * mide la cuadrícula del planificador empujan a `<main>` y la PÁGINA
+         * ENTERA se desplaza en horizontal, en vez de desplazarse solo la
+         * cuadrícula dentro de su propio contenedor.
+         */}
+        <main className="min-w-0 flex-1 px-safe pb-nav pt-safe md:pb-0">
           <RoutedBoundary>
             <AppRoutes />
           </RoutedBoundary>
