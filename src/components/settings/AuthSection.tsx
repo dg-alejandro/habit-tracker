@@ -2,6 +2,8 @@ import { useState, type FormEvent } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { useSession } from '../../hooks/useSession'
 import { useSyncStatus, type SyncStatus } from '../../hooks/useSyncStatus'
+import { BUTTON_PRIMARY, BUTTON_QUIET, FIELD_CLASS } from '../ui/classes'
+import type { AuthFailure } from '../../logic/sync'
 
 const STATUS_DETAIL: Record<SyncStatus, string> = {
   disabled:
@@ -11,6 +13,20 @@ const STATUS_DETAIL: Record<SyncStatus, string> = {
   offline: 'Sin conexión. Se sincronizará al recuperarla.',
   pending: 'Subiendo cambios…',
   synced: 'Sincronizado.',
+}
+
+/*
+ * Antes había un solo mensaje para todo: «Revisa el correo y la contraseña».
+ * Y §9 avisa de que Supabase pausa los proyectos tras una semana sin actividad,
+ * así que el fallo más probable al volver de vacaciones mandaba al propietario
+ * a buscar una contraseña que estaba perfectamente bien.
+ */
+const AUTH_FAILURE_MESSAGE: Record<AuthFailure, string> = {
+  credentials: 'No se pudo iniciar sesión. Revisa el correo y la contraseña.',
+  network:
+    'No se ha podido contactar con Supabase. Puede que no haya conexión, o que el proyecto esté pausado por inactividad.',
+  unconfigured: 'Faltan las claves de Supabase en el .env.',
+  unknown: 'No se pudo iniciar sesión.',
 }
 
 /**
@@ -25,7 +41,7 @@ export function AuthSection() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const [authError, setAuthError] = useState<string | null>(null)
+  const [authError, setAuthError] = useState<{ text: string; detail?: string } | null>(null)
 
   async function handleLogin(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault()
@@ -35,7 +51,10 @@ export function AuthSection() {
     const result = await signIn(email, password)
     setSubmitting(false)
     if (!result.ok) {
-      setAuthError('No se pudo iniciar sesión. Revisa el correo y la contraseña.')
+      setAuthError({
+        text: AUTH_FAILURE_MESSAGE[result.reason],
+        ...(result.detail === undefined ? {} : { detail: result.detail }),
+      })
       return
     }
     setPassword('')
@@ -44,6 +63,8 @@ export function AuthSection() {
   const statusLine =
     status === 'pending' && pendingCount > 0
       ? `${pendingCount} ${pendingCount === 1 ? 'cambio pendiente' : 'cambios pendientes'} de subir.`
+      : status === 'offline' && pendingCount > 0
+      ? `Sin conexión. ${pendingCount} ${pendingCount === 1 ? 'cambio' : 'cambios'} en cola; se subirán al recuperarla.`
       : STATUS_DETAIL[status]
 
   return (
@@ -67,7 +88,7 @@ export function AuthSection() {
               required
               value={email}
               onChange={(event) => setEmail(event.target.value)}
-              className="h-11 w-full rounded-sm border border-line bg-paper px-3 text-base text-ink placeholder:text-ink-faint"
+              className={`w-full ${FIELD_CLASS}`}
             />
           </label>
           <label className="flex flex-col gap-1">
@@ -80,36 +101,52 @@ export function AuthSection() {
               required
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              className="h-11 w-full rounded-sm border border-line bg-paper px-3 text-base text-ink placeholder:text-ink-faint"
+              className={`w-full ${FIELD_CLASS}`}
             />
           </label>
-          {authError !== null && <p className="text-sm font-semibold text-ink">{authError}</p>}
-          <button
-            type="submit"
-            disabled={submitting}
-            className="h-11 rounded-sm bg-ink px-5 text-sm font-semibold text-paper disabled:opacity-30"
-          >
+          {authError !== null && (
+            <p role="alert" className="text-sm font-semibold text-ink">
+              {authError.text}
+              {authError.detail !== undefined && (
+                <span className="mt-1 block font-display text-xs font-normal text-ink-faint">
+                  {authError.detail}
+                </span>
+              )}
+            </p>
+          )}
+          <button type="submit" disabled={submitting} className={BUTTON_PRIMARY}>
             {submitting ? 'Entrando…' : 'Iniciar sesión'}
           </button>
         </form>
       )}
 
+      {/* Ninguna rama cubría `undefined`, que es «restaurando la sesión»: se
+          quedaba solo el título sobre un hueco mudo. */}
+      {configured && session === undefined && (
+        <p role="status" className="mt-3 text-sm text-ink-soft">
+          Comprobando la sesión…
+        </p>
+      )}
+
       {configured && session !== null && session !== undefined && (
         <div className="mt-4 flex flex-col gap-3">
           <p className="text-sm text-ink">{session.email ?? 'Sesión iniciada'}</p>
-          <p className={`text-sm ${status === 'error' ? 'font-semibold text-ink' : 'text-ink-soft'}`}>
+          <p
+            role="status"
+            className={`text-sm ${status === 'error' ? 'font-semibold text-ink' : 'text-ink-soft'}`}
+          >
             {statusLine}
             {status === 'error' && lastError !== null && (
-              <span className="mt-1 block font-normal text-ink-faint">{lastError}</span>
+              <span className="mt-1 block font-display text-xs font-normal text-ink-faint">
+                {lastError}
+              </span>
             )}
           </p>
           <div className="flex gap-3">
+            {/* Solo con `error`: sin conexión no hay nada que reintentar, y
+                ahora `offline` gana a `error` en la precedencia. */}
             {status === 'error' && (
-              <button
-                type="button"
-                onClick={retry}
-                className="h-11 rounded-sm bg-ink px-5 text-sm font-semibold text-paper"
-              >
+              <button type="button" onClick={retry} className={BUTTON_PRIMARY}>
                 Reintentar
               </button>
             )}
@@ -118,7 +155,7 @@ export function AuthSection() {
               onClick={() => {
                 void signOut()
               }}
-              className="h-11 rounded-sm px-4 text-sm text-ink-soft transition-colors hover:bg-surface hover:text-ink"
+              className={BUTTON_QUIET}
             >
               Cerrar sesión
             </button>

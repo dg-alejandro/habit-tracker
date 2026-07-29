@@ -4,6 +4,7 @@ import { FrozenDayBanner } from '../components/habits/FrozenDayBanner'
 import { HabitRow } from '../components/habits/HabitRow'
 import { WeeklyHeader } from '../components/habits/WeeklyHeader'
 import { ExportReminderBanner } from '../components/settings/ExportReminderBanner'
+import { SyncNotice } from '../components/settings/SyncNotice'
 import { EmptyState } from '../components/ui/EmptyState'
 import { SkeletonRows } from '../components/ui/Skeleton'
 import { freezeDay } from '../data/repositories/frozenRepo'
@@ -93,6 +94,7 @@ export function DailyLog() {
         </div>
       )}
 
+      <SyncNotice />
       {exportReminder && <ExportReminderBanner />}
     </div>
   )

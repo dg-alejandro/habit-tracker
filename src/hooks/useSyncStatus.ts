@@ -3,10 +3,10 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../data/db'
 import { requestSyncNow, syncStore } from '../data/sync'
 import { isSupabaseConfigured } from '../data/supabase'
+import { resolveSyncStatus, type SyncStatus } from '../logic/sync'
 import { useSession } from './useSession'
 
-/** Precedencia: disabled > signedOut > error > offline > pending > synced. */
-export type SyncStatus = 'disabled' | 'signedOut' | 'error' | 'offline' | 'pending' | 'synced'
+export type { SyncStatus }
 
 export interface SyncState {
   status: SyncStatus
@@ -18,7 +18,7 @@ export interface SyncState {
   retry: () => void
 }
 
-function useOnline(): boolean {
+export function useOnline(): boolean {
   const [online, setOnline] = useState(() => navigator.onLine)
   useEffect(() => {
     const up = (): void => setOnline(true)
@@ -33,19 +33,24 @@ function useOnline(): boolean {
   return online
 }
 
+/**
+ * Cableado de las cuatro suscripciones; la decisión de qué estado mostrar vive
+ * en `resolveSyncStatus` (logic/sync.ts), que es pura y sí se puede probar.
+ */
 export function useSyncStatus(): SyncState {
   const snapshot = useSyncExternalStore(syncStore.subscribe, syncStore.getSnapshot)
   const session = useSession()
   const online = useOnline()
   const pendingCount = useLiveQuery(() => db.outbox.count(), [], 0)
 
-  let status: SyncStatus
-  if (!isSupabaseConfigured()) status = 'disabled'
-  else if (session === null) status = 'signedOut'
-  else if (snapshot.lastError !== null) status = 'error'
-  else if (!online) status = 'offline'
-  else if (pendingCount > 0 || snapshot.syncing || session === undefined) status = 'pending'
-  else status = 'synced'
+  const status = resolveSyncStatus({
+    configured: isSupabaseConfigured(),
+    session: session === null ? 'none' : session === undefined ? 'restoring' : 'active',
+    lastError: snapshot.lastError,
+    online,
+    pendingCount,
+    syncing: snapshot.syncing,
+  })
 
   return {
     status,

@@ -6,11 +6,14 @@ import { describe, expect, it } from 'vitest'
 import {
   CODECS,
   chunk,
+  classifyAuthError,
   isAfterCursor,
   nextCursor,
   remoteTableName,
   resolveLww,
+  resolveSyncStatus,
   sameRow,
+  type SyncStatusInput,
 } from './sync'
 import type {
   DayEntry,
@@ -172,5 +175,97 @@ describe('chunk', () => {
   it('trocea en lotes de tamaño fijo con resto', () => {
     expect(chunk([1, 2, 3, 4, 5], 2)).toEqual([[1, 2], [3, 4], [5]])
     expect(chunk([], 500)).toEqual([])
+  })
+})
+
+describe('resolveSyncStatus', () => {
+  const base: SyncStatusInput = {
+    configured: true,
+    session: 'active',
+    lastError: null,
+    online: true,
+    pendingCount: 0,
+    syncing: false,
+  }
+
+  it('sin claves de Supabase, «solo local» gana a todo lo demás', () => {
+    expect(
+      resolveSyncStatus({
+        ...base,
+        configured: false,
+        session: 'none',
+        lastError: 'boom',
+        online: false,
+        pendingCount: 9,
+      }),
+    ).toBe('disabled')
+  })
+
+  it('sin sesión gana a la falta de conexión y al error', () => {
+    expect(
+      resolveSyncStatus({ ...base, session: 'none', online: false, lastError: 'boom' }),
+    ).toBe('signedOut')
+  })
+
+  it('SIN CONEXIÓN GANA AL ERROR: el error lo causa no haber red', () => {
+    expect(resolveSyncStatus({ ...base, online: false, lastError: 'Bajada de habits: 503' })).toBe(
+      'offline',
+    )
+  })
+
+  it('con red, un error sí se muestra', () => {
+    expect(resolveSyncStatus({ ...base, lastError: 'Bajada de habits: 503' })).toBe('error')
+  })
+
+  it('el error gana a los cambios pendientes', () => {
+    expect(resolveSyncStatus({ ...base, lastError: 'boom', pendingCount: 4 })).toBe('error')
+  })
+
+  it('restaurar la sesión cuenta como pendiente', () => {
+    expect(resolveSyncStatus({ ...base, session: 'restoring' })).toBe('pending')
+  })
+
+  it('hay pendientes o hay un ciclo en vuelo', () => {
+    expect(resolveSyncStatus({ ...base, pendingCount: 1 })).toBe('pending')
+    expect(resolveSyncStatus({ ...base, syncing: true })).toBe('pending')
+  })
+
+  it('sin nada que hacer, sincronizado', () => {
+    expect(resolveSyncStatus(base)).toBe('synced')
+  })
+
+  it('offline sin nada pendiente sigue siendo offline, no sincronizado', () => {
+    expect(resolveSyncStatus({ ...base, online: false })).toBe('offline')
+  })
+})
+
+describe('classifyAuthError', () => {
+  it('sin conexión es siempre un fallo de red, diga lo que diga el status', () => {
+    expect(classifyAuthError({ status: 400, message: 'Invalid login' }, false)).toBe('network')
+  })
+
+  it('el código de supabase-js manda', () => {
+    expect(
+      classifyAuthError({ status: 400, code: 'invalid_credentials', message: 'x' }, true),
+    ).toBe('credentials')
+  })
+
+  it('400 y 401 son credenciales', () => {
+    expect(classifyAuthError({ status: 400, message: 'x' }, true)).toBe('credentials')
+    expect(classifyAuthError({ status: 401, message: 'x' }, true)).toBe('credentials')
+  })
+
+  it('sin status es que el fetch ni salió', () => {
+    expect(classifyAuthError({ message: 'Failed to fetch' }, true)).toBe('network')
+    expect(classifyAuthError({ status: 0, message: 'Failed to fetch' }, true)).toBe('network')
+  })
+
+  it('un proyecto pausado (5xx) es red, no contraseña equivocada', () => {
+    expect(classifyAuthError({ status: 503, message: 'Service Unavailable' }, true)).toBe('network')
+    expect(classifyAuthError({ status: 500, message: 'boom' }, true)).toBe('network')
+  })
+
+  it('lo que no encaja se queda en desconocido', () => {
+    expect(classifyAuthError({ status: 429, message: 'Too many requests' }, true)).toBe('unknown')
   })
 })

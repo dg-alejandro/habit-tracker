@@ -27,14 +27,21 @@ export function SyncIndicator({ variant }: { variant: 'aside' | 'tab' }) {
     if (status === 'synced' || status === 'disabled') return null
     const attention = status === 'error' || status === 'signedOut'
     return (
-      <span
-        aria-hidden
-        className={`absolute right-2.5 top-1.5 font-display text-xs font-semibold ${
-          attention ? 'text-ink' : 'text-ink-soft'
-        }`}
-      >
-        {attention ? '!' : '·'}
-      </span>
+      <>
+        <span
+          aria-hidden
+          className={`absolute right-2.5 top-1.5 font-display text-xs font-semibold ${
+            attention ? 'text-ink' : 'text-ink-soft'
+          }`}
+        >
+          {attention ? '!' : '·'}
+        </span>
+        {/* El glifo sigue oculto para que su aparición no mueva la etiqueta,
+            pero el estado entra en el nombre accesible de la pestaña: «Ajustes,
+            sin conexión». Cierra la deuda de accesibilidad de la Fase 2, que
+            dejaba esto invisible para un lector de pantalla en el iPhone. */}
+        <span className="sr-only">, {ASIDE_LABELS[status]}</span>
+      </>
     )
   }
 

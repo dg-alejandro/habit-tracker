@@ -3,10 +3,27 @@ import { exportBackup, importBackup } from '../../data/backup'
 import { useSettings } from '../../hooks/useSettings'
 import { validateBackup, type BackupFile } from '../../logic/backup'
 import { formatDateEs, logicalDateOf } from '../../logic/dates'
+import { NoticeBanner } from '../ui/NoticeBanner'
+import { BUTTON_DANGER, BUTTON_PRIMARY, BUTTON_QUIET } from '../ui/classes'
 
 interface PendingImport {
   fileName: string
   file: BackupFile
+}
+
+/**
+ * Antes esto era un `message: string | null` y «Copia exportada» y «El archivo
+ * no es JSON válido» se pintaban exactamente igual. Ahora el éxito es una línea
+ * discreta y el fallo una banda de aviso con su detalle técnico.
+ */
+interface BackupResult {
+  kind: 'ok' | 'error'
+  text: string
+  detail?: string
+}
+
+function errorText(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
 }
 
 /**
@@ -17,12 +34,12 @@ interface PendingImport {
 export function BackupSection() {
   const settings = useSettings()
   const [pending, setPending] = useState<PendingImport | null>(null)
-  const [message, setMessage] = useState<string | null>(null)
+  const [result, setResult] = useState<BackupResult | null>(null)
   const [busy, setBusy] = useState(false)
 
   async function handleExport(): Promise<void> {
     setBusy(true)
-    setMessage(null)
+    setResult(null)
     setPending(null)
     try {
       const file = await exportBackup()
@@ -33,7 +50,15 @@ export function BackupSection() {
       anchor.download = `habitos-backup-${logicalDateOf(new Date())}.json`
       anchor.click()
       URL.revokeObjectURL(url)
-      setMessage('Copia exportada. Guárdala en iCloud o similar.')
+      setResult({ kind: 'ok', text: 'Copia exportada. Guárdala en iCloud o similar.' })
+    } catch (error) {
+      // Esto era un try/finally SIN catch: la exportación podía fallar y no se
+      // veía absolutamente nada. Es el único respaldo que existe (§9).
+      setResult({
+        kind: 'error',
+        text: 'No se ha podido exportar la copia.',
+        detail: errorText(error),
+      })
     } finally {
       setBusy(false)
     }
@@ -43,18 +68,18 @@ export function BackupSection() {
     const picked = event.target.files?.[0]
     event.target.value = '' // permite volver a elegir el mismo archivo
     if (picked === undefined) return
-    setMessage(null)
+    setResult(null)
     setPending(null)
     let raw: unknown
     try {
       raw = JSON.parse(await picked.text())
     } catch {
-      setMessage('El archivo no es JSON válido.')
+      setResult({ kind: 'error', text: 'El archivo no es JSON válido.' })
       return
     }
     const validated = validateBackup(raw)
     if (!validated.ok) {
-      setMessage(validated.reason)
+      setResult({ kind: 'error', text: validated.reason })
       return
     }
     setPending({ fileName: picked.name, file: validated.file })
@@ -66,7 +91,16 @@ export function BackupSection() {
     try {
       await importBackup(pending.file)
       setPending(null)
-      setMessage('Copia restaurada. Sincronizando…')
+      setResult({ kind: 'ok', text: 'Copia restaurada. Sincronizando…' })
+    } catch (error) {
+      // «Tus datos no se han tocado» es literalmente cierto, no un consuelo:
+      // importBackup corre entero dentro de una transacción de Dexie, así que
+      // un fallo revierte también el borrado previo.
+      setResult({
+        kind: 'error',
+        text: 'No se ha podido restaurar la copia. Tus datos no se han tocado.',
+        detail: errorText(error),
+      })
     } finally {
       setBusy(false)
     }
@@ -92,11 +126,11 @@ export function BackupSection() {
           onClick={() => {
             void handleExport()
           }}
-          className="h-11 rounded-sm bg-ink px-5 text-sm font-semibold text-paper disabled:opacity-30"
+          className={BUTTON_PRIMARY}
         >
           Exportar copia
         </button>
-        <label className="flex h-11 cursor-pointer items-center rounded-sm px-4 text-sm text-ink-soft transition-colors hover:bg-surface hover:text-ink">
+        <label className={`cursor-pointer ${BUTTON_QUIET}`}>
           Importar copia…
           <input
             type="file"
@@ -111,39 +145,60 @@ export function BackupSection() {
       </div>
 
       {pending !== null && (
-        <div className="mt-4 rounded-sm border border-line bg-surface px-4 py-3">
-          <p className="text-sm font-semibold text-ink">
-            Esto reemplaza TODOS los datos de este dispositivo.
-          </p>
-          <p className="mt-1 text-sm text-ink-soft">
-            «{pending.fileName}»: {pending.file.data.habits.length} hábitos,{' '}
-            {pending.file.data.entries.length} registros. La copia restaurada también se impondrá
-            al sincronizar.
-          </p>
-          <div className="mt-3 flex gap-3">
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => {
-                void confirmImport()
-              }}
-              className="h-11 rounded-sm bg-ink px-5 text-sm font-semibold text-paper disabled:opacity-30"
-            >
-              Restaurar la copia
-            </button>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => setPending(null)}
-              className="h-11 rounded-sm px-4 text-sm text-ink-soft transition-colors hover:bg-surface hover:text-ink"
-            >
-              Cancelar
-            </button>
-          </div>
-        </div>
+        <NoticeBanner
+          className="mt-4"
+          tone="alert"
+          title="Esto reemplaza TODOS los datos de este dispositivo"
+          detail={
+            <>
+              «{pending.fileName}»:{' '}
+              <span className="font-display tabular-nums">{pending.file.data.habits.length}</span>{' '}
+              hábitos,{' '}
+              <span className="font-display tabular-nums">{pending.file.data.entries.length}</span>{' '}
+              registros. La copia restaurada también se impondrá al sincronizar.
+            </>
+          }
+          actions={
+            <>
+              {/* Rojo, porque borra de verdad (§6): iba en bg-ink, con el
+                  mismo aspecto que el botón benigno de «Exportar copia». */}
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => {
+                  void confirmImport()
+                }}
+                className={BUTTON_DANGER}
+              >
+                Restaurar la copia
+              </button>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => setPending(null)}
+                className={BUTTON_QUIET}
+              >
+                Cancelar
+              </button>
+            </>
+          }
+        />
       )}
 
-      {message !== null && <p className="mt-3 text-sm font-semibold text-ink">{message}</p>}
+      {result !== null &&
+        (result.kind === 'ok' ? (
+          <p role="status" className="mt-3 text-sm text-ink-soft">
+            {result.text}
+          </p>
+        ) : (
+          <NoticeBanner
+            className="mt-3"
+            role="alert"
+            tone="alert"
+            title={result.text}
+            {...(result.detail === undefined ? {} : { technical: result.detail })}
+          />
+        ))}
     </section>
   )
 }

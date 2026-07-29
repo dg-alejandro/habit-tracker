@@ -3,6 +3,8 @@ import { BrowserRouter, useLocation } from 'react-router'
 import { AppRoutes } from './routes'
 import { NavBar } from './components/ui/NavBar'
 import { ErrorBoundary } from './components/ui/ErrorBoundary'
+import { NoticeDock } from './components/ui/NoticeDock'
+import { installWriteErrorReporter } from './hooks/useWriteErrors'
 import { startSync } from './data/sync'
 
 export function App() {
@@ -10,6 +12,7 @@ export function App() {
   // siembra: inmediata sin Supabase, pospuesta al primer pull con sesión si lo hay.
   useEffect(() => {
     startSync()
+    installWriteErrorReporter()
   }, [])
 
   return (
@@ -30,6 +33,9 @@ export function App() {
             <AppRoutes />
           </RoutedBoundary>
         </main>
+        {/* Fuera del límite de error a propósito: si una pantalla revienta, el
+            aviso de «hay una versión nueva» puede ser justo lo que lo arregla. */}
+        <NoticeDock />
       </div>
     </BrowserRouter>
   )

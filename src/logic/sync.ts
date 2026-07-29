@@ -372,11 +372,85 @@ export function isAfterCursor(
 
 /* ── Utilidades ───────────────────────────────────────────────────────────── */
 
-/** Trocea en lotes de tamaño fijo (el push sube de 500 en 500). */
+/**
+ * Trocea en lotes de tamaño fijo. Lo usan el push (de 500 en 500, en el cuerpo
+ * de un POST) y la relectura posterior, que va en la URL de un GET y por eso
+ * necesita lotes mucho más pequeños.
+ */
 export function chunk<T>(items: readonly T[], size: number): T[][] {
   const out: T[][] = []
   for (let i = 0; i < items.length; i += size) {
     out.push(items.slice(i, i + size))
   }
   return out
+}
+
+/* ── Estado visible de la sincronización ──────────────────────────────────── */
+
+/** Precedencia: disabled > signedOut > offline > error > pending > synced. */
+export type SyncStatus = 'disabled' | 'signedOut' | 'error' | 'offline' | 'pending' | 'synced'
+
+export interface SyncStatusInput {
+  /** Hay claves de Supabase en el entorno. */
+  configured: boolean
+  session: 'none' | 'restoring' | 'active'
+  lastError: string | null
+  online: boolean
+  /** Escrituras locales aún sin subir. */
+  pendingCount: number
+  syncing: boolean
+}
+
+/**
+ * Qué se le enseña al usuario sobre la sincronización.
+ *
+ * `offline` gana a `error`, que es lo contrario de lo que hacía antes: si no
+ * hay red, el último error ESTÁ CAUSADO por no haberla, y «Sin conexión. Se
+ * sincronizará al recuperarla.» es a la vez más cierto y menos alarmante que un
+ * mensaje crudo de PostgREST.
+ *
+ * Pura y aparte del hook para poder probar la tabla de precedencia sin DOM: la
+ * suite corre en Node.
+ */
+export function resolveSyncStatus(input: SyncStatusInput): SyncStatus {
+  if (!input.configured) return 'disabled'
+  if (input.session === 'none') return 'signedOut'
+  if (!input.online) return 'offline'
+  if (input.lastError !== null) return 'error'
+  if (input.pendingCount > 0 || input.syncing || input.session === 'restoring') return 'pending'
+  return 'synced'
+}
+
+/* ── Clasificación de los fallos de inicio de sesión ──────────────────────── */
+
+export type AuthFailure = 'credentials' | 'network' | 'unconfigured' | 'unknown'
+
+/** Lo que interesa de un AuthError de supabase-js. */
+export interface AuthErrorShape {
+  status?: number
+  code?: string
+  message: string
+}
+
+/**
+ * Distingue «te has equivocado de contraseña» de «no se llega al servidor».
+ *
+ * No es cosmético: §9 avisa de que Supabase PAUSA los proyectos tras una semana
+ * sin actividad, así que el fallo más probable al volver de unas vacaciones es
+ * justo ese — y hasta ahora se comunicaba como credenciales incorrectas, que
+ * manda al propietario a buscar una contraseña que estaba bien.
+ *
+ * Recibe `online` como parámetro en vez de leer `navigator`: aquí no se toca el
+ * entorno (§2).
+ */
+export function classifyAuthError(error: AuthErrorShape, online: boolean): AuthFailure {
+  if (!online) return 'network'
+  if (error.code === 'invalid_credentials' || error.code === 'invalid_login_credentials') {
+    return 'credentials'
+  }
+  if (error.status === 400 || error.status === 401) return 'credentials'
+  // Sin status es que el fetch ni salió; 5xx es servidor caído o proyecto pausado.
+  if (error.status === undefined || error.status === 0) return 'network'
+  if (error.status >= 500) return 'network'
+  return 'unknown'
 }

@@ -1,5 +1,7 @@
 import { NavLink } from 'react-router'
 import { unfreezeExactDay } from '../../data/repositories/frozenRepo'
+import { NoticeBanner } from '../ui/NoticeBanner'
+import { NOTICE_ACTION } from '../ui/classes'
 import type { IsoDate } from '../../logic/dates'
 
 interface FrozenDayBannerProps {
@@ -11,27 +13,25 @@ interface FrozenDayBannerProps {
 /** Estado de día congelado: ni suma ni rompe. */
 export function FrozenDayBanner({ date, canQuickUnfreeze }: FrozenDayBannerProps) {
   return (
-    <div className="mt-4 rounded-sm border border-line bg-surface px-4 py-3">
-      <p className="text-sm font-semibold text-ink">Día congelado</p>
-      <p className="mt-0.5 text-sm text-ink-soft">
-        Ni suma ni rompe: no cuenta para rachas ni porcentajes.
-      </p>
-      {canQuickUnfreeze ? (
-        <button
-          type="button"
-          onClick={() => void unfreezeExactDay(date)}
-          className="mt-1 inline-flex h-11 items-center text-sm font-medium text-ink underline underline-offset-2"
-        >
-          Descongelar este día
-        </button>
-      ) : (
-        <NavLink
-          to="/habitos"
-          className="mt-1 inline-flex h-11 items-center text-sm font-medium text-ink underline underline-offset-2"
-        >
-          Pertenece a un rango congelado: gestionarlo en Hábitos
-        </NavLink>
-      )}
-    </div>
+    <NoticeBanner
+      className="mt-4"
+      title="Día congelado"
+      detail="Ni suma ni rompe: no cuenta para rachas ni porcentajes."
+      actions={
+        canQuickUnfreeze ? (
+          <button
+            type="button"
+            onClick={() => void unfreezeExactDay(date)}
+            className={NOTICE_ACTION}
+          >
+            Descongelar este día
+          </button>
+        ) : (
+          <NavLink to="/habitos" className={NOTICE_ACTION}>
+            Pertenece a un rango congelado: gestionarlo en Hábitos
+          </NavLink>
+        )
+      }
+    />
   )
 }
